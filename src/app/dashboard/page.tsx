@@ -1,9 +1,37 @@
+"use client"
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { signOut } from "@/lib/supabase";
 
 export default function DashboardPage() {
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleLogout = async () => {
+    setIsLoading(true);
+    const { error } = await signOut();
+    if (!error) {
+      router.push('/auth');
+      router.refresh();
+    }
+    setIsLoading(false);
+  };
+
   return (
     <div className="container mx-auto py-8 px-4">
-      <h1 className="text-3xl font-bold mb-8">Dashboard</h1>
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold">Dashboard</h1>
+        <Button 
+          variant="outline" 
+          onClick={handleLogout}
+          disabled={isLoading}
+        >
+          {isLoading ? 'Logging out...' : 'Logout'}
+        </Button>
+      </div>
       
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {/* Analytics Card */}
