@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist, createJSONStorage } from 'zustand/middleware'
 
 interface SetupStore {
   userType: 'brand' | 'influencer' | null
@@ -17,25 +18,9 @@ interface SetupStore {
   reset: () => void
 }
 
-export const useSetupStore = create<SetupStore>((set) => ({
-  userType: null,
-  personalInfo: null,
-  connectedPlatforms: {
-    youtube: false,
-    facebook: false,
-    tiktok: false,
-  },
-  setUserType: (type) => set({ userType: type }),
-  setPersonalInfo: (info) => set({ personalInfo: info }),
-  connectPlatform: (platform) =>
-    set((state) => ({
-      connectedPlatforms: {
-        ...state.connectedPlatforms,
-        [platform]: true,
-      },
-    })),
-  reset: () =>
-    set({
+export const useSetupStore = create<SetupStore>()(
+  persist(
+    (set) => ({
       userType: null,
       personalInfo: null,
       connectedPlatforms: {
@@ -43,5 +28,30 @@ export const useSetupStore = create<SetupStore>((set) => ({
         facebook: false,
         tiktok: false,
       },
+      setUserType: (type) => set({ userType: type }),
+      setPersonalInfo: (info) => set({ personalInfo: info }),
+      connectPlatform: (platform) =>
+        set((state) => ({
+          connectedPlatforms: {
+            ...state.connectedPlatforms,
+            [platform]: true,
+          },
+        })),
+      reset: () =>
+        set({
+          userType: null,
+          personalInfo: null,
+          connectedPlatforms: {
+            youtube: false,
+            facebook: false,
+            tiktok: false,
+          },
+        }),
     }),
-}))
+    {
+      name: 'setup-storage',
+      storage: createJSONStorage(() => localStorage),
+      skipHydration: false, // Set to false since we're handling hydration in StoreProvider
+    }
+  )
+)

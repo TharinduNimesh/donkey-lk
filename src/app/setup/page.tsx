@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Stepper } from "@/components/ui/stepper";
 import { Card } from "@/components/ui/card";
 import {
@@ -14,8 +14,12 @@ import { useSetupStore } from "@/lib/store";
 
 export default function SetupPage() {
   const router = useRouter();
-  const [currentStep, setCurrentStep] = useState(0);
+  const searchParams = useSearchParams();
   const { userType } = useSetupStore();
+  
+  // Get step from URL or default to 0
+  const urlStep = searchParams.get('step');
+  const [currentStep, setCurrentStep] = useState(urlStep ? parseInt(urlStep) : 0);
 
   const steps = [
     { title: "Personal Info" },
@@ -23,15 +27,34 @@ export default function SetupPage() {
     { title: userType === "influencer" ? "Connect Socials" : "Final Step" },
   ];
 
+  // Update URL when step changes
+  const updateStep = (step: number) => {
+    setCurrentStep(step);
+    const params = new URLSearchParams(searchParams);
+    params.set('step', step.toString());
+    router.push(`/setup?${params.toString()}`);
+  };
+
+  // Handle direct URL access and browser back/forward
+  useEffect(() => {
+    const step = searchParams.get('step');
+    if (step !== null) {
+      const stepNumber = parseInt(step);
+      if (stepNumber >= 0 && stepNumber < steps.length && stepNumber !== currentStep) {
+        setCurrentStep(stepNumber);
+      }
+    }
+  }, [searchParams]);
+
   const handleNext = () => {
     if (currentStep < steps.length - 1) {
-      setCurrentStep(currentStep + 1);
+      updateStep(currentStep + 1);
     }
   };
 
   const handleBack = () => {
     if (currentStep > 0) {
-      setCurrentStep(currentStep - 1);
+      updateStep(currentStep - 1);
     }
   };
 

@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useSetupStore } from "@/lib/store";
+import { supabase } from "@/lib/supabase";
+import { toast } from "sonner";
 
 interface SocialConnectFormProps {
   onBack: () => void;
@@ -12,23 +14,95 @@ interface SocialConnectFormProps {
 
 export function SocialConnectForm({ onBack }: SocialConnectFormProps) {
   const router = useRouter();
-  const { connectedPlatforms, connectPlatform } = useSetupStore();
+  const { connectedPlatforms, connectPlatform, personalInfo, userType } = useSetupStore();
   const [isSkipping, setIsSkipping] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleConnect = (platform: "youtube" | "facebook" | "tiktok") => {
-    // TODO: Implement actual social media connection
+    if (platform === "youtube") {
+      router.push("/verify/youtube");
+      return;
+    }
+    // TODO: Implement other platform connections
     connectPlatform(platform);
+  };
+
+  const createProfile = async () => {
+    if (!personalInfo || !userType) {
+      toast.error("Missing required information. Please go back and fill in all fields.");
+      return;
+    }
+
+    setIsLoading(true);
+    const toastId = toast.loading("Setting up your account...");
+
+    try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Authentication error. Please try logging in again.", {
+          id: toastId
+        });
+        return;
+      }
+
+      // Create profile
+      const { error: profileError } = await supabase
+        .from('profile')
+        .insert({
+          id: user.id,
+          name: personalInfo.name,
+          role: ['INFLUENCER'], // Since this is the influencer flow
+        });
+
+      if (profileError) {
+        toast.error("Failed to create profile. Please try again.", {
+          id: toastId,
+          description: profileError.message,
+          richColors: true
+        });
+        throw profileError;
+      }
+
+      // Create contact details for mobile
+      const { error: contactError } = await supabase
+        .from('contact_details')
+        .insert({
+          user_id: user.id,
+          type: 'MOBILE',
+          detail: personalInfo.mobile,
+        });
+
+      if (contactError) {
+        toast.error("Failed to save contact details. Please try again.", {
+          id: toastId,
+          description: contactError.message,
+          richColors: true
+        });
+        throw contactError;
+      }
+
+      toast.success("Account setup completed successfully!", {
+        id: toastId
+      });
+
+      router.push('/dashboard');
+      router.refresh();
+    } catch (error) {
+      console.error('Error saving profile:', error);
+    } finally {
+      setIsLoading(false);
+      setIsSkipping(false);
+    }
   };
 
   const handleSkip = () => {
     setIsSkipping(true);
-    setTimeout(() => {
-      router.push("/dashboard");
-    }, 1500);
+    createProfile();
   };
 
   const handleComplete = () => {
-    router.push("/dashboard");
+    createProfile();
   };
 
   const platformsConnected = Object.values(connectedPlatforms).some(Boolean);
@@ -122,14 +196,16 @@ export function SocialConnectForm({ onBack }: SocialConnectFormProps) {
       )}
 
       <div className="flex justify-between">
-        <Button variant="ghost" onClick={onBack}>
+        <Button variant="ghost" onClick={onBack} disabled={isLoading || isSkipping}>
           Back
         </Button>
         {platformsConnected ? (
-          <Button onClick={handleComplete}>Complete Setup</Button>
+          <Button onClick={handleComplete} disabled={isLoading}>
+            {isLoading ? "Setting up..." : "Complete Setup"}
+          </Button>
         ) : (
-          <Button variant="outline" onClick={handleSkip} disabled={isSkipping}>
-            {isSkipping ? "Redirecting..." : "Skip for now"}
+          <Button variant="outline" onClick={handleSkip} disabled={isLoading || isSkipping}>
+            {isSkipping ? "Setting up..." : "Skip for now"}
           </Button>
         )}
       </div>
