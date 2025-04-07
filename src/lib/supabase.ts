@@ -7,14 +7,32 @@ export type AuthError = {
   status: number
 }
 
-export const signIn = async (email: string, password: string) => {
+export type AuthResponse = {
+  data: {
+    hasProfile: boolean
+  } | null
+  error: AuthError | null
+}
+
+export const signIn = async (email: string, password: string): Promise<AuthResponse> => {
   try {
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
       email,
       password,
     })
-    if (error) throw error
-    return { data, error: null }
+    if (authError) throw authError
+
+    // Check if user has a profile
+    const { data: profile } = await supabase
+      .from('profile')
+      .select('*')
+      .eq('id', authData.user.id)
+      .single()
+
+    return { 
+      data: { hasProfile: !!profile },
+      error: null 
+    }
   } catch (error) {
     return {
       data: null,

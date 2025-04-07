@@ -22,7 +22,7 @@ export function SignInForm() {
     const email = formData.get('email') as string
     const password = formData.get('password') as string
 
-    const { error } = await signIn(email, password)
+    const { data, error } = await signIn(email, password)
     
     if (error) {
       setError(error.message)
@@ -30,7 +30,12 @@ export function SignInForm() {
       return
     }
 
-    router.push('/dashboard')
+    // Redirect based on profile existence
+    if (data?.hasProfile) {
+      router.push('/dashboard')
+    } else {
+      router.push('/setup')
+    }
     router.refresh()
   }
 

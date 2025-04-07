@@ -1,8 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { useSetupStore } from "@/lib/store";
+import { supabase } from "@/lib/supabase";
 
 interface FinalStepProps {
   onBack: () => void;
@@ -10,6 +14,77 @@ interface FinalStepProps {
 
 export function FinalStep({ onBack }: FinalStepProps) {
   const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
+  const { userType, personalInfo } = useSetupStore();
+
+  const saveProfileAndNavigate = async (destination: string) => {
+    if (!personalInfo || !userType) {
+      toast.error("Missing required information. Please go back and fill in all fields.");
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const toastId = toast.loading("Setting up your account...");
+
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Authentication error. Please try logging in again.", {
+          id: toastId
+        });
+        return;
+      }
+
+      // Create profile
+      const { error: profileError } = await supabase
+        .from('profile')
+        .insert({
+          id: user.id,
+          name: personalInfo.name,
+          role: ['BUYER'], // Since this is the brand flow
+        });
+
+      if (profileError) {
+        toast.error("Failed to create profile. Please try again.", {
+          id: toastId,
+          description: profileError.message,
+          richColors: true
+        });
+        throw profileError;
+      }
+
+      // Create contact details for mobile
+      const { error: contactError } = await supabase
+        .from('contact_details')
+        .insert({
+          user_id: user.id,
+          type: 'MOBILE',
+          detail: personalInfo.mobile,
+        });
+
+      if (contactError) {
+        toast.error("Failed to save contact details. Please try again.", {
+          id: toastId,
+          description: contactError.message,
+          richColors: true
+        });
+        throw contactError;
+      }
+
+      toast.success("Account setup completed successfully!", {
+        id: toastId
+      });
+
+      router.push(destination);
+      router.refresh();
+    } catch (error) {
+      console.error('Error saving profile:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -45,9 +120,10 @@ export function FinalStep({ onBack }: FinalStepProps) {
               </p>
               <Button 
                 className="mt-4" 
-                onClick={() => router.push("/tasks/create")}
+                onClick={() => saveProfileAndNavigate("/tasks/create")}
+                disabled={isLoading}
               >
-                Create Task
+                {isLoading ? "Setting up..." : "Create Task"}
               </Button>
             </div>
           </div>
@@ -78,9 +154,10 @@ export function FinalStep({ onBack }: FinalStepProps) {
               <Button 
                 variant="outline" 
                 className="mt-4"
-                onClick={() => router.push("/dashboard")}
+                onClick={() => saveProfileAndNavigate("/dashboard")}
+                disabled={isLoading}
               >
-                Go to Dashboard
+                {isLoading ? "Setting up..." : "Go to Dashboard"}
               </Button>
             </div>
           </div>
@@ -88,7 +165,7 @@ export function FinalStep({ onBack }: FinalStepProps) {
       </div>
 
       <div className="flex justify-start">
-        <Button variant="ghost" onClick={onBack}>
+        <Button variant="ghost" onClick={onBack} disabled={isLoading}>
           Back
         </Button>
       </div>

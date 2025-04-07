@@ -9,8 +9,25 @@ export async function GET(request: Request) {
   if (code) {
     const supabase = createRouteHandlerClient({ cookies })
     await supabase.auth.exchangeCodeForSession(code)
+
+    // Get the user session after exchange
+    const { data: { session } } = await supabase.auth.getSession()
+    
+    if (session) {
+      // Check if user has a profile
+      const { data: profile } = await supabase
+        .from('profile')
+        .select('*')
+        .eq('id', session.user.id)
+        .single()
+
+      // If no profile exists, redirect to setup
+      if (!profile) {
+        return NextResponse.redirect(`${requestUrl.origin}/setup`)
+      }
+    }
   }
 
-  // URL to redirect to after sign in process completes
+  // If profile exists or there's an error, redirect to dashboard
   return NextResponse.redirect(`${requestUrl.origin}/dashboard`)
 }
