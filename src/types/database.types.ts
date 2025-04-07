@@ -117,6 +117,38 @@ export type Database = {
           },
         ]
       }
+      influencer_profile_verifications: {
+        Row: {
+          code: string
+          created_at: string
+          id: number
+          is_used: boolean
+          profile_id: number
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: number
+          is_used?: boolean
+          profile_id: number
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: number
+          is_used?: boolean
+          profile_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "influencer_profile_verifications_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "influencer_profile"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profile: {
         Row: {
           created_at: string
@@ -146,7 +178,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_a_buyer: {
+        Args: { user_id_input: string }
+        Returns: boolean
+      }
+      is_an_influencer: {
+        Args: { user_id_input: string }
+        Returns: boolean
+      }
+      verify_youtube_channel: {
+        Args: { p_profile_id: number; p_verification_id: number }
+        Returns: undefined
+      }
     }
     Enums: {
       ContactTypes: "EMAIL" | "MOBILE" | "WHATSAPP"

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useSetupStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
+import { setupUserProfile } from "@/lib/utils/user";
 
 interface FinalStepProps {
   onBack: () => void;
@@ -37,48 +38,28 @@ export function FinalStep({ onBack }: FinalStepProps) {
         return;
       }
 
-      // Create profile
-      const { error: profileError } = await supabase
-        .from('profile')
-        .insert({
-          id: user.id,
-          name: personalInfo.name,
-          role: ['BUYER'], // Since this is the brand flow
-        });
-
-      if (profileError) {
-        toast.error("Failed to create profile. Please try again.", {
-          id: toastId,
-          description: profileError.message,
-          richColors: true
-        });
-        throw profileError;
-      }
-
-      // Create contact details for mobile
-      const { error: contactError } = await supabase
-        .from('contact_details')
-        .insert({
-          user_id: user.id,
-          type: 'MOBILE',
-          detail: personalInfo.mobile,
-        });
-
-      if (contactError) {
-        toast.error("Failed to save contact details. Please try again.", {
-          id: toastId,
-          description: contactError.message,
-          richColors: true
-        });
-        throw contactError;
-      }
-
-      toast.success("Account setup completed successfully!", {
-        id: toastId
+      const { error } = await setupUserProfile({
+        userId: user.id,
+        name: personalInfo.name,
+        role: ['BUYER'],
+        mobile: personalInfo.mobile,
+        onError: (error) => {
+          toast.error("Failed to setup profile. Please try again.", {
+            id: toastId,
+            description: error.message,
+            richColors: true
+          });
+        }
       });
 
-      router.push(destination);
-      router.refresh();
+      if (!error) {
+        toast.success("Account setup completed successfully!", {
+          id: toastId
+        });
+
+        router.push(destination);
+        router.refresh();
+      }
     } catch (error) {
       console.error('Error saving profile:', error);
     } finally {

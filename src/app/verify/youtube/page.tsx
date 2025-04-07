@@ -7,21 +7,18 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { useSetupStore } from "@/lib/store";
-
-interface ChannelInfo {
-  title: string;
-  subscribers: string;
-  thumbnail: string;
-}
+import { supabase } from "@/lib/supabase";
+import { getChannelInfo } from "./actions";
+import { setupUserProfile } from "@/lib/utils/user";
+import { type ChannelInfo, verifyYouTubeChannel, generateVerificationCode, checkYouTubeVerification } from "@/lib/utils/youtube";
 
 type VerificationStep = "initial" | "description" | "checking" | "verified";
 
 export default function YouTubeVerificationPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { connectPlatform } = useSetupStore();
+  const { connectPlatform, personalInfo } = useSetupStore();
   
-  // Initialize states from URL parameters
   const urlStep = searchParams.get('step') as VerificationStep | null;
   const urlChannel = searchParams.get('channel');
   const [channelUrl, setChannelUrl] = useState(urlChannel || "");
@@ -32,14 +29,6 @@ export default function YouTubeVerificationPage() {
   const [verificationCode, setVerificationCode] = useState<string | null>(null);
   const [verificationStatus, setVerificationStatus] = useState<"pending" | "success" | "failed">("pending");
 
-  // Generate verification code only when needed
-  const generateVerificationCode = () => {
-    const timestamp = Date.now().toString(36);
-    const random = Math.random().toString(36).substring(2, 15);
-    return `DonkeyLKVerify${random}${timestamp}`;
-  };
-
-  // Update URL when step changes
   const updateUrlParams = (step: VerificationStep, channel?: string) => {
     const params = new URLSearchParams(searchParams);
     params.set('step', step);
@@ -49,7 +38,6 @@ export default function YouTubeVerificationPage() {
     router.push(`/verify/youtube?${params.toString()}`);
   };
 
-  // Handle direct URL access and browser back/forward
   useEffect(() => {
     const step = searchParams.get('step') as VerificationStep;
     const channel = searchParams.get('channel');
@@ -60,25 +48,27 @@ export default function YouTubeVerificationPage() {
     
     if (channel && channel !== channelUrl) {
       setChannelUrl(channel);
-      // Load channel info if URL contains channel
       if (!channelInfo) {
-        handleChannelLoad(channel);
+        handleChannelLoad();
       }
     }
   }, [searchParams]);
 
-  const handleChannelLoad = async (url?: string) => {
+  const handleChannelLoad = async () => {
     setLoading(true);
     try {
-      // TODO: Implement actual YouTube API call
-      const channelToLoad = url || channelUrl;
-      setChannelInfo({
-        title: "Demo Channel",
-        subscribers: "10K",
-        thumbnail: "https://via.placeholder.com/150"
-      });
-      setShowVerificationOptions(false);
-      updateUrlParams("initial", channelToLoad);
+      const { data, error } = await getChannelInfo(channelUrl);
+      
+      if (error) {
+        toast.error(error);
+        return;
+      }
+
+      if (data) {
+        setChannelInfo(data);
+        setShowVerificationOptions(false);
+        updateUrlParams("initial", channelUrl);
+      }
     } catch (error) {
       toast.error("Failed to load channel information");
     } finally {
@@ -86,16 +76,78 @@ export default function YouTubeVerificationPage() {
     }
   };
 
-  const startVerification = () => {
-    setShowVerificationOptions(true);
+  const startVerification = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Authentication error. Please try logging in again.");
+        return;
+      }
+
+      const toastId = toast.loading("Setting up your account...");
+
+      const { error: setupError } = await setupUserProfile({
+        userId: user.id,
+        name: personalInfo?.name || channelInfo?.title || '',
+        role: ['INFLUENCER'],
+        mobile: personalInfo?.mobile,
+        onError: (error) => {
+          toast.error("Failed to setup profile. Please try again.", {
+            id: toastId,
+            description: error.message,
+            richColors: true
+          });
+        }
+      });
+
+      if (setupError) {
+        return;
+      }
+
+      const result = await verifyYouTubeChannel(channelUrl, user.id, channelInfo);
+      
+      toast.success("Profile created successfully!", { id: toastId });
+      setShowVerificationOptions(true);
+    } catch (error) {
+      console.error('Error starting verification:', error);
+      toast.error("Failed to initialize verification process. Please try again.");
+    }
   };
 
-  const handleDescriptionVerification = () => {
-    // Generate verification code only when user starts description verification
-    setVerificationCode(generateVerificationCode());
-    setVerificationStep("description");
-    setShowVerificationOptions(false);
-    updateUrlParams("description", channelUrl);
+  const handleDescriptionVerification = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Authentication error. Please try logging in again.");
+        return;
+      }
+
+      // Get the influencer profile ID first
+      const { data: profiles } = await supabase
+        .from('influencer_profile')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('platform', 'YOUTUBE')
+        .eq('url', channelUrl);
+
+      if (!profiles || profiles.length === 0) {
+        toast.error("Profile not found. Please try again.");
+        return;
+      }
+
+      // Use the first profile ID for verification
+      const profileId = profiles[0].id;
+
+      // Request verification code
+      const { code } = await generateVerificationCode(profileId);
+      setVerificationCode(code);
+      setVerificationStep("description");
+      setShowVerificationOptions(false);
+      updateUrlParams("description", channelUrl);
+    } catch (error) {
+      console.error('Error generating verification code:', error);
+      toast.error("Failed to generate verification code. Please try again.");
+    }
   };
 
   const handleManualVerification = () => {
@@ -108,22 +160,36 @@ export default function YouTubeVerificationPage() {
   };
 
   const checkVerification = async () => {
-    if (!verificationCode) {
-      toast.error("Verification code not found. Please try again.");
+    if (!channelInfo) {
+      toast.error("Channel info not found. Please try again.");
       return;
     }
 
     setVerificationStep("checking");
+    setVerificationStatus("pending");
     updateUrlParams("checking", channelUrl);
     
-    // Simulate verification check
-    setTimeout(() => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Authentication error. Please try logging in again.");
+        return;
+      }
+
+      await checkYouTubeVerification(user.id, channelUrl);
+
       setVerificationStep("verified");
       setVerificationStatus("success");
       updateUrlParams("verified", channelUrl);
-      // Update the store when verification is successful
+      
       connectPlatform("youtube");
-    }, 2000);
+      
+      toast.success("YouTube channel verified successfully!");
+    } catch (error) {
+      console.error('Error during verification:', error);
+      setVerificationStatus("failed");
+      toast.error("Verification failed. Please try again.");
+    }
   };
 
   return (
@@ -137,7 +203,6 @@ export default function YouTubeVerificationPage() {
 
       <Card className="p-6 space-y-6">
         <div className="space-y-4">
-          {/* Channel URL Input */}
           <div className="space-y-2">
             <h3 className="font-semibold">Channel URL</h3>
             <div className="flex gap-4">
@@ -152,12 +217,11 @@ export default function YouTubeVerificationPage() {
             </div>
           </div>
 
-          {/* Channel Info */}
           {channelInfo && verificationStep === "initial" && (
             <div className="border rounded-lg p-4 space-y-4">
               <div className="flex items-center space-x-4">
                 <img
-                  src={channelInfo.thumbnail}
+                  src={channelInfo.thumbnail || "https://via.placeholder.com/150"}
                   alt={channelInfo.title}
                   className="w-16 h-16 rounded-full"
                 />
@@ -174,7 +238,6 @@ export default function YouTubeVerificationPage() {
             </div>
           )}
 
-          {/* Verification Options */}
           {showVerificationOptions && (
             <div className="space-y-4 border-t pt-4">
               <h3 className="font-semibold">Choose Verification Method</h3>
@@ -228,7 +291,6 @@ export default function YouTubeVerificationPage() {
             </div>
           )}
 
-          {/* Description Verification Steps */}
           {verificationStep === "description" && verificationCode && (
             <div className="space-y-6">
               <div className="bg-blue-50 dark:bg-blue-900/20 p-6 rounded-lg space-y-4">
@@ -271,8 +333,7 @@ export default function YouTubeVerificationPage() {
             </div>
           )}
 
-          {/* Verification Checking */}
-          {verificationStep === "checking" && (
+          {verificationStep === "checking" && verificationStatus === "pending" && (
             <div className="text-center p-8 space-y-4">
               <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto"></div>
               <p className="font-medium">Checking your channel...</p>
@@ -280,7 +341,29 @@ export default function YouTubeVerificationPage() {
             </div>
           )}
 
-          {/* Verification Success */}
+          {verificationStep === "checking" && verificationStatus === "failed" && (
+            <div className="text-center p-8 space-y-4">
+              <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto">
+                <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-semibold text-red-600 dark:text-red-400">Verification Failed</h3>
+              <p className="text-muted-foreground">We couldn't find the verification code in your channel description.</p>
+              <div className="space-y-2">
+                <p className="text-sm">Make sure you:</p>
+                <ul className="text-sm text-left list-disc pl-8 space-y-1">
+                  <li>Added the exact verification code to your channel description</li>
+                  <li>Saved your channel changes</li>
+                  <li>Published the changes (they may take a few minutes to appear)</li>
+                </ul>
+              </div>
+              <Button onClick={checkVerification} className="mt-4">
+                Try Again
+              </Button>
+            </div>
+          )}
+
           {verificationStep === "verified" && verificationStatus === "success" && (
             <div className="text-center p-8 space-y-4">
               <div className="w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto">
