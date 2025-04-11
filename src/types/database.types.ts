@@ -173,9 +173,166 @@ export type Database = {
         }
         Relationships: []
       }
+      task_cost: {
+        Row: {
+          amount: number
+          created_at: string
+          id: number
+          is_paid: boolean
+          metadata: Json | null
+          paid_at: string | null
+          payment_method: Database["public"]["Enums"]["PaymentMethod"]
+          task_id: number
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: number
+          is_paid?: boolean
+          metadata?: Json | null
+          paid_at?: string | null
+          payment_method: Database["public"]["Enums"]["PaymentMethod"]
+          task_id: number
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: number
+          is_paid?: boolean
+          metadata?: Json | null
+          paid_at?: string | null
+          payment_method?: Database["public"]["Enums"]["PaymentMethod"]
+          task_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_cost_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: true
+            referencedRelation: "task_details"
+            referencedColumns: ["task_id"]
+          },
+          {
+            foreignKeyName: "task_cost_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: true
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_targets: {
+        Row: {
+          created_at: string
+          due_date: string | null
+          id: number
+          platform: Database["public"]["Enums"]["Platforms"]
+          task_id: number
+          views: string
+        }
+        Insert: {
+          created_at?: string
+          due_date?: string | null
+          id?: number
+          platform: Database["public"]["Enums"]["Platforms"]
+          task_id: number
+          views: string
+        }
+        Update: {
+          created_at?: string
+          due_date?: string | null
+          id?: number
+          platform?: Database["public"]["Enums"]["Platforms"]
+          task_id?: number
+          views?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "targets_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "task_details"
+            referencedColumns: ["task_id"]
+          },
+          {
+            foreignKeyName: "targets_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tasks: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          description: string
+          id: number
+          source: string
+          status: Database["public"]["Enums"]["TaskStatus"]
+          title: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          description: string
+          id?: number
+          source: string
+          status?: Database["public"]["Enums"]["TaskStatus"]
+          title: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          description?: string
+          id?: number
+          source?: string
+          status?: Database["public"]["Enums"]["TaskStatus"]
+          title?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profile"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
-      [_ in never]: never
+      task_details: {
+        Row: {
+          completed_at: string | null
+          cost: Json | null
+          created_at: string | null
+          description: string | null
+          source: string | null
+          status: Database["public"]["Enums"]["TaskStatus"] | null
+          targets: Json | null
+          task_id: number | null
+          title: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profile"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       is_a_buyer: {
@@ -186,6 +343,10 @@ export type Database = {
         Args: { user_id_input: string }
         Returns: boolean
       }
+      is_it_my_task: {
+        Args: { task_id_input: number }
+        Returns: boolean
+      }
       verify_youtube_channel: {
         Args: { p_profile_id: number; p_verification_id: number }
         Returns: undefined
@@ -193,8 +354,10 @@ export type Database = {
     }
     Enums: {
       ContactTypes: "EMAIL" | "MOBILE" | "WHATSAPP"
+      PaymentMethod: "PAYMENT_GATEWAY" | "BANK_TRANSFER"
       Platforms: "YOUTUBE" | "FACEBOOK" | "TIKTOK" | "INSTAGRAM"
       Roles: "ADMIN" | "BUYER" | "INFLUENCER"
+      TaskStatus: "DRAFT" | "ACTIVE" | "ARCHIVED" | "COMPLETED"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -311,24 +474,10 @@ export const Constants = {
   public: {
     Enums: {
       ContactTypes: ["EMAIL", "MOBILE", "WHATSAPP"],
+      PaymentMethod: ["PAYMENT_GATEWAY", "BANK_TRANSFER"],
       Platforms: ["YOUTUBE", "FACEBOOK", "TIKTOK", "INSTAGRAM"],
       Roles: ["ADMIN", "BUYER", "INFLUENCER"],
+      TaskStatus: ["DRAFT", "ACTIVE", "ARCHIVED", "COMPLETED"],
     },
   },
 } as const
-
-export interface Task {
-  id: string;
-  title: string;
-  description: string;
-  source: string;
-  status: 'draft' | 'active' | 'archived' | 'completed';
-  created_at: string;
-  user_id: string;
-  platforms: {
-    platform: 'YOUTUBE' | 'FACEBOOK' | 'TIKTOK' | 'INSTAGRAM';
-    target_views: number;
-    deadline: string;
-    cost: number;
-  }[];
-}

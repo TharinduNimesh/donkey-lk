@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -11,19 +11,24 @@ import { ViewsSelect, viewOptions } from "@/components/ui/views-select";
 import { DeadlineSelect, deadlineOptions } from "@/components/ui/deadline-select";
 import { FileUpload } from "@/components/ui/file-upload";
 import { PaymentMethodSelect } from "@/components/ui/payment-method-select";
-import { calculateCost } from "@/lib/utils/cost";
+import { createTask } from "@/lib/utils/tasks";
+import { calculateCostClient } from "@/lib/utils/cost";
+import { parseViewCount, formatViewCount } from "@/lib/utils/views";
 import { toast } from "sonner";
+import { Database } from "@/types/database.types";
+
+type Platform = Database["public"]["Enums"]["Platforms"];
 
 interface TaskForm {
   title: string;
   description: string;
   contentFile: File | null;
   platforms: {
-    platform: 'YOUTUBE' | 'FACEBOOK' | 'TIKTOK' | 'INSTAGRAM';
-    target_views: number;
+    platform: Platform;
+    target_views: string; // Changed from number to string
     deadline_option: "3d" | "1w" | "2w" | "1m" | "2m" | "3m" | "6m" | "flexible";
     deadline: string;
-    cost: number;
+    estimatedCost?: number;
   }[];
   payment?: {
     method: 'bank-transfer' | 'card';
@@ -52,6 +57,21 @@ export default function CreateTaskPage() {
     { title: "Payment" }
   ];
 
+  const calculateTotalEstimatedCost = useCallback(() => {
+    return form.platforms.reduce((total, platform) => {
+      if (platform.target_views && platform.deadline_option) {
+        const viewsCount = parseViewCount(platform.target_views);
+        const cost = calculateCostClient(
+          platform.platform,
+          viewsCount,
+          platform.deadline_option
+        );
+        return total + cost;
+      }
+      return total;
+    }, 0);
+  }, [form.platforms]);
+
   const handleBasicInfoSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.title || !form.description) {
@@ -79,10 +99,9 @@ export default function CreateTaskPage() {
       ...prev,
       platforms: [...prev.platforms, {
         platform,
-        target_views: 0,
+        target_views: "0", // Changed to string
         deadline_option: "flexible",
-        deadline: "",
-        cost: 0
+        deadline: ""
       }]
     }));
   };
@@ -104,15 +123,6 @@ export default function CreateTaskPage() {
       platforms: prev.platforms.map(p => {
         if (p.platform === platform) {
           let updatedPlatform = { ...p, [field]: value };
-          
-          // If either views or deadline is updated, recalculate cost
-          if (updatedPlatform.target_views && updatedPlatform.deadline_option) {
-            updatedPlatform.cost = calculateCost(
-              updatedPlatform.target_views,
-              updatedPlatform.platform,
-              updatedPlatform.deadline_option
-            );
-          }
 
           // If deadline option is updated, set the actual deadline date
           if (field === 'deadline_option') {
@@ -120,6 +130,16 @@ export default function CreateTaskPage() {
             if (option) {
               updatedPlatform.deadline = option.getFutureDate().toISOString();
             }
+          }
+
+          // Calculate estimated cost if we have both views and deadline
+          if (updatedPlatform.target_views && updatedPlatform.deadline_option) {
+            const viewsCount = parseViewCount(updatedPlatform.target_views);
+            updatedPlatform.estimatedCost = calculateCostClient(
+              updatedPlatform.platform,
+              viewsCount,
+              updatedPlatform.deadline_option
+            );
           }
 
           return updatedPlatform;
@@ -130,13 +150,40 @@ export default function CreateTaskPage() {
   };
 
   const handleSaveAsDraft = async () => {
+    if (!form.contentFile) {
+      toast.error("Please upload your content file");
+      return;
+    }
+
     setIsLoading(true);
     try {
-      // TODO: Implement draft saving functionality
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const { task } = await createTask({
+        title: form.title,
+        description: form.description,
+        contentFile: form.contentFile,
+        platforms: form.platforms.map(platform => ({
+          platform: platform.platform,
+          views: parseViewCount(platform.target_views),
+          due_date: platform.deadline
+        }))
+      }, true);
+
+      // Calculate and store cost after task creation
+      const response = await fetch('/api/tasks/calculate-cost', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ taskId: task.id })
+      });
+
+      if (!response.ok) {
+        console.error('Failed to calculate cost:', await response.json());
+      }
+
       toast.success("Task saved as draft");
       router.push('/dashboard/buyer');
+      router.refresh();
     } catch (error) {
+      console.error('Error saving draft:', error);
       toast.error("Failed to save draft. Please try again.");
     } finally {
       setIsLoading(false);
@@ -164,25 +211,53 @@ export default function CreateTaskPage() {
   };
 
   const handleProceedToPayment = async () => {
+    if (!form.contentFile) {
+      toast.error("Please upload your content file");
+      return;
+    }
+
     setIsLoading(true);
     try {
-      if (form.payment?.method === 'bank-transfer' && !form.payment.bankSlip) {
-        toast.error("Please upload your bank transfer slip");
-        return;
+      const { task } = await createTask({
+        title: form.title,
+        description: form.description,
+        contentFile: form.contentFile,
+        platforms: form.platforms.map(platform => ({
+          platform: platform.platform,
+          views: parseViewCount(platform.target_views),
+          due_date: platform.deadline
+        }))
+      }, false);
+
+      // Handle payment based on selected method
+      if (form.payment?.method === 'bank-transfer') {
+        if (!form.payment.bankSlip) {
+          toast.error("Please upload your bank transfer slip");
+          return;
+        }
+        // TODO: Handle bank transfer slip upload and payment verification
+        toast.success("Task created. Please wait while we verify your payment.");
+      } else {
+        // TODO: Implement PayHere integration
+        toast.success("Redirecting to payment gateway...");
       }
 
-      // TODO: Implement payment processing
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      toast.success("Payment processed successfully");
       router.push('/dashboard/buyer');
+      router.refresh();
     } catch (error) {
-      toast.error("Payment failed. Please try again.");
+      console.error('Error creating task:', error);
+      toast.error("Failed to create task. Please try again.");
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleSubmit = async () => {
+    if (!form.contentFile) {
+      toast.error("Please upload your content file");
+      return;
+    }
+
     if (form.platforms.length === 0) {
       toast.error("Please add at least one platform target");
       return;
@@ -198,14 +273,23 @@ export default function CreateTaskPage() {
     }
 
     setIsLoading(true);
-    // TODO: Implement task creation with Supabase
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      await createTask({
+        title: form.title,
+        description: form.description,
+        contentFile: form.contentFile,
+        platforms: form.platforms.map(platform => ({
+          platform: platform.platform,
+          views: parseViewCount(platform.target_views),
+          due_date: platform.deadline
+        }))
+      }, false);
+
       toast.success("Task created successfully!");
       router.push('/dashboard/buyer');
+      router.refresh();
     } catch (error) {
+      console.error('Error creating task:', error);
       toast.error("Failed to create task. Please try again.");
     } finally {
       setIsLoading(false);
@@ -267,7 +351,6 @@ export default function CreateTaskPage() {
               <FileUpload
                 onFileSelect={(file) => setForm(prev => ({ ...prev, contentFile: file }))}
                 selectedFile={form.contentFile}
-                accept="video/mp4,video/mov"
               />
               <p className="text-sm text-muted-foreground">
                 Upload the content you want to promote (video file, image, etc.)
@@ -315,9 +398,9 @@ export default function CreateTaskPage() {
                   <div key={platform.platform} className="space-y-4 p-4 border rounded-lg">
                     <div className="flex justify-between items-center">
                       <h4 className="font-medium">{platform.platform}</h4>
-                      {platform.cost > 0 && (
-                        <span className="text-lg font-semibold">
-                          ${platform.cost.toLocaleString()}
+                      {platform.estimatedCost && (
+                        <span className="text-sm font-semibold">
+                          Estimated Cost: ${platform.estimatedCost}
                         </span>
                       )}
                     </div>
@@ -347,6 +430,18 @@ export default function CreateTaskPage() {
                     </div>
                   </div>
                 ))}
+
+                <div className="mt-6 p-4 border rounded-lg bg-muted/50">
+                  <div className="flex justify-between items-center">
+                    <span className="font-semibold">Total Estimated Cost</span>
+                    <span className="text-xl font-bold">
+                      ${calculateTotalEstimatedCost()}
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    * Final cost may vary slightly based on exact calculation from our server
+                  </p>
+                </div>
               </div>
             )}
 
@@ -392,22 +487,17 @@ export default function CreateTaskPage() {
                       <div key={platform.platform} className="p-4 border rounded-lg">
                         <div className="flex justify-between items-center mb-2">
                           <span className="font-semibold">{platform.platform}</span>
-                          <span className="text-lg font-medium">${platform.cost.toLocaleString()}</span>
+                          {platform.estimatedCost && (
+                            <span className="text-sm font-semibold">
+                              Estimated Cost: ${platform.estimatedCost}
+                            </span>
+                          )}
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          <p>{platform.target_views.toLocaleString()} views by {new Date(platform.deadline).toLocaleDateString()}</p>
+                          <p>{formatViewCount(parseViewCount(platform.target_views))} views by {new Date(platform.deadline).toLocaleDateString()}</p>
                         </div>
                       </div>
                     ))}
-                  </div>
-
-                  <div className="mt-6 p-4 border rounded-lg bg-muted/50">
-                    <div className="flex justify-between items-center">
-                      <span className="font-semibold">Total Budget</span>
-                      <span className="text-xl font-bold">
-                        ${form.platforms.reduce((sum, p) => sum + p.cost, 0).toLocaleString()}
-                      </span>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -451,15 +541,6 @@ export default function CreateTaskPage() {
                 onSlipUpload={handleBankSlipUpload}
                 bankSlip={form.payment?.bankSlip}
               />
-            </div>
-
-            <div className="p-4 border rounded-lg bg-muted/50">
-              <div className="flex justify-between items-center">
-                <span className="font-semibold">Total Amount Due</span>
-                <span className="text-xl font-bold">
-                  ${form.platforms.reduce((sum, p) => sum + p.cost, 0).toLocaleString()}
-                </span>
-              </div>
             </div>
 
             <div className="flex justify-between">

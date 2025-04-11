@@ -6,28 +6,28 @@ import * as SelectPrimitive from "@radix-ui/react-select"
 import { cn } from "@/lib/utils"
 
 const viewOptions = [
-  { value: 5000, label: "5K views" },
-  { value: 10000, label: "10K views" },
-  { value: 25000, label: "25K views" },
-  { value: 50000, label: "50K views" },
-  { value: 100000, label: "100K views" },
-  { value: 250000, label: "250K views" },
-  { value: 500000, label: "500K views" },
-  { value: 1000000, label: "1M views" },
-] as const
+  { value: "5K", label: "5K views" },
+  { value: "10K", label: "10K views" },
+  { value: "25K", label: "25K views" },
+  { value: "50K", label: "50K views" },
+  { value: "100K", label: "100K views" },
+  { value: "250K", label: "250K views" },
+  { value: "500K", label: "500K views" },
+  { value: "1M", label: "1M views" },
+] as const;
 
 const ViewsSelect = React.forwardRef<
   HTMLButtonElement,
   {
-    value?: number
-    onValueChange?: (value: number) => void
-    disabled?: boolean
+    value?: string;
+    onValueChange?: (value: string) => void;
+    disabled?: boolean;
   }
 >(({ value, onValueChange, disabled }, ref) => {
   return (
     <SelectPrimitive.Root 
-      value={value?.toString()} 
-      onValueChange={(val: string) => onValueChange?.(parseInt(val))}
+      value={value} 
+      onValueChange={onValueChange}
     >
       <SelectPrimitive.Trigger
         ref={ref}
@@ -50,7 +50,7 @@ const ViewsSelect = React.forwardRef<
             {viewOptions.map((option) => (
               <SelectPrimitive.Item
                 key={option.value}
-                value={option.value.toString()}
+                value={option.value}
                 className={cn(
                   "relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
                   "cursor-pointer"
@@ -68,8 +68,9 @@ const ViewsSelect = React.forwardRef<
         </SelectPrimitive.Content>
       </SelectPrimitive.Portal>
     </SelectPrimitive.Root>
-  )
-})
-ViewsSelect.displayName = "ViewsSelect"
+  );
+});
 
-export { ViewsSelect, viewOptions }
+ViewsSelect.displayName = "ViewsSelect";
+
+export { ViewsSelect, viewOptions };
