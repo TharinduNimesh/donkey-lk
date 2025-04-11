@@ -58,18 +58,24 @@ export default function CreateTaskPage() {
   ];
 
   const calculateTotalEstimatedCost = useCallback(() => {
-    return form.platforms.reduce((total, platform) => {
+    const totals = form.platforms.reduce((acc, platform) => {
       if (platform.target_views && platform.deadline_option) {
         const viewsCount = parseViewCount(platform.target_views);
-        const cost = calculateCostClient(
+        const costs = calculateCostClient(
           platform.platform,
           viewsCount,
           platform.deadline_option
         );
-        return total + cost;
+        return {
+          baseCost: acc.baseCost + costs.baseCost,
+          serviceFee: acc.serviceFee + costs.serviceFee,
+          totalCost: acc.totalCost + costs.totalCost
+        };
       }
-      return total;
-    }, 0);
+      return acc;
+    }, { baseCost: 0, serviceFee: 0, totalCost: 0 });
+
+    return totals;
   }, [form.platforms]);
 
   const handleBasicInfoSubmit = (e: React.FormEvent) => {
@@ -124,7 +130,6 @@ export default function CreateTaskPage() {
         if (p.platform === platform) {
           let updatedPlatform = { ...p, [field]: value };
 
-          // If deadline option is updated, set the actual deadline date
           if (field === 'deadline_option') {
             const option = deadlineOptions.find(opt => opt.value === value);
             if (option) {
@@ -132,14 +137,14 @@ export default function CreateTaskPage() {
             }
           }
 
-          // Calculate estimated cost if we have both views and deadline
           if (updatedPlatform.target_views && updatedPlatform.deadline_option) {
             const viewsCount = parseViewCount(updatedPlatform.target_views);
-            updatedPlatform.estimatedCost = calculateCostClient(
+            const costs = calculateCostClient(
               updatedPlatform.platform,
               viewsCount,
               updatedPlatform.deadline_option
             );
+            updatedPlatform.estimatedCost = costs.totalCost;
           }
 
           return updatedPlatform;
@@ -399,8 +404,8 @@ export default function CreateTaskPage() {
                     <div className="flex justify-between items-center">
                       <h4 className="font-medium">{platform.platform}</h4>
                       {platform.estimatedCost && (
-                        <span className="text-sm font-semibold">
-                          Estimated Cost: ${platform.estimatedCost}
+                        <span className="text-sm">
+                          Estimated Total: ${platform.estimatedCost}
                         </span>
                       )}
                     </div>
@@ -431,17 +436,29 @@ export default function CreateTaskPage() {
                   </div>
                 ))}
 
-                <div className="mt-6 p-4 border rounded-lg bg-muted/50">
-                  <div className="flex justify-between items-center">
-                    <span className="font-semibold">Total Estimated Cost</span>
-                    <span className="text-xl font-bold">
-                      ${calculateTotalEstimatedCost()}
-                    </span>
+                {form.platforms.length > 0 && (
+                  <div className="mt-6 p-4 border rounded-lg bg-muted/50">
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm">Base Cost</span>
+                        <span className="font-medium">${calculateTotalEstimatedCost().baseCost}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-muted-foreground">
+                        <span className="text-sm">Service Fee (10%)</span>
+                        <span className="font-medium">${calculateTotalEstimatedCost().serviceFee}</span>
+                      </div>
+                      <div className="flex justify-between items-center pt-2 border-t">
+                        <span className="font-semibold">Total Cost</span>
+                        <span className="text-xl font-bold">
+                          ${calculateTotalEstimatedCost().totalCost}
+                        </span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      * Final cost includes a 10% service fee and may vary slightly based on exact calculation from our server
+                    </p>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    * Final cost may vary slightly based on exact calculation from our server
-                  </p>
-                </div>
+                )}
               </div>
             )}
 

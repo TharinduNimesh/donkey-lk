@@ -19,15 +19,22 @@ const DEADLINE_MULTIPLIERS = {
   'flexible': 0.75
 } as const;
 
+const SERVICE_FEE_PERCENTAGE = 0.1; // 10% service fee
+
 export function calculateCostClient(
   platform: keyof typeof PLATFORM_RATES,
   views: string | number,
-  deadline: keyof typeof DEADLINE_MULTIPLIERS
-): number {
+  deadline: keyof typeof DEADLINE_MULTIPLIERS,
+  includeServiceFee: boolean = true
+): { baseCost: number; serviceFee: number; totalCost: number } {
   const viewCount = typeof views === 'string' ? parseViewCount(views) : views;
   const baseRate = PLATFORM_RATES[platform];
   const deadlineMultiplier = DEADLINE_MULTIPLIERS[deadline];
   const viewsInThousands = viewCount / 1000;
   
-  return Math.round(viewsInThousands * baseRate * deadlineMultiplier);
+  const baseCost = Math.round(viewsInThousands * baseRate * deadlineMultiplier);
+  const serviceFee = includeServiceFee ? Math.round(baseCost * SERVICE_FEE_PERCENTAGE) : 0;
+  const totalCost = baseCost + serviceFee;
+
+  return { baseCost, serviceFee, totalCost };
 }

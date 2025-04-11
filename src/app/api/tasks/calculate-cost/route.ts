@@ -24,6 +24,8 @@ const DEADLINE_MULTIPLIERS = {
   'flexible': 0.75
 } satisfies Record<string, number>;
 
+const SERVICE_FEE_PERCENTAGE = 0.1; // 10% service fee
+
 type DeadlineMultiplier = typeof DEADLINE_MULTIPLIERS[keyof typeof DEADLINE_MULTIPLIERS];
 
 // Initialize admin client for privileged operations
@@ -69,7 +71,7 @@ export async function POST(request: Request) {
     }
 
     // Calculate total cost
-    let totalCost = 0
+    let totalBaseCost = 0
     for (const target of targets) {
       const views = typeof target.views === 'string' ? 
         parseViewCount(target.views) : 
@@ -103,15 +105,18 @@ export async function POST(request: Request) {
       
       // Calculate cost for this target
       const targetCost = Math.round(viewsInThousands * baseRate * deadlineMultiplier)
-      totalCost += targetCost
+      totalBaseCost += targetCost
     }
+
+    const serviceFee = Math.round(totalBaseCost * SERVICE_FEE_PERCENTAGE);
+    const totalCost = totalBaseCost + serviceFee;
 
     // Store cost using admin client for security
     const { error: costError } = await supabaseAdmin
       .from('task_cost')
       .upsert({
         task_id: taskId,
-        amount: totalCost,
+        amount: totalCost, // Store total cost including service fee
         payment_method: 'BANK_TRANSFER', // Default to bank transfer, can be updated later
         is_paid: false
       })
@@ -123,7 +128,12 @@ export async function POST(request: Request) {
       )
     }
 
-    return NextResponse.json({ success: true, cost: totalCost })
+    return NextResponse.json({ 
+      success: true, 
+      baseCost: totalBaseCost,
+      serviceFee,
+      totalCost
+    })
   } catch (error) {
     console.error('Error calculating task cost:', error)
     return NextResponse.json(
