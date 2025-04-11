@@ -24,8 +24,14 @@ export function SocialConnectForm({ onBack }: SocialConnectFormProps) {
       router.push("/verify/youtube");
       return;
     }
-    // TODO: Implement other platform connections
-    connectPlatform(platform);
+    if (platform === "facebook") {
+      router.push("/verify/facebook");
+      return;
+    }
+    if (platform === "tiktok") {
+      router.push("/verify/tiktok");
+      return;
+    }
   };
 
   const createProfile = async () => {

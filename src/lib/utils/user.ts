@@ -59,8 +59,14 @@ export async function setupUserProfile({
       }
     }
 
-    // Clear the setup store after successful profile creation
-    useSetupStore.getState().reset();
+    // Reset all store state
+    const store = useSetupStore.getState();
+    store.reset();
+
+    // Clear the persisted store data from localStorage
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem('setup-storage');
+    }
 
     return { error: null };
   } catch (error) {

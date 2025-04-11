@@ -316,3 +316,19 @@ export const Constants = {
     },
   },
 } as const
+
+export interface Task {
+  id: string;
+  title: string;
+  description: string;
+  source: string;
+  status: 'draft' | 'active' | 'archived' | 'completed';
+  created_at: string;
+  user_id: string;
+  platforms: {
+    platform: 'YOUTUBE' | 'FACEBOOK' | 'TIKTOK' | 'INSTAGRAM';
+    target_views: number;
+    deadline: string;
+    cost: number;
+  }[];
+}
