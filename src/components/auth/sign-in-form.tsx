@@ -32,11 +32,11 @@ export function SignInForm() {
 
     // Redirect based on profile existence
     if (data?.hasProfile) {
-      router.push('/dashboard')
+      // Use replace instead of push to avoid browser history issues
+      router.replace('/dashboard')
     } else {
-      router.push('/setup')
+      router.replace('/setup')
     }
-    router.refresh()
   }
 
   async function handleGoogleSignIn() {

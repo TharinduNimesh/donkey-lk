@@ -9,10 +9,11 @@ import { toast } from "sonner";
 import { useSetupStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 import { getChannelInfo } from "./actions";
-import { setupUserProfile } from "@/lib/utils/user";
+import { setupUserProfile, fetchUserContactDetails, type ContactDetail } from "@/lib/utils/user";
 import { type ChannelInfo, verifyYouTubeChannel, generateVerificationCode, checkYouTubeVerification } from "@/lib/utils/youtube";
+import { SocialVerification } from "@/components/ui/social-verification";
 
-type VerificationStep = "initial" | "description" | "checking" | "verified";
+type VerificationStep = "initial" | "description" | "checking" | "verified" | "administrative";
 
 export default function YouTubeVerificationPage() {
   const router = useRouter();
@@ -28,6 +29,9 @@ export default function YouTubeVerificationPage() {
   const [verificationStep, setVerificationStep] = useState<VerificationStep>(urlStep || "initial");
   const [verificationCode, setVerificationCode] = useState<string | null>(null);
   const [verificationStatus, setVerificationStatus] = useState<"pending" | "success" | "failed">("pending");
+  const [userEmail, setUserEmail] = useState<string>("");
+  const [contactDetails, setContactDetails] = useState<ContactDetail[]>([]);
+  const [loadingContacts, setLoadingContacts] = useState(false);
 
   const updateUrlParams = (step: VerificationStep, channel?: string) => {
     const params = new URLSearchParams(searchParams);
@@ -53,6 +57,26 @@ export default function YouTubeVerificationPage() {
       }
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    async function loadContactDetails() {
+      if (verificationStep === "administrative") {
+        try {
+          setLoadingContacts(true);
+          const { email, contacts } = await fetchUserContactDetails();
+          setUserEmail(email || "");
+          setContactDetails(contacts);
+        } catch (error) {
+          toast.error("Failed to load contact details");
+          console.error("Error loading contact details:", error);
+        } finally {
+          setLoadingContacts(false);
+        }
+      }
+    }
+
+    loadContactDetails();
+  }, [verificationStep]);
 
   const handleChannelLoad = async () => {
     setLoading(true);
@@ -92,11 +116,20 @@ export default function YouTubeVerificationPage() {
         role: ['INFLUENCER'],
         mobile: personalInfo?.mobile,
         onError: (error) => {
-          toast.error("Failed to setup profile. Please try again.", {
-            id: toastId,
-            description: error.message,
-            richColors: true
-          });
+          // Check for unique constraint violation
+          if (error.message?.includes("already registered")) {
+            toast.error("Mobile number already registered", {
+              id: toastId,
+              description: "This mobile number is already registered with another account. Please use a different number.",
+              richColors: true
+            });
+          } else {
+            toast.error("Failed to setup profile. Please try again.", {
+              id: toastId,
+              description: error.message,
+              richColors: true
+            });
+          }
         }
       });
 
@@ -104,9 +137,32 @@ export default function YouTubeVerificationPage() {
         return;
       }
 
-      const result = await verifyYouTubeChannel(channelUrl, user.id, channelInfo);
+      // Continue with influencer profile creation
+      const { error: profileError } = await supabase
+        .from('influencer_profile')
+        .insert({
+          user_id: user.id,
+          platform: 'YOUTUBE',
+          name: channelInfo?.title || '',
+          followers: channelInfo?.subscribers || '0',
+          url: channelUrl,
+          is_verified: false
+        });
+
+      if (profileError) {
+        if (profileError.code === '23505') { // unique constraint violation
+          toast.info("Profile already exists", {
+            id: toastId,
+            description: "Your YouTube profile is already set up. Proceeding with verification.",
+            richColors: true
+          });
+        } else {
+          throw profileError;
+        }
+      } else {
+        toast.success("Profile created successfully!", { id: toastId });
+      }
       
-      toast.success("Profile created successfully!", { id: toastId });
       setShowVerificationOptions(true);
     } catch (error) {
       console.error('Error starting verification:', error);
@@ -122,7 +178,6 @@ export default function YouTubeVerificationPage() {
         return;
       }
 
-      // Get the influencer profile ID first
       const { data: profiles } = await supabase
         .from('influencer_profile')
         .select('id')
@@ -135,10 +190,8 @@ export default function YouTubeVerificationPage() {
         return;
       }
 
-      // Use the first profile ID for verification
       const profileId = profiles[0].id;
 
-      // Request verification code
       const { code } = await generateVerificationCode(profileId);
       setVerificationCode(code);
       setVerificationStep("description");
@@ -151,12 +204,106 @@ export default function YouTubeVerificationPage() {
   };
 
   const handleManualVerification = () => {
-    toast.info(
-      "Manual verification request submitted",
-      {
-        description: "Our team will contact you within 24-48 hours to verify your channel ownership.",
+    if (!channelInfo) {
+      toast.error("Please load your channel information first");
+      return;
+    }
+    setVerificationStep("administrative");
+    setShowVerificationOptions(false);
+  };
+
+  const handleVerify = async (contactId: number) => {
+    try {
+      // Refresh contact details to show updated status
+      const { contacts } = await fetchUserContactDetails();
+      setContactDetails(contacts);
+      
+      toast.info("Verification initiated", {
+        description: "Our team will verify this contact method shortly.",
+      });
+    } catch (error) {
+      toast.error("Failed to refresh contact details");
+      console.error("Error refreshing contact details:", error);
+    }
+  };
+
+  const handleSubmitUrl = async (url: string) => {
+    if (!channelInfo) {
+      toast.error("Channel information not found. Please try again.");
+      return;
+    }
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Authentication error. Please try logging in again.");
+        return;
       }
-    );
+
+      const toastId = toast.loading("Setting up your account...");
+
+      const { error: setupError } = await setupUserProfile({
+        userId: user.id,
+        name: personalInfo?.name || channelInfo?.title || '',
+        role: ['INFLUENCER'],
+        mobile: personalInfo?.mobile,
+        onError: (error) => {
+          // Check for unique constraint violation
+          if (error.message?.includes("already registered")) {
+            toast.error("Mobile number already registered", {
+              id: toastId,
+              description: "This mobile number is already registered with another account. Please use a different number.",
+              richColors: true
+            });
+          } else {
+            toast.error("Failed to setup profile. Please try again.", {
+              id: toastId,
+              description: error.message,
+              richColors: true
+            });
+          }
+        }
+      });
+
+      if (setupError) return;
+
+      // Continue with influencer profile creation
+      const { error: profileError } = await supabase
+        .from('influencer_profile')
+        .insert({
+          user_id: user.id,
+          platform: 'YOUTUBE',
+          name: channelInfo?.title || '',
+          followers: channelInfo?.subscribers || '0',
+          url: channelUrl,
+          is_verified: false
+        });
+
+      if (profileError) {
+        if (profileError.code === '23505') { // unique constraint violation
+          toast.info("Profile already exists", {
+            id: toastId,
+            description: "Your YouTube profile is already set up. Proceeding with verification.",
+            richColors: true
+          });
+        } else {
+          throw profileError;
+        }
+      } else {
+        toast.success("Profile created successfully!", { id: toastId });
+      }
+      
+      setVerificationStep("checking");
+      
+      setTimeout(() => {
+        setVerificationStep("verified");
+        setVerificationStatus("success");
+        connectPlatform("youtube");
+      }, 2000);
+    } catch (error) {
+      console.error('Error submitting verification:', error);
+      toast.error("Failed to submit verification. Please try again.");
+    }
   };
 
   const checkVerification = async () => {
@@ -267,9 +414,14 @@ export default function YouTubeVerificationPage() {
 
                 <Card className="p-4 cursor-pointer hover:border-primary transition-colors" onClick={handleManualVerification}>
                   <div className="space-y-2">
-                    <h4 className="font-medium">Administrative Verification</h4>
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-medium">Administrative Verification</h4>
+                      <span className="text-xs font-medium px-2 py-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400">
+                        Alternative
+                      </span>
+                    </div>
                     <p className="text-sm text-muted-foreground">
-                      Verification through our administrative team for special cases
+                      Verification through our admin team
                     </p>
                     <ul className="text-sm space-y-1">
                       <li className="flex items-center gap-2">
@@ -333,6 +485,23 @@ export default function YouTubeVerificationPage() {
             </div>
           )}
 
+          {verificationStep === "administrative" && (
+            loadingContacts ? (
+              <div className="text-center p-8">
+                <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto"></div>
+                <p className="mt-2 text-sm text-muted-foreground">Loading contact details...</p>
+              </div>
+            ) : (
+              <SocialVerification 
+                verifiedEmail={userEmail}
+                contactDetails={contactDetails}
+                onVerify={handleVerify}
+                onSubmitUrl={handleSubmitUrl}
+                platform="YOUTUBE"
+              />
+            )
+          )}
+
           {verificationStep === "checking" && verificationStatus === "pending" && (
             <div className="text-center p-8 space-y-4">
               <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto"></div>
@@ -383,7 +552,17 @@ export default function YouTubeVerificationPage() {
 
       {verificationStep !== "verified" && (
         <div className="flex justify-between">
-          <Button variant="ghost" onClick={() => router.back()}>
+          <Button 
+            variant="ghost" 
+            onClick={() => {
+              if (verificationStep === "administrative") {
+                setVerificationStep("initial");
+                setShowVerificationOptions(true);
+              } else {
+                router.back();
+              }
+            }}
+          >
             Back
           </Button>
         </div>

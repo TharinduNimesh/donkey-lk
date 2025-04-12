@@ -1,20 +1,110 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { useSetupStore } from "@/lib/store";
+import { SocialVerification } from "@/components/ui/social-verification";
+import { fetchUserContactDetails, setupUserProfile, type ContactDetail } from "@/lib/utils/user";
+import { supabase } from "@/lib/supabase";
 
-type VerificationStep = "initial" | "checking" | "verified";
+type VerificationStep = "initial" | "checking" | "verified" | "administrative";
 
 export default function TiktokVerificationPage() {
   const router = useRouter();
-  const { connectPlatform } = useSetupStore();
+  const { connectPlatform, personalInfo } = useSetupStore();
   const [verificationStep, setVerificationStep] = useState<VerificationStep>("initial");
+  const [accountUrl, setAccountUrl] = useState("");
+  const [userEmail, setUserEmail] = useState<string>("");
+  const [contactDetails, setContactDetails] = useState<ContactDetail[]>([]);
+  const [loadingContacts, setLoadingContacts] = useState(false);
+  const [isSettingUpProfile, setIsSettingUpProfile] = useState(false);
 
-  const handleManualVerification = () => {
+  useEffect(() => {
+    async function loadContactDetails() {
+      if (verificationStep === "administrative") {
+        try {
+          setLoadingContacts(true);
+          const { email, contacts } = await fetchUserContactDetails();
+          setUserEmail(email || "");
+          setContactDetails(contacts);
+        } catch (error) {
+          toast.error("Failed to load contact details");
+          console.error("Error loading contact details:", error);
+        } finally {
+          setLoadingContacts(false);
+        }
+      }
+    }
+
+    loadContactDetails();
+  }, [verificationStep]);
+
+  const handleManualVerification = async () => {
+    try {
+      setIsSettingUpProfile(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Authentication error. Please try logging in again.");
+        return;
+      }
+
+      const toastId = toast.loading("Setting up your account...");
+
+      const { error: setupError } = await setupUserProfile({
+        userId: user.id,
+        name: personalInfo?.name || '',
+        role: ['INFLUENCER'],
+        mobile: personalInfo?.mobile,
+        onError: (error) => {
+          if (error.message?.includes("already registered")) {
+            toast.error("Mobile number already registered", {
+              id: toastId,
+              description: "This mobile number is already registered with another account. Please use a different number.",
+              richColors: true
+            });
+          } else {
+            toast.error("Failed to setup profile. Please try again.", {
+              id: toastId,
+              description: error.message,
+              richColors: true
+            });
+          }
+        }
+      });
+
+      if (setupError) {
+        return;
+      }
+
+      toast.success("Profile setup completed!", { id: toastId });
+      setVerificationStep("administrative");
+    } catch (error) {
+      console.error('Error setting up profile:', error);
+      toast.error("Failed to setup profile. Please try again.");
+    } finally {
+      setIsSettingUpProfile(false);
+    }
+  };
+
+  const handleVerify = async (contactId: number) => {
+    try {
+      const { contacts } = await fetchUserContactDetails();
+      setContactDetails(contacts);
+      
+      toast.info("Verification initiated", {
+        description: "Our team will verify this contact method shortly.",
+      });
+    } catch (error) {
+      toast.error("Failed to refresh contact details");
+      console.error("Error refreshing contact details:", error);
+    }
+  };
+
+  const handleSubmitUrl = (url: string) => {
+    setAccountUrl(url);
     toast.info(
       "Manual verification request submitted",
       {
@@ -22,10 +112,8 @@ export default function TiktokVerificationPage() {
       }
     );
     
-    // Simulate verification process starting
     setVerificationStep("checking");
     
-    // For demo purposes, show success after 2 seconds
     setTimeout(() => {
       setVerificationStep("verified");
       connectPlatform("tiktok");
@@ -119,12 +207,36 @@ export default function TiktokVerificationPage() {
                       Step-by-step guidance
                     </li>
                   </ul>
-                  <Button className="w-full mt-4">
-                    Start Verification
+                  <Button className="w-full mt-4" disabled={isSettingUpProfile}>
+                    {isSettingUpProfile ? (
+                      <>
+                        <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-background border-t-foreground"/>
+                        Setting Up...
+                      </>
+                    ) : (
+                      "Start Verification"
+                    )}
                   </Button>
                 </div>
               </Card>
             </div>
+          )}
+
+          {verificationStep === "administrative" && (
+            loadingContacts ? (
+              <div className="text-center p-8">
+                <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto"></div>
+                <p className="mt-2 text-sm text-muted-foreground">Loading contact details...</p>
+              </div>
+            ) : (
+              <SocialVerification 
+                verifiedEmail={userEmail}
+                contactDetails={contactDetails}
+                onVerify={handleVerify}
+                onSubmitUrl={handleSubmitUrl}
+                platform="TIKTOK"
+              />
+            )
           )}
 
           {verificationStep === "checking" && (
@@ -154,7 +266,10 @@ export default function TiktokVerificationPage() {
 
       {verificationStep !== "verified" && (
         <div className="flex justify-between">
-          <Button variant="ghost" onClick={() => router.back()}>
+          <Button 
+            variant="ghost" 
+            onClick={() => verificationStep === "administrative" ? setVerificationStep("initial") : router.back()}
+          >
             Back
           </Button>
         </div>

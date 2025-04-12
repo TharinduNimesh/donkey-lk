@@ -13,7 +13,12 @@ export default function AuthPage() {
       <div className="relative hidden h-full flex-col bg-muted p-10 text-white dark:border-r lg:flex">
         <div className="absolute inset-0 bg-gradient-to-b from-purple-600 to-blue-600" />
         <div className="relative z-20 flex items-center text-lg font-medium">
-          <img src="/logo.png" alt="donkey.lk" className="h-8 mr-2" />
+          <svg viewBox="0 0 24 24" className="h-8 w-8 mr-2">
+            <path
+              fill="currentColor"
+              d="M12 2L1 21h22L12 2zm0 3.5L19.5 19h-15L12 5.5z"
+            />
+          </svg>
           donkey.lk
         </div>
         <div className="relative z-20 mt-auto">

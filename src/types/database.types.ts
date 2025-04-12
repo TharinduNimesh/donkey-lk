@@ -67,6 +67,38 @@ export type Database = {
           {
             foreignKeyName: "contact_status_contact_id_fkey"
             columns: ["contact_id"]
+            isOneToOne: true
+            referencedRelation: "contact_details"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contact_verifications: {
+        Row: {
+          code: number
+          contact_id: number
+          created_at: string
+          expired_at: string
+          id: number
+        }
+        Insert: {
+          code: number
+          contact_id: number
+          created_at?: string
+          expired_at: string
+          id?: number
+        }
+        Update: {
+          code?: number
+          contact_id?: number
+          created_at?: string
+          expired_at?: string
+          id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_verifications_contact_id_fkey"
+            columns: ["contact_id"]
             isOneToOne: false
             referencedRelation: "contact_details"
             referencedColumns: ["id"]
@@ -110,6 +142,38 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "influencer_profile_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profile"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      influencer_profile_verification_requests: {
+        Row: {
+          created_at: string
+          id: number
+          platform: Database["public"]["Enums"]["Platforms"]
+          profile_url: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          platform: Database["public"]["Enums"]["Platforms"]
+          profile_url: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          platform?: Database["public"]["Enums"]["Platforms"]
+          profile_url?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "influencer_profile_verification_requests_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profile"
@@ -341,6 +405,10 @@ export type Database = {
       }
       is_an_influencer: {
         Args: { user_id_input: string }
+        Returns: boolean
+      }
+      is_it_my_contact: {
+        Args: { contact_id_input: number }
         Returns: boolean
       }
       is_it_my_task: {

@@ -5,101 +5,103 @@ import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import type { Database } from '@/types/database.types'
 import { fetchYoutubeChannelInfo } from '@/lib/youtube'
+import { NextRequest } from 'next/server'
 
 // Input validation schema
 const requestSchema = z.object({
   profileId: z.number()
 })
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const json = await request.json()
-    const body = requestSchema.parse(json)
+    const { contactId, code } = await request.json();
 
-    // Get authenticated user
-    const supabase = createRouteHandlerClient<Database>({ cookies })
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
+    if (!contactId || !code) {
+      return NextResponse.json(
+        { error: 'Contact ID and verification code are required' },
+        { status: 400 }
+      );
+    }
+
+    // Initialize Supabase client for user authentication and validation
+    const supabase = createRouteHandlerClient({ cookies });
+
+    // Check authentication
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
-      )
+      );
     }
 
-    // Get the profile and its verification code using admin client
-    const { data: profile } = await supabaseAdmin
-      .from('influencer_profile')
-      .select(`
-        id,
-        url,
-        user_id,
-        influencer_profile_verifications!inner(
-          id,
-          code,
-          is_used
-        )
-      `)
-      .eq('id', body.profileId)
+    // Get contact details and verify ownership using user's client
+    const { data: contact, error: contactError } = await supabase
+      .from('contact_details')
+      .select('id')
+      .eq('id', contactId)
       .eq('user_id', user.id)
-      .eq('platform', 'YOUTUBE')
-      .eq('influencer_profile_verifications.is_used', false)
-      .single()
+      .single();
 
-    if (!profile) {
+    if (contactError || !contact) {
       return NextResponse.json(
-        { error: 'Profile not found or no pending verification' },
+        { error: 'Contact not found' },
         { status: 404 }
-      )
+      );
     }
 
-    if (profile.user_id !== user.id) {
+    // Check verification code using admin client
+    const now = new Date().toISOString();
+    const { data: verification, error: verificationError } = await supabaseAdmin
+      .from('contact_verifications')
+      .select('*')
+      .eq('contact_id', contactId)
+      .eq('code', parseInt(code))
+      .gt('expired_at', now)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (verificationError || !verification) {
       return NextResponse.json(
-        { error: 'Unauthorized access' },
-        { status: 403 }
-      )
-    }
-
-    const verificationCode = profile.influencer_profile_verifications[0].code
-
-    // Fetch current channel info using the YouTube utility
-    const channelInfo = await fetchYoutubeChannelInfo(profile.url)
-
-    // Check if verification code exists in description
-    if (!channelInfo.description.includes(`#${verificationCode}`)) {
-      return NextResponse.json(
-        { error: 'Verification code not found in channel description' },
+        { error: 'Invalid or expired verification code' },
         { status: 400 }
-      )
+      );
     }
 
-    // Start a transaction to update both profile and verification status
-    const { error: updateError } = await supabaseAdmin.rpc('verify_youtube_channel', {
-      p_profile_id: profile.id,
-      p_verification_id: profile.influencer_profile_verifications[0].id
-    })
+    // Mark contact as verified using admin client
+    const { error: updateError } = await supabaseAdmin
+      .from('contact_status')
+      .update({
+        contact_id: contactId,
+        is_verified: true,
+        verified_at: now
+      })
+      .eq('contact_id', contactId)
+      .eq('is_verified', false);
 
     if (updateError) {
-      console.error('Verification update error:', updateError)
-      throw updateError
+      return NextResponse.json(
+        { error: 'Failed to update verification status' },
+        { status: 500 }
+      );
     }
+
+    // Delete used verification code using admin client
+    await supabaseAdmin
+      .from('contact_verifications')
+      .delete()
+      .eq('id', verification.id);
 
     return NextResponse.json({
-      success: true,
-      message: 'Channel verified successfully'
-    })
+      message: 'Contact verified successfully'
+    });
 
   } catch (error) {
-    console.error('Verification check error:', error)
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: 'Invalid request data', details: error.issues },
-        { status: 400 }
-      )
-    }
+    console.error('Error in check verification:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
-    )
+    );
   }
 }

@@ -7,7 +7,10 @@ export async function GET(request: Request) {
   const code = requestUrl.searchParams.get('code')
 
   if (code) {
-    const supabase = createRouteHandlerClient({ cookies })
+    const cookieStore = cookies()
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
+    
+    // Exchange code for session
     await supabase.auth.exchangeCodeForSession(code)
 
     // Get the user session after exchange
@@ -23,11 +26,11 @@ export async function GET(request: Request) {
 
       // If no profile exists, redirect to setup
       if (!profile) {
-        return NextResponse.redirect(`${requestUrl.origin}/setup`)
+        return NextResponse.redirect(new URL('/setup', requestUrl.origin))
       }
     }
   }
 
-  // If profile exists or there's an error, redirect to dashboard
-  return NextResponse.redirect(`${requestUrl.origin}/dashboard`)
+  // Redirect to dashboard for handling further routing
+  return NextResponse.redirect(new URL('/dashboard', requestUrl.origin))
 }
