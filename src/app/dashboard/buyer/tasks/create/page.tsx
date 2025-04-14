@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -12,6 +12,7 @@ import { DeadlineSelect, deadlineOptions } from "@/components/ui/deadline-select
 import { FileUpload } from "@/components/ui/file-upload";
 import { PaymentMethodSelect } from "@/components/ui/payment-method-select";
 import { createTask } from "@/lib/utils/tasks";
+import { uploadBankTransferSlip } from "@/lib/utils/storage";
 import { calculateCostClient } from "@/lib/utils/cost";
 import { parseViewCount, formatViewCount } from "@/lib/utils/views";
 import { toast } from "sonner";
@@ -48,6 +49,7 @@ export default function CreateTaskPage() {
     contentFile: null,
     platforms: []
   });
+  const formRef = useRef<HTMLFormElement>(null);
 
   const steps = [
     { title: "Basic Info" },
@@ -221,8 +223,14 @@ export default function CreateTaskPage() {
       return;
     }
 
+    if (!form.payment?.method) {
+      toast.error("Please select a payment method");
+      return;
+    }
+
     setIsLoading(true);
     try {
+      // Create the task first
       const { task } = await createTask({
         title: form.title,
         description: form.description,
@@ -234,24 +242,60 @@ export default function CreateTaskPage() {
         }))
       }, false);
 
-      // Handle payment based on selected method
-      if (form.payment?.method === 'bank-transfer') {
+      if (form.payment.method === 'bank-transfer') {
         if (!form.payment.bankSlip) {
           toast.error("Please upload your bank transfer slip");
           return;
         }
-        // TODO: Handle bank transfer slip upload and payment verification
-        toast.success("Task created. Please wait while we verify your payment.");
+        // Handle bank transfer slip upload logic...
+        await uploadBankTransferSlip(form.payment.bankSlip, task.id);
+        toast.success("Payment verification in progress");
+        router.push('/dashboard/buyer');
       } else {
-        // TODO: Implement PayHere integration
-        toast.success("Redirecting to payment gateway...");
-      }
+        console.log("Processing card payment");
+        // Create a manual HTML form for PayHere
+        const paymentForm = document.createElement("form");
+        paymentForm.method = "post";
+        paymentForm.action = process.env.NEXT_PUBLIC_PAYHERE_CHECKOUT_URL || '';
+        paymentForm.target = "_blank";
+        
+        // Initialize PayHere payment
+        const response = await fetch('/api/payment/initialize', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ taskId: task.id })
+        });
 
-      router.push('/dashboard/buyer');
-      router.refresh();
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to initialize payment');
+        }
+
+        const formData = await response.json();
+        console.log("Payment form data:", formData);
+
+        // Add form fields
+        Object.entries(formData).forEach(([key, value]) => {
+          if (value !== undefined && value !== null) {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = key;
+            input.value = value.toString();
+            paymentForm.appendChild(input);
+          }
+        });
+
+        // Append to body, submit, then remove
+        document.body.appendChild(paymentForm);
+        console.log("Submitting payment form...");
+        paymentForm.submit();
+        setTimeout(() => {
+          document.body.removeChild(paymentForm);
+        }, 100);
+      }
     } catch (error) {
-      console.error('Error creating task:', error);
-      toast.error("Failed to create task. Please try again.");
+      console.error('Error processing payment:', error);
+      toast.error(error instanceof Error ? error.message : "Failed to process payment");
     } finally {
       setIsLoading(false);
     }
@@ -303,6 +347,9 @@ export default function CreateTaskPage() {
 
   return (
     <div className="container max-w-4xl mx-auto py-8 px-4">
+      {/* Hidden form for PayHere submission */}
+      <form ref={formRef} method="post" style={{ display: 'none' }} />
+
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">Create New Task</h1>
         <p className="text-muted-foreground">Set up your campaign requirements and targets</p>

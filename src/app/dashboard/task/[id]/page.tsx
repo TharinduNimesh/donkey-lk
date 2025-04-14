@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { use } from "react";
 import { useRouter } from "next/navigation";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
@@ -19,6 +19,7 @@ type BankTransferSlip = Database['public']['Tables']['bank_transfer_slip']['Row'
 export default function TaskPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
+  const formRef = useRef<HTMLFormElement>(null);
   const [task, setTask] = useState<TaskDetail | null>(null);
   const [bankSlip, setBankSlip] = useState<BankTransferSlip | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -102,17 +103,52 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
 
         if (error) throw error;
         toast.success("Payment verification in progress");
+        router.push('/dashboard/buyer');
       } else {
-        // TODO: Implement PayHere integration
-        toast.success("Redirecting to payment gateway...");
-      }
+        console.log("Processing card payment");
+        // Create a manual HTML form for PayHere
+        const paymentForm = document.createElement("form");
+        paymentForm.method = "post";
+        paymentForm.action = process.env.NEXT_PUBLIC_PAYHERE_CHECKOUT_URL || '';
+        paymentForm.target = "_blank";
+        
+        // Initialize PayHere payment
+        const response = await fetch('/api/payment/initialize', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ taskId: task.task_id })
+        });
 
-      router.push('/dashboard/buyer');
-      router.refresh();
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to initialize payment');
+        }
+
+        const formData = await response.json();
+        console.log("Payment form data:", formData);
+
+        // Add form fields
+        Object.entries(formData).forEach(([key, value]) => {
+          if (value !== undefined && value !== null) {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = key;
+            input.value = value.toString();
+            paymentForm.appendChild(input);
+          }
+        });
+
+        // Append to body, submit, then remove
+        document.body.appendChild(paymentForm);
+        console.log("Submitting payment form...");
+        paymentForm.submit();
+        setTimeout(() => {
+          document.body.removeChild(paymentForm);
+        }, 100);
+      }
     } catch (error) {
       console.error('Error processing payment:', error);
-      toast.error("Failed to process payment");
-    } finally {
+      toast.error(error instanceof Error ? error.message : "Failed to process payment");
       setIsLoading(false);
     }
   };
