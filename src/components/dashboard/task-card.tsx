@@ -3,6 +3,7 @@
 import { Database } from "@/types/database.types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { format } from "date-fns";
+import { useRouter } from "next/navigation";
 
 type TaskDetail = Database['public']['Views']['task_details']['Row'];
 
@@ -11,6 +12,7 @@ interface TaskCardProps {
 }
 
 export function TaskCard({ task }: TaskCardProps) {
+  const router = useRouter();
   const targets = task.targets as Array<{
     platform: Database['public']['Enums']['Platforms'];
     views: string;
@@ -30,7 +32,10 @@ export function TaskCard({ task }: TaskCardProps) {
   }, "");
 
   return (
-    <Card className="group hover:border-primary transition-colors">
+    <Card 
+      className="group hover:border-primary transition-colors cursor-pointer"
+      onClick={() => router.push(`/dashboard/task/${task.task_id}`)}
+    >
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           <span className="text-lg font-semibold">{task.title}</span>

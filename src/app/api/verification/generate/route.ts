@@ -16,8 +16,9 @@ export async function POST(request: Request) {
     const json = await request.json()
     const body = requestSchema.parse(json)
 
-    // Get authenticated user
-    const supabase = createRouteHandlerClient<Database>({ cookies })
+    // Get authenticated user - properly initialize with cookie store
+    const cookieStore = cookies()
+    const supabase = createRouteHandlerClient<Database>({ cookies: () => cookieStore })
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     
     if (authError || !user) {

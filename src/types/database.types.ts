@@ -9,6 +9,42 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      bank_transfer_slip: {
+        Row: {
+          created_at: string
+          id: number
+          slip: string
+          task_id: number
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          slip: string
+          task_id: number
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          slip?: string
+          task_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bank_transfer_slip_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: true
+            referencedRelation: "task_details"
+            referencedColumns: ["task_id"]
+          },
+          {
+            foreignKeyName: "bank_transfer_slip_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: true
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contact_details: {
         Row: {
           created_at: string
