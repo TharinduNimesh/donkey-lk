@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -15,7 +15,7 @@ import { SocialVerification } from "@/components/ui/social-verification";
 
 type VerificationStep = "initial" | "description" | "checking" | "verified" | "administrative";
 
-export default function YouTubeVerificationPage() {
+function YouTubeVerificationContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { connectPlatform, personalInfo } = useSetupStore();
@@ -116,7 +116,6 @@ export default function YouTubeVerificationPage() {
         role: ['INFLUENCER'],
         mobile: personalInfo?.mobile,
         onError: (error) => {
-          // Check for unique constraint violation
           if (error.message?.includes("already registered")) {
             toast.error("Mobile number already registered", {
               id: toastId,
@@ -133,37 +132,37 @@ export default function YouTubeVerificationPage() {
         }
       });
 
-      if (setupError) {
-        return;
-      }
+      if (setupError) return;
 
-      // Continue with influencer profile creation
-      const { error: profileError } = await supabase
-        .from('influencer_profile')
-        .insert({
-          user_id: user.id,
-          platform: 'YOUTUBE',
-          name: channelInfo?.title || '',
-          followers: channelInfo?.subscribers || '0',
-          url: channelUrl,
-          is_verified: false
-        });
-
-      if (profileError) {
-        if (profileError.code === '23505') { // unique constraint violation
-          toast.info("Profile already exists", {
+      try {
+        const result = await verifyYouTubeChannel(channelUrl, user.id, channelInfo);
+        
+        if (result.message) {
+          toast.info(result.message, { id: toastId });
+        } else {
+          toast.success("Channel registration initiated!", { id: toastId });
+        }
+        
+        setShowVerificationOptions(true);
+      } catch (error: any) {
+        if (error.message?.includes("already been verified")) {
+          toast.error("Channel already verified", {
             id: toastId,
-            description: "Your YouTube profile is already set up. Proceeding with verification.",
+            description: error.message,
             richColors: true
           });
-        } else {
-          throw profileError;
+          return;
         }
-      } else {
-        toast.success("Profile created successfully!", { id: toastId });
+        if (error.message?.includes("already registered")) {
+          toast.error("Channel unavailable", {
+            id: toastId,
+            description: error.message,
+            richColors: true
+          });
+          return;
+        }
+        throw error;
       }
-      
-      setShowVerificationOptions(true);
     } catch (error) {
       console.error('Error starting verification:', error);
       toast.error("Failed to initialize verification process. Please try again.");
@@ -214,7 +213,6 @@ export default function YouTubeVerificationPage() {
 
   const handleVerify = async (contactId: number) => {
     try {
-      // Refresh contact details to show updated status
       const { contacts } = await fetchUserContactDetails();
       setContactDetails(contacts);
       
@@ -248,7 +246,6 @@ export default function YouTubeVerificationPage() {
         role: ['INFLUENCER'],
         mobile: personalInfo?.mobile,
         onError: (error) => {
-          // Check for unique constraint violation
           if (error.message?.includes("already registered")) {
             toast.error("Mobile number already registered", {
               id: toastId,
@@ -267,7 +264,6 @@ export default function YouTubeVerificationPage() {
 
       if (setupError) return;
 
-      // Continue with influencer profile creation
       const { error: profileError } = await supabase
         .from('influencer_profile')
         .insert({
@@ -280,7 +276,7 @@ export default function YouTubeVerificationPage() {
         });
 
       if (profileError) {
-        if (profileError.code === '23505') { // unique constraint violation
+        if (profileError.code === '23505') {
           toast.info("Profile already exists", {
             id: toastId,
             description: "Your YouTube profile is already set up. Proceeding with verification.",
@@ -568,5 +564,20 @@ export default function YouTubeVerificationPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function YouTubeVerificationPage() {
+  return (
+    <Suspense fallback={<div className="container max-w-4xl mx-auto py-8 px-4">
+      <Card className="p-6">
+        <div className="flex items-center justify-center">
+          <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full"></div>
+          <span className="ml-3">Loading...</span>
+        </div>
+      </Card>
+    </div>}>
+      <YouTubeVerificationContent />
+    </Suspense>
   );
 }

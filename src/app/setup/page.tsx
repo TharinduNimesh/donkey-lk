@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Stepper } from "@/components/ui/stepper";
 import { Card } from "@/components/ui/card";
@@ -12,7 +12,7 @@ import {
 } from "@/components/setup";
 import { useSetupStore } from "@/lib/store";
 
-export default function SetupPage() {
+function SetupContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { userType } = useSetupStore();
@@ -79,5 +79,13 @@ export default function SetupPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function SetupPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <SetupContent />
+    </Suspense>
   );
 }

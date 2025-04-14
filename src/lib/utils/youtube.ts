@@ -15,40 +15,66 @@ export async function verifyYouTubeChannel(channelUrl: string, userId: string, c
       throw new Error("Channel info not found");
     }
 
-    // Check if the URL already exists for any user
-    const { data: existingProfile } = await supabase
+    // Check if the URL already exists
+    const { data: existingProfile, error: checkError } = await supabase
       .from('influencer_profile')
       .select('*')
       .eq('platform', 'YOUTUBE')
       .eq('url', channelUrl)
       .single();
 
-    if (existingProfile) {
-      if (existingProfile.is_verified) {
-        throw new Error("This YouTube channel has already been verified.");
-      } else if (existingProfile.user_id !== userId) {
-        throw new Error("This YouTube channel is already registered by another user.");
-      }
-      // If profile exists but not verified and belongs to current user, continue with verification
-      return { message: "Continuing verification process..." };
+    if (checkError && checkError.code !== 'PGRST116') { // PGRST116 is "no rows returned"
+      throw checkError;
     }
 
-    // Create influencer profile only if it doesn't exist
-    const { data: profile, error: influencerError } = await supabase
+    if (existingProfile) {
+      if (existingProfile.is_verified) {
+        throw new Error("This YouTube channel has already been verified by another user.");
+      }
+      
+      if (existingProfile.user_id !== userId) {
+        throw new Error("This YouTube channel is already registered by another user and pending verification.");
+      }
+      
+      // If profile exists, not verified, and belongs to current user, return the existing profile
+      return { profileId: existingProfile.id, message: "Continuing verification process..." };
+    }
+
+    // Create new profile if it doesn't exist
+    const { data: profile, error: createError } = await supabase
       .from('influencer_profile')
       .insert({
         user_id: userId,
         platform: 'YOUTUBE',
         url: channelUrl,
-        name: channelInfo?.title || '',
-        followers: channelInfo?.subscribers || '0',
+        name: channelInfo.title,
+        followers: channelInfo.subscribers,
         is_verified: false
       })
       .select('id')
       .single();
 
-    if (influencerError) {
-      throw influencerError;
+    if (createError) {
+      if (createError.code === '23505') { // unique constraint violation
+        // Handle race condition - try to fetch the profile again
+        const { data: retryProfile } = await supabase
+          .from('influencer_profile')
+          .select('*')
+          .eq('platform', 'YOUTUBE')
+          .eq('url', channelUrl)
+          .single();
+
+        if (retryProfile) {
+          if (retryProfile.is_verified) {
+            throw new Error("This YouTube channel has already been verified by another user.");
+          }
+          if (retryProfile.user_id !== userId) {
+            throw new Error("This YouTube channel is already registered by another user and pending verification.");
+          }
+          return { profileId: retryProfile.id, message: "Continuing verification process..." };
+        }
+      }
+      throw createError;
     }
 
     return { profileId: profile.id };
