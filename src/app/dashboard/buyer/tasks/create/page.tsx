@@ -253,12 +253,6 @@ export default function CreateTaskPage() {
         router.push('/dashboard/buyer');
       } else {
         console.log("Processing card payment");
-        // Create a manual HTML form for PayHere
-        const paymentForm = document.createElement("form");
-        paymentForm.method = "post";
-        paymentForm.action = process.env.NEXT_PUBLIC_PAYHERE_CHECKOUT_URL || '';
-        paymentForm.target = "_blank";
-        
         // Initialize PayHere payment
         const response = await fetch('/api/payment/initialize', {
           method: 'POST',
@@ -273,6 +267,12 @@ export default function CreateTaskPage() {
 
         const formData = await response.json();
         console.log("Payment form data:", formData);
+
+        // Create and submit PayHere form
+        const paymentForm = document.createElement("form");
+        paymentForm.method = "post";
+        paymentForm.action = formData.checkout_url;
+        paymentForm.target = "_blank";
 
         // Add form fields
         Object.entries(formData).forEach(([key, value]) => {

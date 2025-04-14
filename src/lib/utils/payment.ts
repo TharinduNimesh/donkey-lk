@@ -63,20 +63,21 @@ export function validatePayHereNotification(
 export async function getPaymentEnvironmentVariables() {
   const merchantSecret = process.env.PAYHERE_MERCHANT_SECRET;
   const merchantId = process.env.PAYHERE_MERCHANT_ID;
-  const notifyUrl = process.env.PAYHERE_NOTIFY_URL;
-  const returnUrl = process.env.NEXT_PUBLIC_PAYHERE_RETURN_URL;
-  const cancelUrl = process.env.NEXT_PUBLIC_PAYHERE_CANCEL_URL;
+  const payhereBaseUrl = process.env.NEXT_PUBLIC_PAYHERE_URL;
+  const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL;
 
-  if (!merchantSecret || !merchantId || !notifyUrl || !returnUrl || !cancelUrl) {
+  if (!merchantSecret || !merchantId || !payhereBaseUrl || !appBaseUrl) {
     throw new Error("Payment gateway configuration error");
   }
 
   return {
     merchantSecret,
     merchantId,
-    notifyUrl,
-    returnUrl,
-    cancelUrl
+    notifyUrl: `${appBaseUrl}/api/payment/notify`,
+    returnUrl: `${appBaseUrl}/api/payment/success`,
+    cancelUrl: `${appBaseUrl}/api/payment/cancel`,
+    checkoutUrl: `${payhereBaseUrl}/pay/checkout`,
+    authorizeUrl: `${payhereBaseUrl}/pay/authorize`
   };
 }
 
@@ -100,6 +101,8 @@ export async function updatePaymentStatus(
   }
 ) {
   const supabase = createServerComponentClient<Database>({ cookies });
+
+  console.log('setting up payment status');
 
   // Update task cost
   const { error: costError } = await supabase

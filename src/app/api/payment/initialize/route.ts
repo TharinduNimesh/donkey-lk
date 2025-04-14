@@ -96,7 +96,9 @@ export async function POST(req: NextRequest) {
       merchantSecret,
       notifyUrl,
       returnUrl,
-      cancelUrl 
+      cancelUrl,
+      checkoutUrl,
+      authorizeUrl 
     } = await getPaymentEnvironmentVariables();
 
     // Format amount and generate hash
@@ -132,7 +134,9 @@ export async function POST(req: NextRequest) {
       country: 'Sri Lanka',
       hash,
       custom_1: user.id,
-      custom_2: task.task_id?.toString()
+      custom_2: task.task_id?.toString(),
+      checkout_url: checkoutUrl,
+      authorize_url: authorizeUrl
     };
 
     return NextResponse.json(formData);

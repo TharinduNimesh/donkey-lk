@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { signIn, signInWithGoogle } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
@@ -13,6 +13,10 @@ export function SignInForm() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   
+  useEffect(() => {
+    localStorage.removeItem('setup-storage')
+  }, [])
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setLoading(true)
