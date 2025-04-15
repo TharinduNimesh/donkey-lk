@@ -83,19 +83,42 @@ async function verifyTaskStatus(taskId: number, supabase: SupabaseClient<Databas
 
 export async function POST(req: NextRequest) {
   try {
-    // Validate content type
+    // Validate content type and user agent
     const contentType = req.headers.get('content-type');
+    const userAgent = req.headers.get('user-agent');
     console.log('[PayHere Notify] Content-Type:', contentType);
+    console.log('[PayHere Notify] User-Agent:', userAgent);
     
-    if (!contentType?.includes('multipart/form-data')) {
+    if (!contentType?.includes('multipart/form-data') && !contentType?.includes('application/x-www-form-urlencoded')) {
       console.error('[PayHere Notify] Invalid content type:', contentType);
       return NextResponse.json(
-        { error: 'Invalid content type. Expected multipart/form-data' },
+        { error: 'Invalid content type. Expected multipart/form-data or application/x-www-form-urlencoded' },
         { status: 400 }
       );
     }
 
-    const formData = await req.formData();
+    // Verify PayHere User-Agent
+    if (!userAgent?.startsWith('PayHere-HttpClient')) {
+      console.error('[PayHere Notify] Invalid User-Agent:', userAgent);
+      return NextResponse.json(
+        { error: 'Invalid User-Agent' },
+        { status: 400 }
+      );
+    }
+
+    let formData: FormData;
+    if (contentType?.includes('application/x-www-form-urlencoded')) {
+      const formDataObject = new FormData();
+      const bodyText = await req.text();
+      const urlParams = new URLSearchParams(bodyText);
+      urlParams.forEach((value, key) => {
+        formDataObject.append(key, value);
+      });
+      formData = formDataObject;
+    } else {
+      formData = await req.formData();
+    }
+
     console.log('[PayHere Notify] Received form data fields:', Array.from(formData.keys()));
     
     const notification = await validateFormData(formData);
