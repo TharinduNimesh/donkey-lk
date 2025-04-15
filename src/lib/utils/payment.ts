@@ -101,18 +101,13 @@ export async function updatePaymentStatus(
     metadata?: any;
   }
 ) {
-  console.log('[Payment] Setting up payment status for task:', taskId);
-
-  // Update task cost using admin client
+  // Update task cost
   const { error: costError } = await supabaseAdmin
     .from('task_cost')
     .update(paymentDetails)
     .eq('task_id', taskId);
 
-  if (costError) {
-    console.error('[Payment] Error updating task cost:', costError);
-    throw costError;
-  }
+  if (costError) throw costError;
 
   // Update task status to ACTIVE if payment is successful
   if (paymentDetails.is_paid) {
@@ -121,11 +116,6 @@ export async function updatePaymentStatus(
       .update({ status: 'ACTIVE' })
       .eq('id', taskId);
 
-    if (taskError) {
-      console.error('[Payment] Error updating task status:', taskError);
-      throw taskError;
-    }
+    if (taskError) throw taskError;
   }
-
-  console.log('[Payment] Successfully updated payment status and task status');
 }

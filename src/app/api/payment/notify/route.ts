@@ -102,7 +102,6 @@ async function verifyTaskStatus(taskId: number) {
     .single();
 
   if (error) {
-    console.error('[PayHere Notify] Task verification error:', error);
     throw error;
   }
   if (!task) throw new Error('Task not found');
@@ -116,11 +115,8 @@ export async function POST(req: NextRequest) {
     // Validate content type and user agent
     const contentType = req.headers.get('content-type');
     const userAgent = req.headers.get('user-agent');
-    console.log('[PayHere Notify] Content-Type:', contentType);
-    console.log('[PayHere Notify] User-Agent:', userAgent);
     
     if (!contentType?.includes('multipart/form-data') && !contentType?.includes('application/x-www-form-urlencoded')) {
-      console.error('[PayHere Notify] Invalid content type:', contentType);
       return NextResponse.json(
         { error: 'Invalid content type. Expected multipart/form-data or application/x-www-form-urlencoded' },
         { status: 400 }
@@ -129,7 +125,6 @@ export async function POST(req: NextRequest) {
 
     // Verify PayHere User-Agent
     if (!userAgent?.startsWith('PayHere-HttpClient')) {
-      console.error('[PayHere Notify] Invalid User-Agent:', userAgent);
       return NextResponse.json(
         { error: 'Invalid User-Agent' },
         { status: 400 }
@@ -137,125 +132,65 @@ export async function POST(req: NextRequest) {
     }
 
     let formData: FormData;
-    try {
-      if (contentType?.includes('application/x-www-form-urlencoded')) {
-        const formDataObject = new FormData();
-        const bodyText = await req.text();
-        console.log('[PayHere Notify] Raw request body:', bodyText);
-        const urlParams = new URLSearchParams(bodyText);
-        urlParams.forEach((value, key) => {
-          formDataObject.append(key, value);
-        });
-        formData = formDataObject;
-      } else {
-        formData = await req.formData();
-      }
-    } catch (error) {
-      console.error('[PayHere Notify] Error parsing form data:', error);
-      throw error;
+    if (contentType?.includes('application/x-www-form-urlencoded')) {
+      const formDataObject = new FormData();
+      const bodyText = await req.text();
+      const urlParams = new URLSearchParams(bodyText);
+      urlParams.forEach((value, key) => {
+        formDataObject.append(key, value);
+      });
+      formData = formDataObject;
+    } else {
+      formData = await req.formData();
     }
-
-    console.log('[PayHere Notify] Received form data fields:', Array.from(formData.keys()));
     
-    let notification;
-    try {
-      notification = await validateFormData(formData);
-      console.log('[PayHere Notify] Successfully validated form data');
-    } catch (error) {
-      console.error('[PayHere Notify] Form validation error:', error);
-      throw error;
-    }
-
-    console.log('[PayHere Notify] Validated notification data:', {
-      merchant_id: notification.merchant_id,
-      order_id: notification.order_id,
-      amount: notification.payhere_amount,
-      currency: notification.payhere_currency,
-      status_code: notification.status_code,
-      payment_id: notification.payment_id,
-      method: notification.method
-    });
-
-    // Get PayHere configuration
-    let merchantId, merchantSecret;
-    try {
-      const config = await getPaymentEnvironmentVariables();
-      merchantId = config.merchantId;
-      merchantSecret = config.merchantSecret;
-      console.log('[PayHere Notify] Successfully retrieved merchant configuration');
-      console.log('[PayHere Notify] Merchant ID match:', merchantId === notification.merchant_id);
-    } catch (error) {
-      console.error('[PayHere Notify] Error getting merchant configuration:', error);
-      throw error;
-    }
+    const notification = await validateFormData(formData);
+    const { merchantId, merchantSecret } = await getPaymentEnvironmentVariables();
 
     // Validate notification signature
-    try {
-      const isValid = validatePayHereNotification(
-        notification.merchant_id,
-        notification.order_id,
-        notification.payhere_amount,
-        notification.payhere_currency,
-        notification.status_code,
-        notification.md5sig,
-        merchantSecret
-      );
+    const isValid = validatePayHereNotification(
+      notification.merchant_id,
+      notification.order_id,
+      notification.payhere_amount,
+      notification.payhere_currency,
+      notification.status_code,
+      notification.md5sig,
+      merchantSecret
+    );
 
-      if (!isValid) {
-        console.error('[PayHere Notify] Invalid signature. Received signature:', notification.md5sig);
-        return NextResponse.json(
-          { error: 'Invalid signature' },
-          { status: 400 }
-        );
-      }
-      console.log('[PayHere Notify] Signature validation successful');
-    } catch (error) {
-      console.error('[PayHere Notify] Error validating signature:', error);
-      throw error;
+    if (!isValid) {
+      return NextResponse.json(
+        { error: 'Invalid signature' },
+        { status: 400 }
+      );
     }
 
     const taskId = parseInt(notification.order_id);
-    console.log('[PayHere Notify] Processing task ID:', taskId);
 
     // Handle successful payment
     if (notification.status_code === '2') {
-      try {
-        // Verify task exists and is in DRAFT status
-        const task = await verifyTaskStatus(taskId);
-        console.log('[PayHere Notify] Task verification successful. Current status:', task.status);
+      // Verify task exists and is in DRAFT status
+      await verifyTaskStatus(taskId);
 
-        // Collect payment details
-        const paymentDetails = {
-          is_paid: true,
-          payment_method: 'PAYMENT_GATEWAY' as const,
-          paid_at: new Date().toISOString(),
-          metadata: {
-            payment_id: notification.payment_id,
-            payment_method: notification.method,
-            card_holder_name: notification.card_holder_name,
-            card_no: notification.card_no,
-            card_expiry: notification.card_expiry
-          }
-        };
+      // Update payment status and task status
+      const paymentDetails = {
+        is_paid: true,
+        payment_method: 'PAYMENT_GATEWAY' as const,
+        paid_at: new Date().toISOString(),
+        metadata: {
+          payment_id: notification.payment_id,
+          payment_method: notification.method,
+          card_holder_name: notification.card_holder_name,
+          card_no: notification.card_no,
+          card_expiry: notification.card_expiry
+        }
+      };
 
-        // Update payment status and task status
-        await updatePaymentStatus(taskId, paymentDetails);
-        console.log('[PayHere Notify] Payment status updated successfully');
-      } catch (error) {
-        console.error('[PayHere Notify] Error processing successful payment:', error);
-        throw error;
-      }
-    } else {
-      console.log('[PayHere Notify] Payment not successful. Status code:', notification.status_code);
+      await updatePaymentStatus(taskId, paymentDetails);
     }
 
     return NextResponse.json({ status: 'ok' });
   } catch (error) {
-    console.error('[PayHere Notify] Error details:', {
-      name: error instanceof Error ? error.name : 'Unknown error type',
-      message: error instanceof Error ? error.message : "Unknown error",
-      stack: error instanceof Error ? error.stack : undefined
-    });
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Internal server error" },
       { status: 500 }
