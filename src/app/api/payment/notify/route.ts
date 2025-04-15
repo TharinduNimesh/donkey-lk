@@ -134,82 +134,133 @@ export async function POST(req: NextRequest) {
     }
 
     let formData: FormData;
-    if (contentType?.includes('application/x-www-form-urlencoded')) {
-      const formDataObject = new FormData();
-      const bodyText = await req.text();
-      const urlParams = new URLSearchParams(bodyText);
-      urlParams.forEach((value, key) => {
-        formDataObject.append(key, value);
-      });
-      formData = formDataObject;
-    } else {
-      formData = await req.formData();
+    try {
+      if (contentType?.includes('application/x-www-form-urlencoded')) {
+        const formDataObject = new FormData();
+        const bodyText = await req.text();
+        console.log('[PayHere Notify] Raw request body:', bodyText);
+        const urlParams = new URLSearchParams(bodyText);
+        urlParams.forEach((value, key) => {
+          formDataObject.append(key, value);
+        });
+        formData = formDataObject;
+      } else {
+        formData = await req.formData();
+      }
+    } catch (error) {
+      console.error('[PayHere Notify] Error parsing form data:', error);
+      throw error;
     }
 
     console.log('[PayHere Notify] Received form data fields:', Array.from(formData.keys()));
     
-    const notification = await validateFormData(formData);
+    let notification;
+    try {
+      notification = await validateFormData(formData);
+      console.log('[PayHere Notify] Successfully validated form data');
+    } catch (error) {
+      console.error('[PayHere Notify] Form validation error:', error);
+      throw error;
+    }
+
     console.log('[PayHere Notify] Validated notification data:', {
       merchant_id: notification.merchant_id,
       order_id: notification.order_id,
       amount: notification.payhere_amount,
       currency: notification.payhere_currency,
-      status_code: notification.status_code
+      status_code: notification.status_code,
+      payment_id: notification.payment_id,
+      method: notification.method
     });
 
     // Get PayHere configuration
-    const { merchantId, merchantSecret } = await getPaymentEnvironmentVariables();
-    console.log('[PayHere Notify] Merchant ID match:', merchantId === notification.merchant_id);
+    let merchantId, merchantSecret;
+    try {
+      const config = await getPaymentEnvironmentVariables();
+      merchantId = config.merchantId;
+      merchantSecret = config.merchantSecret;
+      console.log('[PayHere Notify] Successfully retrieved merchant configuration');
+      console.log('[PayHere Notify] Merchant ID match:', merchantId === notification.merchant_id);
+    } catch (error) {
+      console.error('[PayHere Notify] Error getting merchant configuration:', error);
+      throw error;
+    }
 
     // Validate notification signature
-    const isValid = validatePayHereNotification(
-      notification.merchant_id,
-      notification.order_id,
-      notification.payhere_amount,
-      notification.payhere_currency,
-      notification.status_code,
-      notification.md5sig,
-      merchantSecret
-    );
-
-    if (!isValid) {
-      console.error('[PayHere Notify] Invalid signature. Received signature:', notification.md5sig);
-      return NextResponse.json(
-        { error: 'Invalid signature' },
-        { status: 400 }
+    try {
+      const isValid = validatePayHereNotification(
+        notification.merchant_id,
+        notification.order_id,
+        notification.payhere_amount,
+        notification.payhere_currency,
+        notification.status_code,
+        notification.md5sig,
+        merchantSecret
       );
+
+      if (!isValid) {
+        console.error('[PayHere Notify] Invalid signature. Received signature:', notification.md5sig);
+        return NextResponse.json(
+          { error: 'Invalid signature' },
+          { status: 400 }
+        );
+      }
+      console.log('[PayHere Notify] Signature validation successful');
+    } catch (error) {
+      console.error('[PayHere Notify] Error validating signature:', error);
+      throw error;
     }
 
     // Initialize Supabase client
-    const supabase = createServerComponentClient<Database>({ cookies });
+    let supabase;
+    try {
+      supabase = createServerComponentClient<Database>({ cookies });
+      console.log('[PayHere Notify] Supabase client initialized');
+    } catch (error) {
+      console.error('[PayHere Notify] Error initializing Supabase client:', error);
+      throw error;
+    }
+
     const taskId = parseInt(notification.order_id);
+    console.log('[PayHere Notify] Processing task ID:', taskId);
 
     // Handle successful payment
     if (notification.status_code === '2') {
-      // Verify task exists and is in DRAFT status
-      await verifyTaskStatus(taskId, supabase);
+      try {
+        // Verify task exists and is in DRAFT status
+        const task = await verifyTaskStatus(taskId, supabase);
+        console.log('[PayHere Notify] Task verification successful. Current status:', task.status);
 
-      // Collect payment details
-      const paymentDetails = {
-        is_paid: true,
-        payment_method: 'PAYMENT_GATEWAY' as const,
-        paid_at: new Date().toISOString(),
-        metadata: {
-          payment_id: notification.payment_id,
-          payment_method: notification.method,
-          card_holder_name: notification.card_holder_name,
-          card_no: notification.card_no,
-          card_expiry: notification.card_expiry
-        }
-      };
+        // Collect payment details
+        const paymentDetails = {
+          is_paid: true,
+          payment_method: 'PAYMENT_GATEWAY' as const,
+          paid_at: new Date().toISOString(),
+          metadata: {
+            payment_id: notification.payment_id,
+            payment_method: notification.method,
+            card_holder_name: notification.card_holder_name,
+            card_no: notification.card_no,
+            card_expiry: notification.card_expiry
+          }
+        };
+        console.log('[PayHere Notify] Payment details prepared:', paymentDetails);
 
-      // Update payment status and task status
-      await updatePaymentStatus(taskId, paymentDetails);
+        // Update payment status and task status
+        await updatePaymentStatus(taskId, paymentDetails);
+        console.log('[PayHere Notify] Payment status updated successfully');
+      } catch (error) {
+        console.error('[PayHere Notify] Error processing successful payment:', error);
+        throw error;
+      }
+    } else {
+      console.log('[PayHere Notify] Payment not successful. Status code:', notification.status_code);
     }
 
     return NextResponse.json({ status: 'ok' });
   } catch (error) {
     console.error('[PayHere Notify] Error details:', {
+      name: error instanceof Error ? error.name : 'Unknown error type',
       message: error instanceof Error ? error.message : "Unknown error",
       stack: error instanceof Error ? error.stack : undefined
     });
