@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
 import { Database } from "@/types/database.types";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 
 export function generatePayHereHash(
   merchantId: string,
@@ -100,12 +101,8 @@ export async function updatePaymentStatus(
     metadata?: any;
   }
 ) {
-  const supabase = createServerComponentClient<Database>({ cookies });
-
-  console.log('setting up payment status');
-
   // Update task cost
-  const { error: costError } = await supabase
+  const { error: costError } = await supabaseAdmin
     .from('task_cost')
     .update(paymentDetails)
     .eq('task_id', taskId);
@@ -114,7 +111,7 @@ export async function updatePaymentStatus(
 
   // Update task status to ACTIVE if payment is successful
   if (paymentDetails.is_paid) {
-    const { error: taskError } = await supabase
+    const { error: taskError } = await supabaseAdmin
       .from('tasks')
       .update({ status: 'ACTIVE' })
       .eq('id', taskId);
