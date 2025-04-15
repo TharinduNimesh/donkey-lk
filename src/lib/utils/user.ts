@@ -150,3 +150,30 @@ export async function fetchUserContactDetails() {
     throw error;
   }
 }
+
+export async function isUserBuyer(userId: string) {
+  const { data, error } = await supabase
+    .rpc('is_a_buyer', { user_id_input: userId });
+
+  if (error) throw error;
+  return data;
+}
+
+export async function isUserInfluencer(userId: string) {
+  const { data, error } = await supabase
+    .rpc('is_an_influencer', { user_id_input: userId });
+
+  if (error) throw error;
+  return data;
+}
+
+export async function getUserVerifiedPlatforms(userId: string) {
+  const { data, error } = await supabase
+    .from('influencer_profile')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('is_verified', true);
+
+  if (error) throw error;
+  return data || [];
+}

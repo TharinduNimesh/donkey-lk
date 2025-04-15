@@ -9,6 +9,41 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      application_promises: {
+        Row: {
+          application_id: number
+          created_at: string
+          est_profit: string
+          id: number
+          platform: Database["public"]["Enums"]["Platforms"]
+          promised_reach: string
+        }
+        Insert: {
+          application_id: number
+          created_at?: string
+          est_profit: string
+          id?: number
+          platform: Database["public"]["Enums"]["Platforms"]
+          promised_reach: string
+        }
+        Update: {
+          application_id?: number
+          created_at?: string
+          est_profit?: string
+          id?: number
+          platform?: Database["public"]["Enums"]["Platforms"]
+          promised_reach?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "application_promises_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "task_applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bank_transfer_slip: {
         Row: {
           created_at: string
@@ -273,6 +308,52 @@ export type Database = {
         }
         Relationships: []
       }
+      task_applications: {
+        Row: {
+          created_at: string
+          id: number
+          is_cancelled: boolean
+          task_id: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          is_cancelled?: boolean
+          task_id: number
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          is_cancelled?: boolean
+          task_id?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_applications_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "task_details"
+            referencedColumns: ["task_id"]
+          },
+          {
+            foreignKeyName: "task_applications_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_applications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profile"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_cost: {
         Row: {
           amount: number
@@ -439,8 +520,16 @@ export type Database = {
         Args: { user_id_input: string }
         Returns: boolean
       }
+      is_active_task: {
+        Args: { task_id_input: number }
+        Returns: boolean
+      }
       is_an_influencer: {
         Args: { user_id_input: string }
+        Returns: boolean
+      }
+      is_it_my_application: {
+        Args: { task_id_input: number }
         Returns: boolean
       }
       is_it_my_contact: {
