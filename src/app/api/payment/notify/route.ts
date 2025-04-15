@@ -84,7 +84,11 @@ async function verifyTaskStatus(taskId: number, supabase: SupabaseClient<Databas
 export async function POST(req: NextRequest) {
   try {
     // Validate content type
-    if (!req.headers.get('content-type')?.includes('multipart/form-data')) {
+    const contentType = req.headers.get('content-type');
+    console.log('[PayHere Notify] Content-Type:', contentType);
+    
+    if (!contentType?.includes('multipart/form-data')) {
+      console.error('[PayHere Notify] Invalid content type:', contentType);
       return NextResponse.json(
         { error: 'Invalid content type. Expected multipart/form-data' },
         { status: 400 }
@@ -92,10 +96,20 @@ export async function POST(req: NextRequest) {
     }
 
     const formData = await req.formData();
+    console.log('[PayHere Notify] Received form data fields:', Array.from(formData.keys()));
+    
     const notification = await validateFormData(formData);
+    console.log('[PayHere Notify] Validated notification data:', {
+      merchant_id: notification.merchant_id,
+      order_id: notification.order_id,
+      amount: notification.payhere_amount,
+      currency: notification.payhere_currency,
+      status_code: notification.status_code
+    });
 
     // Get PayHere configuration
     const { merchantId, merchantSecret } = await getPaymentEnvironmentVariables();
+    console.log('[PayHere Notify] Merchant ID match:', merchantId === notification.merchant_id);
 
     // Validate notification signature
     const isValid = validatePayHereNotification(
@@ -109,7 +123,7 @@ export async function POST(req: NextRequest) {
     );
 
     if (!isValid) {
-      console.error('Invalid PayHere signature');
+      console.error('[PayHere Notify] Invalid signature. Received signature:', notification.md5sig);
       return NextResponse.json(
         { error: 'Invalid signature' },
         { status: 400 }
@@ -145,7 +159,10 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ status: 'ok' });
   } catch (error) {
-    console.error('Payment notification error:', error);
+    console.error('[PayHere Notify] Error details:', {
+      message: error instanceof Error ? error.message : "Unknown error",
+      stack: error instanceof Error ? error.stack : undefined
+    });
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Internal server error" },
       { status: 500 }
