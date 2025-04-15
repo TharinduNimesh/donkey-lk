@@ -25,11 +25,17 @@ type PayhereNotification = {
   payhere_currency: string;
   status_code: string;
   md5sig: string;
-  method?: string;
+  // Optional fields
   payment_id?: string;
+  captured_amount?: string;
+  method?: string;
   card_holder_name?: string;
   card_no?: string;
   card_expiry?: string;
+  custom_1?: string;
+  custom_2?: string;
+  status_message?: string;
+  recurring?: string;
 };
 
 async function validateFormData(formData: FormData): Promise<PayhereNotification> {
@@ -41,7 +47,7 @@ async function validateFormData(formData: FormData): Promise<PayhereNotification
     if (!value || typeof value !== 'string') {
       throw new Error(`Missing or invalid required field: ${field}`);
     }
-    notification[field] = value;
+    notification[field as keyof PayhereNotification] = value;
   }
 
   // Validate order_id format (must be a number)
@@ -62,6 +68,27 @@ async function validateFormData(formData: FormData): Promise<PayhereNotification
   // Validate status code (must be a valid PayHere status)
   if (!['2', '0', '-1', '-2'].includes(notification.status_code!)) {
     throw new Error('Invalid status code');
+  }
+
+  // Collect optional fields
+  const optionalFields = [
+    'payment_id',
+    'captured_amount',
+    'method',
+    'card_holder_name',
+    'card_no',
+    'card_expiry',
+    'custom_1',
+    'custom_2',
+    'status_message',
+    'recurring'
+  ] as const;
+
+  for (const field of optionalFields) {
+    const value = formData.get(field);
+    if (value && typeof value === 'string') {
+      notification[field] = value;
+    }
   }
 
   return notification as PayhereNotification;
