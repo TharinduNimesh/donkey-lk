@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerComponentClient, type SupabaseClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
 import { Database } from "@/types/database.types";
 import { 
@@ -7,6 +6,7 @@ import {
   getPaymentEnvironmentVariables,
   updatePaymentStatus
 } from "@/lib/utils/payment";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 
 // Required fields in PayHere notification
 const REQUIRED_FIELDS = [
@@ -94,14 +94,17 @@ async function validateFormData(formData: FormData): Promise<PayhereNotification
   return notification as PayhereNotification;
 }
 
-async function verifyTaskStatus(taskId: number, supabase: SupabaseClient<Database>) {
-  const { data: task, error } = await supabase
+async function verifyTaskStatus(taskId: number) {
+  const { data: task, error } = await supabaseAdmin
     .from('tasks')
     .select('status')
     .eq('id', taskId)
     .single();
 
-  if (error) throw error;
+  if (error) {
+    console.error('[PayHere Notify] Task verification error:', error);
+    throw error;
+  }
   if (!task) throw new Error('Task not found');
   if (task.status !== 'DRAFT') throw new Error('Invalid task status for payment');
 
@@ -211,16 +214,6 @@ export async function POST(req: NextRequest) {
       throw error;
     }
 
-    // Initialize Supabase client
-    let supabase;
-    try {
-      supabase = createServerComponentClient<Database>({ cookies });
-      console.log('[PayHere Notify] Supabase client initialized');
-    } catch (error) {
-      console.error('[PayHere Notify] Error initializing Supabase client:', error);
-      throw error;
-    }
-
     const taskId = parseInt(notification.order_id);
     console.log('[PayHere Notify] Processing task ID:', taskId);
 
@@ -228,7 +221,7 @@ export async function POST(req: NextRequest) {
     if (notification.status_code === '2') {
       try {
         // Verify task exists and is in DRAFT status
-        const task = await verifyTaskStatus(taskId, supabase);
+        const task = await verifyTaskStatus(taskId);
         console.log('[PayHere Notify] Task verification successful. Current status:', task.status);
 
         // Collect payment details
@@ -244,7 +237,6 @@ export async function POST(req: NextRequest) {
             card_expiry: notification.card_expiry
           }
         };
-        console.log('[PayHere Notify] Payment details prepared:', paymentDetails);
 
         // Update payment status and task status
         await updatePaymentStatus(taskId, paymentDetails);
