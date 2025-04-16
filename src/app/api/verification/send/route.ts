@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Send SMS -- > Uncomment this line to send SMS
+    // UNCOMMENT -  Send SMS -- > Uncomment this line to send SMS
     const success = true; // Placeholder for SMS sending logic
     // const { success, error: smsError } = await sendSMS({
     //   recipient: contact.detail,

@@ -62,3 +62,26 @@ export async function uploadBankTransferSlip(file: File, taskId: number) {
     throw error;
   }
 }
+
+export async function uploadProofImage(file: File) {
+  try {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${uuidv4()}.${fileExt}`;
+    const { data: { user } } = await supabase.auth.getUser();
+    const filePath = `${user?.id}/${fileName}`;
+
+    // Upload file to Supabase storage
+    const { error: uploadError } = await supabase.storage
+      .from('proof-images')
+      .upload(filePath, file);
+
+    if (uploadError) {
+      throw uploadError;
+    }
+
+    return filePath;
+  } catch (error) {
+    console.error('Error uploading proof image:', error);
+    throw error;
+  }
+}

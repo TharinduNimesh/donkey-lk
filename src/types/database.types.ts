@@ -44,6 +44,41 @@ export type Database = {
           },
         ]
       }
+      application_proofs: {
+        Row: {
+          application_id: number
+          content: string
+          created_at: string
+          id: number
+          platform: Database["public"]["Enums"]["Platforms"]
+          proof_type: Database["public"]["Enums"]["ProofType"]
+        }
+        Insert: {
+          application_id: number
+          content: string
+          created_at?: string
+          id?: number
+          platform: Database["public"]["Enums"]["Platforms"]
+          proof_type: Database["public"]["Enums"]["ProofType"]
+        }
+        Update: {
+          application_id?: number
+          content?: string
+          created_at?: string
+          id?: number
+          platform?: Database["public"]["Enums"]["Platforms"]
+          proof_type?: Database["public"]["Enums"]["ProofType"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "application_proofs_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "task_applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bank_transfer_slip: {
         Row: {
           created_at: string
@@ -308,6 +343,48 @@ export type Database = {
         }
         Relationships: []
       }
+      proof_status: {
+        Row: {
+          created_at: string
+          id: number
+          proof_id: number
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: Database["public"]["Enums"]["ProofStatus"]
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          proof_id: number
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["ProofStatus"]
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          proof_id?: number
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["ProofStatus"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proof_status_proof_id_fkey"
+            columns: ["proof_id"]
+            isOneToOne: false
+            referencedRelation: "application_proofs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proof_status_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profile"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_applications: {
         Row: {
           created_at: string
@@ -529,7 +606,7 @@ export type Database = {
         Returns: boolean
       }
       is_it_my_application: {
-        Args: { task_id_input: number }
+        Args: { application_id_input: number }
         Returns: boolean
       }
       is_it_my_contact: {
@@ -549,6 +626,8 @@ export type Database = {
       ContactTypes: "EMAIL" | "MOBILE" | "WHATSAPP"
       PaymentMethod: "PAYMENT_GATEWAY" | "BANK_TRANSFER"
       Platforms: "YOUTUBE" | "FACEBOOK" | "TIKTOK" | "INSTAGRAM"
+      ProofStatus: "UNDER_REVIEW" | "ACCEPTED" | "REJECTED"
+      ProofType: "IMAGE" | "URL"
       Roles: "ADMIN" | "BUYER" | "INFLUENCER"
       TaskStatus: "DRAFT" | "ACTIVE" | "ARCHIVED" | "COMPLETED"
     }
@@ -669,6 +748,8 @@ export const Constants = {
       ContactTypes: ["EMAIL", "MOBILE", "WHATSAPP"],
       PaymentMethod: ["PAYMENT_GATEWAY", "BANK_TRANSFER"],
       Platforms: ["YOUTUBE", "FACEBOOK", "TIKTOK", "INSTAGRAM"],
+      ProofStatus: ["UNDER_REVIEW", "ACCEPTED", "REJECTED"],
+      ProofType: ["IMAGE", "URL"],
       Roles: ["ADMIN", "BUYER", "INFLUENCER"],
       TaskStatus: ["DRAFT", "ACTIVE", "ARCHIVED", "COMPLETED"],
     },
