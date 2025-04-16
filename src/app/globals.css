@@ -94,6 +94,11 @@
   --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
   --sidebar-border: oklch(0.92 0.004 286.32);
   --sidebar-ring: oklch(0.705 0.015 286.067);
+
+  --shadow-input:
+  0px 2px 3px -1px rgba(0, 0, 0, 0.1),
+  0px 1px 0px 0px rgba(25, 28, 33, 0.02),
+  0px 0px 0px 1px rgba(25, 28, 33, 0.08);
 }
 
 .dark {
@@ -137,6 +142,24 @@
   body {
     @apply bg-background text-foreground;
   }
+  input:focus {
+    @apply outline-none ring-2 ring-pink-500/20 ring-offset-0;
+  }
+  input:hover {
+    @apply border-pink-500/30 transition-colors duration-200;
+  }
+}
+
+/* Input focus styles */
+input:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgb(236 72 153 / 0.2);
+  border-color: rgb(236 72 153 / 0.3);
+}
+
+/* Input hover styles */
+input:hover {
+  border-color: rgb(236 72 153 / 0.3);
 }
 
 /* Blob Animations */
