@@ -15,6 +15,14 @@ import { uploadBankTransferSlip } from "@/lib/utils/storage";
 
 type TaskDetail = Database['public']['Views']['task_details']['Row'];
 type BankTransferSlip = Database['public']['Tables']['bank_transfer_slip']['Row'];
+type TaskApplication = Database['public']['Tables']['task_applications']['Row'];
+type ApplicationPromise = Database['public']['Tables']['application_promises']['Row'];
+type InfluencerProfile = Database['public']['Tables']['influencer_profile']['Row'];
+
+interface ApplicationWithDetails extends TaskApplication {
+  promises: ApplicationPromise[];
+  influencer: InfluencerProfile | null;
+}
 
 export default function TaskPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -22,6 +30,7 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
   const formRef = useRef<HTMLFormElement>(null);
   const [task, setTask] = useState<TaskDetail | null>(null);
   const [bankSlip, setBankSlip] = useState<BankTransferSlip | null>(null);
+  const [applications, setApplications] = useState<ApplicationWithDetails[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [payment, setPayment] = useState<{
     method?: 'bank-transfer' | 'card';
@@ -31,7 +40,7 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
   const supabase = createClientComponentClient<Database>();
 
   useEffect(() => {
-    const fetchTaskAndSlip = async () => {
+    const fetchTaskAndData = async () => {
       try {
         // Fetch task details
         const { data: taskData, error: taskError } = await supabase
@@ -41,7 +50,6 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
           .single();
 
         if (taskError) throw taskError;
-        
         setTask(taskData);
 
         // Fetch bank transfer slip if exists
@@ -55,6 +63,42 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
           if (!slipError) {
             setBankSlip(slipData);
           }
+
+          // Fetch applications with promises
+          const { data: applicationsData, error: applicationsError } = await supabase
+            .from('task_applications')
+            .select(`
+              *,
+              promises: application_promises(*)
+            `)
+            .eq('task_id', taskData.task_id)
+            .eq('is_cancelled', false);
+
+          if (applicationsError) throw applicationsError;
+
+          // Fetch influencer profiles for each application
+          const applicationsWithProfiles = await Promise.all(
+            applicationsData.map(async (application) => {
+              const platform = application.promises[0]?.platform;
+              if (!platform || !application.user_id) {
+                return { ...application, influencer: null };
+              }
+
+              const { data: profileData } = await supabase
+                .from('influencer_profile')
+                .select('*')
+                .eq('user_id', application.user_id)
+                .eq('platform', platform)
+                .single();
+
+              return {
+                ...application,
+                influencer: profileData || null
+              };
+            })
+          );
+
+          setApplications(applicationsWithProfiles);
         }
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -64,7 +108,7 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
       }
     };
 
-    fetchTaskAndSlip();
+    fetchTaskAndData();
   }, [id]);
 
   const handlePaymentMethodSelect = (method: 'bank-transfer' | 'card') => {
@@ -178,6 +222,57 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
     } catch (error) {
       console.error('Error deleting slip:', error);
       toast.error("Failed to delete bank transfer slip");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleArchiveTask = async () => {
+    if (!task?.task_id) return;
+
+    setIsLoading(true);
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ 
+          status: 'ARCHIVED',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', task.task_id);
+
+      if (error) throw error;
+      
+      toast.success("Task archived successfully");
+      router.push('/dashboard/buyer');
+    } catch (error) {
+      console.error('Error archiving task:', error);
+      toast.error("Failed to archive task");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCompleteTask = async () => {
+    if (!task?.task_id) return;
+
+    setIsLoading(true);
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ 
+          status: 'COMPLETED',
+          completed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', task.task_id);
+
+      if (error) throw error;
+      
+      toast.success("Task marked as completed");
+      router.push('/dashboard/buyer');
+    } catch (error) {
+      console.error('Error completing task:', error);
+      toast.error("Failed to complete task");
     } finally {
       setIsLoading(false);
     }
@@ -333,12 +428,46 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
         {task.status === 'ACTIVE' && (
           <Card>
             <CardHeader>
-              <CardTitle>Progress Tracking</CardTitle>
+              <CardTitle>Task Applications</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-center text-muted-foreground p-8">
-                Progress tracking feature coming soon
-              </div>
+              {applications.length > 0 ? (
+                <div className="space-y-4">
+                  {applications.map((application) => (
+                    <div key={application.id} className="p-4 border rounded-lg">
+                      {application.influencer ? (
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h4 className="font-medium">{application.influencer.name}</h4>
+                            <div className="text-sm text-muted-foreground mt-1">
+                              <span className="capitalize">{application.influencer.platform.toLowerCase()}</span>
+                              <span className="mx-2">•</span>
+                              <span>{application.influencer.followers} followers</span>
+                              {application.promises[0] && (
+                                <>
+                                  <span className="mx-2">•</span>
+                                  <span>Promised reach: {application.promises[0].promised_reach}</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            Applied on {format(new Date(application.created_at), 'MMM d, yyyy')}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-sm text-muted-foreground">
+                          Application data unavailable
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center text-muted-foreground p-8">
+                  No applications yet
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
@@ -351,18 +480,28 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
             Back
           </Button>
           
-          {task.status === 'ACTIVE' && (
-            <Button
-              variant="outline"
-              className="text-red-600 border-red-600 hover:bg-red-50"
-              onClick={() => {
-                // TODO: Implement archive functionality
-                toast.info("Archive functionality coming soon");
-              }}
-            >
-              Archive Task
-            </Button>
-          )}
+          <div className="space-x-4">
+            {(task.status === 'DRAFT' || task.status === 'ACTIVE') && (
+              <Button
+                variant="outline"
+                className="text-red-600 border-red-600 hover:bg-red-50"
+                onClick={handleArchiveTask}
+                disabled={isLoading}
+              >
+                {isLoading ? 'Archiving...' : 'Archive Task'}
+              </Button>
+            )}
+            
+            {task.status === 'ACTIVE' && (
+              <Button
+                className="bg-gradient-to-r from-green-600 to-green-500 text-white hover:opacity-90"
+                onClick={handleCompleteTask}
+                disabled={isLoading}
+              >
+                {isLoading ? 'Completing...' : 'Mark as Completed'}
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     </div>

@@ -175,7 +175,8 @@ export default function InfluencerDashboardPage() {
               {appliedTasks.map((task) => (
                 <Card 
                   key={task.task_id} 
-                  className="group hover:border-primary transition-colors"
+                  className="group hover:border-primary transition-colors cursor-pointer"
+                  onClick={() => router.push(`/dashboard/task/${task.task_id}/apply`)}
                 >
                   <CardContent className="p-6">
                     <div>

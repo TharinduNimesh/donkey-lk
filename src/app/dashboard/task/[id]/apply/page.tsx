@@ -15,6 +15,9 @@ import { isUserInfluencer, getUserVerifiedPlatforms } from "@/lib/utils/user";
 import { calculateCostClient } from "@/lib/utils/cost";
 import { formatDateToNow } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { uploadProofImage } from "@/lib/utils/storage";
+import { getProofImageUrl, submitApplicationProofs, getApplicationProofs } from "@/lib/utils/proofs";
+import { MultipleProofUpload } from "@/components/ui/multiple-proof-upload";
 
 type TaskDetail = Database['public']['Views']['task_details']['Row'];
 type InfluencerProfile = Database['public']['Tables']['influencer_profile']['Row'];
@@ -28,9 +31,20 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
   const [task, setTask] = useState<TaskDetail | null>(null);
   const [verifiedProfiles, setVerifiedProfiles] = useState<InfluencerProfile[]>([]);
   const [selectedViews, setSelectedViews] = useState<Record<string, string>>({});
+  const [selectedProofs, setSelectedProofs] = useState<Record<string, Array<{
+    type: Database["public"]["Enums"]["ProofType"];
+    content: string;
+  }>>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [earnings, setEarnings] = useState<Record<string, number>>({});
   const [existingApplication, setExistingApplication] = useState<TaskApplication | null>(null);
+  const [existingProofs, setExistingProofs] = useState<Record<string, Array<{
+    type: Database["public"]["Enums"]["ProofType"];
+    content: string;
+    status?: Database["public"]["Enums"]["ProofStatus"];
+    reviewedAt?: string | null;
+  }>>>({});
+  const [proofUrls, setProofUrls] = useState<Record<string, string>>({});
 
   const supabase = createClientComponentClient<Database>();
 
@@ -91,6 +105,37 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
             ...acc,
             [promise.platform]: parseFloat(promise.est_profit)
           }), {}));
+
+          // If there's an existing application, fetch its proofs
+          const proofs = await getApplicationProofs(userApplication.id);
+          if (proofs) {
+            const proofsByPlatform = proofs.reduce((acc: Record<string, Array<{
+              type: Database["public"]["Enums"]["ProofType"];
+              content: string;
+              status?: Database["public"]["Enums"]["ProofStatus"];
+              reviewedAt?: string | null;
+            }>>, proof: {
+              platform: Database["public"]["Enums"]["Platforms"];
+              proof_type: Database["public"]["Enums"]["ProofType"];
+              content: string;
+              proof_status?: {
+                status: Database["public"]["Enums"]["ProofStatus"];
+                reviewed_at: string | null;
+              }
+            }) => ({
+              ...acc,
+              [proof.platform]: [
+                ...(acc[proof.platform] || []),
+                {
+                  type: proof.proof_type,
+                  content: proof.content,
+                  status: proof.proof_status?.status,
+                  reviewedAt: proof.proof_status?.reviewed_at
+                }
+              ]
+            }), {});
+            setExistingProofs(proofsByPlatform);
+          }
         }
 
         // Fetch verified profiles
@@ -146,11 +191,90 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
     calculateEarnings();
   }, [selectedViews, task]);
 
+  useEffect(() => {
+    const loadImageUrls = async () => {
+      const newUrls: Record<string, string> = {};
+      for (const [platform, proofs] of Object.entries(existingProofs)) {
+        for (const proof of proofs) {
+          if (proof.type === 'IMAGE') {
+            newUrls[proof.content] = await getProofImageUrl(proof.content);
+          }
+        }
+      }
+      setProofUrls(newUrls);
+    };
+
+    if (Object.keys(existingProofs).length > 0) {
+      loadImageUrls();
+    }
+  }, [existingProofs]);
+
   const handleViewsChange = (platform: string, views: string) => {
     setSelectedViews(prev => ({
       ...prev,
       [platform]: views
     }));
+  };
+
+  const handleProofAdd = (platform: string, type: Database["public"]["Enums"]["ProofType"], content: string) => {
+    setSelectedProofs(prev => ({
+      ...prev,
+      [platform]: [...(prev[platform] || []), { type, content }]
+    }));
+  };
+
+  const handleProofRemove = (platform: string, index: number) => {
+    setSelectedProofs(prev => ({
+      ...prev,
+      [platform]: prev[platform]?.filter((_, i) => i !== index) || []
+    }));
+  };
+
+  const handleProofSubmit = async () => {
+    if (!existingApplication?.id) {
+      toast.error("No active application found");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      // Upload image proofs if any
+      const proofPromises = Object.entries(selectedProofs).flatMap(([platform, proofs]) =>
+        proofs.map(async proof => {
+          if (proof.type === 'IMAGE') {
+            // Convert base64 to blob while preserving MIME type
+            const base64Response = await fetch(proof.content);
+            const blob = await base64Response.blob();
+            
+            // Create file with proper MIME type
+            const file = new File([blob], 'proof.jpg', { type: blob.type });
+            const filePath = await uploadProofImage(file);
+            
+            return {
+              platform: platform as Database["public"]["Enums"]["Platforms"],
+              proofType: proof.type,
+              content: filePath
+            };
+          }
+          return {
+            platform: platform as Database["public"]["Enums"]["Platforms"],
+            proofType: proof.type,
+            content: proof.content
+          };
+        })
+      );
+
+      const resolvedProofs = await Promise.all(proofPromises);
+      await submitApplicationProofs(existingApplication.id, resolvedProofs);
+
+      toast.success("Proofs submitted successfully!");
+      router.refresh();
+    } catch (error) {
+      console.error('Error submitting proofs:', error);
+      toast.error("Failed to submit proofs. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const calculateTotalViews = (platform: string) => {
@@ -377,6 +501,48 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
             </Card>
           </div>
         </>
+      )}
+
+      {existingApplication && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Submit Proofs</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              {/* Only show platforms that have promises */}
+              {existingApplication.application_promises.map((promise) => (
+                <div key={promise.platform} className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold">{promise.platform} Proofs</h3>
+                    <div className="text-sm text-muted-foreground">
+                      Promised: {formatViewCount(parseViewCount(promise.promised_reach))} views
+                    </div>
+                  </div>
+                  
+                  <MultipleProofUpload
+                    platform={promise.platform}
+                    existingProofs={existingProofs[promise.platform] || []}
+                    selectedProofs={selectedProofs[promise.platform] || []}
+                    proofUrls={proofUrls}
+                    onProofAdd={(type, content) => handleProofAdd(promise.platform, type, content)}
+                    onProofRemove={(index) => handleProofRemove(promise.platform, index)}
+                  />
+                </div>
+              ))}
+
+              <div className="flex justify-end">
+                <Button
+                  onClick={handleProofSubmit}
+                  disabled={isLoading || Object.keys(selectedProofs).length === 0}
+                  className="bg-gradient-to-r from-pink-500 to-pink-600 hover:opacity-90"
+                >
+                  {isLoading ? 'Submitting...' : 'Submit Proofs'}
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       <div className="flex justify-between">

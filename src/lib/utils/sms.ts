@@ -38,5 +38,8 @@ export async function sendSMS({ recipient, message, type = 'plain' }: SendSMSPar
 }
 
 export function generateVerificationCode(length: number = 6): string {
-  return Math.floor(Math.random() * Math.pow(10, length)).toString().padStart(length, '0');
+  // Generate a number between 100000 and 999999 (for 6 digits)
+  const min = Math.pow(10, length - 1);
+  const max = Math.pow(10, length) - 1;
+  return Math.floor(min + Math.random() * (max - min + 1)).toString();
 }
