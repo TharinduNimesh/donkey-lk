@@ -1,25 +1,11 @@
 import { Database } from "@/types/database.types";
 import { parseViewCount } from './views';
+import { env } from '../env';
 
-const PLATFORM_RATES = {
-  'YOUTUBE': 5, // $5 per 1000 views
-  'FACEBOOK': 3,
-  'TIKTOK': 4,
-  'INSTAGRAM': 6
-} as const;
-
-const DEADLINE_MULTIPLIERS = {
-  '3d': 2, // 2x for urgent delivery
-  '1w': 1.5,
-  '2w': 1.2,
-  '1m': 1,
-  '2m': 0.9,
-  '3m': 0.85,
-  '6m': 0.8,
-  'flexible': 0.75
-} as const;
-
-const SERVICE_FEE_PERCENTAGE = 0.1; // 10% service fee
+// Type-safe access to the platform rates and deadline multipliers
+const PLATFORM_RATES = env.PLATFORM_RATES;
+const DEADLINE_MULTIPLIERS = env.DEADLINE_MULTIPLIERS;
+const SERVICE_FEE_PERCENTAGE = env.SERVICE_FEE_PERCENTAGE;
 
 export function calculateCostClient(
   platform: keyof typeof PLATFORM_RATES,

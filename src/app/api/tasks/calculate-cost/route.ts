@@ -4,27 +4,12 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { Database } from '@/types/database.types'
 import { parseViewCount } from '@/lib/utils/views'
+import { env } from '@/lib/env'
 
-const PLATFORM_RATES = {
-  'YOUTUBE': 5,
-  'FACEBOOK': 3,
-  'TIKTOK': 4,
-  'INSTAGRAM': 6
-} as const;
-
-// Using type assertion to prevent TypeScript from narrowing the type
-const DEADLINE_MULTIPLIERS = {
-  '3d': 2,
-  '1w': 1.5,
-  '2w': 1.2,
-  '1m': 1,
-  '2m': 0.9,
-  '3m': 0.85,
-  '6m': 0.8,
-  'flexible': 0.75
-} satisfies Record<string, number>;
-
-const SERVICE_FEE_PERCENTAGE = 0.1; // 10% service fee
+// Using environment variables for rates and multipliers
+const PLATFORM_RATES = env.PLATFORM_RATES;
+const DEADLINE_MULTIPLIERS = env.DEADLINE_MULTIPLIERS;
+const SERVICE_FEE_PERCENTAGE = env.SERVICE_FEE_PERCENTAGE;
 
 type DeadlineMultiplier = typeof DEADLINE_MULTIPLIERS[keyof typeof DEADLINE_MULTIPLIERS];
 
