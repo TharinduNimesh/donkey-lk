@@ -1,6 +1,23 @@
 import { supabase } from "@/lib/supabase";
 import { v4 as uuidv4 } from 'uuid';
 
+export async function getStorageUrl(bucket: string, filePath: string) {
+  try {
+    const { data, error } = await supabase.storage
+      .from(bucket)
+      .createSignedUrl(filePath, 3600); // 1 hour expiry
+
+    if (error) {
+      throw error;
+    }
+
+    return data.signedUrl;
+  } catch (error) {
+    console.error('Error generating signed URL:', error);
+    return null;
+  }
+}
+
 export async function uploadTaskContent(file: File) {
   try {
     const fileExt = file.name.split('.').pop();

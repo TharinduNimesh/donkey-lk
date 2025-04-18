@@ -102,15 +102,57 @@ export type Database = {
           {
             foreignKeyName: "bank_transfer_slip_task_id_fkey"
             columns: ["task_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "task_details"
             referencedColumns: ["task_id"]
           },
           {
             foreignKeyName: "bank_transfer_slip_task_id_fkey"
             columns: ["task_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bank_transfer_status: {
+        Row: {
+          created_at: string
+          id: number
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: Database["public"]["Enums"]["BankTransferStatus"]
+          transfer_id: number
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["BankTransferStatus"]
+          transfer_id: number
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["BankTransferStatus"]
+          transfer_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bank_transfer_status_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profile"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bank_transfer_status_transfer_id_fkey"
+            columns: ["transfer_id"]
+            isOneToOne: true
+            referencedRelation: "bank_transfer_slip"
             referencedColumns: ["id"]
           },
         ]
@@ -601,6 +643,10 @@ export type Database = {
         Args: { task_id_input: number }
         Returns: boolean
       }
+      is_an_admin: {
+        Args: { user_id_input: string }
+        Returns: boolean
+      }
       is_an_influencer: {
         Args: { user_id_input: string }
         Returns: boolean
@@ -617,12 +663,21 @@ export type Database = {
         Args: { task_id_input: number }
         Returns: boolean
       }
+      update_bank_transfer_payment: {
+        Args: {
+          transfer_id_param: number
+          task_cost_id_param: number
+          is_accepted_param: boolean
+        }
+        Returns: undefined
+      }
       verify_youtube_channel: {
         Args: { p_profile_id: number; p_verification_id: number }
         Returns: undefined
       }
     }
     Enums: {
+      BankTransferStatus: "PENDING" | "ACCEPTED" | "REJECTED"
       ContactTypes: "EMAIL" | "MOBILE" | "WHATSAPP"
       PaymentMethod: "PAYMENT_GATEWAY" | "BANK_TRANSFER"
       Platforms: "YOUTUBE" | "FACEBOOK" | "TIKTOK" | "INSTAGRAM"
@@ -745,6 +800,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      BankTransferStatus: ["PENDING", "ACCEPTED", "REJECTED"],
       ContactTypes: ["EMAIL", "MOBILE", "WHATSAPP"],
       PaymentMethod: ["PAYMENT_GATEWAY", "BANK_TRANSFER"],
       Platforms: ["YOUTUBE", "FACEBOOK", "TIKTOK", "INSTAGRAM"],
