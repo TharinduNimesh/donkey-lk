@@ -1,13 +1,13 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { signIn, signInWithGoogle } from '@/lib/supabase'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { cn } from '@/lib/utils'
-import { FancyText } from '@/components/ui/fancy-text'
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { signIn, signInWithGoogle } from "@/lib/supabase";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
+import { FancyText } from "@/components/ui/fancy-text";
 
 const LabelInputContainer = ({
   children,
@@ -33,47 +33,47 @@ const BottomGradient = () => {
 };
 
 export function SignInForm() {
-  const router = useRouter()
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
   useEffect(() => {
-    localStorage.removeItem('setup-storage')
-  }, [])
+    localStorage.removeItem("setup-storage");
+  }, []);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    setLoading(true)
-    setError('')
+    e.preventDefault();
+    setLoading(true);
+    setError("");
 
-    const formData = new FormData(e.currentTarget)
-    const email = formData.get('email') as string
-    const password = formData.get('password') as string
+    const formData = new FormData(e.currentTarget);
+    const email = formData.get("email") as string;
+    const password = formData.get("password") as string;
 
-    const { data, error } = await signIn(email, password)
-    
+    const { data, error } = await signIn(email, password);
+
     if (error) {
-      setError(error.message)
-      setLoading(false)
-      return
+      setError(error.message);
+      setLoading(false);
+      return;
     }
 
     if (data?.hasProfile) {
-      router.replace('/dashboard')
+      router.replace("/dashboard");
     } else {
-      router.replace('/setup')
+      router.replace("/setup");
     }
   }
 
   async function handleGoogleSignIn() {
-    setLoading(true)
-    setError('')
-    
-    const { error } = await signInWithGoogle()
-    
+    setLoading(true);
+    setError("");
+
+    const { error } = await signInWithGoogle();
+
     if (error) {
-      setError(error.message)
-      setLoading(false)
+      setError(error.message);
+      setLoading(false);
     }
   }
 
@@ -103,7 +103,6 @@ export function SignInForm() {
               type="email"
               required
               placeholder="hello@brandsync.com"
-              className="relative h-11 w-full rounded-md bg-gray-50/50 px-4 font-medium shadow-input transition-all duration-300 placeholder:text-neutral-400 hover:bg-white focus:bg-white dark:bg-zinc-800/30 dark:text-white dark:hover:bg-zinc-800 dark:focus:bg-zinc-800 dark:shadow-[0px_0px_1px_1px_var(--zinc-800)] focus:!ring-pink-500/20 hover:!border-pink-500/30 focus:!border-pink-500/30"
             />
             <BottomGradient />
           </div>
@@ -117,7 +116,6 @@ export function SignInForm() {
               type="password"
               required
               placeholder="••••••••"
-              className="relative h-11 w-full rounded-md bg-gray-50/50 px-4 font-medium shadow-input transition-all duration-300 placeholder:text-neutral-400 hover:bg-white focus:bg-white dark:bg-zinc-800/30 dark:text-white dark:hover:bg-zinc-800 dark:focus:bg-zinc-800 dark:shadow-[0px_0px_1px_1px_var(--zinc-800)] focus:!ring-pink-500/20 hover:!border-pink-500/30 focus:!border-pink-500/30"
             />
             <BottomGradient />
           </div>
@@ -127,7 +125,7 @@ export function SignInForm() {
           type="submit"
           disabled={loading}
         >
-          {loading ? 'Signing in...' : 'Sign in'}
+          {loading ? "Signing in..." : "Sign in"}
           <BottomGradient />
         </button>
       </form>
@@ -165,12 +163,13 @@ export function SignInForm() {
       <p className="mt-6 text-center text-sm text-muted-foreground">
         Don't have an account?{" "}
         <button
-          onClick={() => router.push('/auth/signup')}
+          onClick={() => router.push("/auth/signup")}
           className="text-pink-500 hover:text-pink-600 font-medium underline-offset-4 hover:underline"
         >
           Sign up
         </button>
       </p>
+      
     </div>
-  )
+  );
 }

@@ -1,12 +1,12 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { signUp, signInWithGoogle } from '@/lib/supabase'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { cn } from '@/lib/utils'
-import { FancyText } from '@/components/ui/fancy-text'
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { signUp, signInWithGoogle } from "@/lib/supabase";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
+import { FancyText } from "@/components/ui/fancy-text";
 
 const LabelInputContainer = ({
   children,
@@ -32,51 +32,51 @@ const BottomGradient = () => {
 };
 
 export function SignUpForm() {
-  const router = useRouter()
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    localStorage.removeItem('setup-storage')
-  }, [])
+    localStorage.removeItem("setup-storage");
+  }, []);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    setLoading(true)
-    setError('')
+    e.preventDefault();
+    setLoading(true);
+    setError("");
 
-    const formData = new FormData(e.currentTarget)
-    const email = formData.get('email') as string
-    const password = formData.get('password') as string
-    const confirmPassword = formData.get('confirmPassword') as string
+    const formData = new FormData(e.currentTarget);
+    const email = formData.get("email") as string;
+    const password = formData.get("password") as string;
+    const confirmPassword = formData.get("confirmPassword") as string;
 
     if (password !== confirmPassword) {
-      setError('Passwords do not match')
-      setLoading(false)
-      return
+      setError("Passwords do not match");
+      setLoading(false);
+      return;
     }
 
-    const { error } = await signUp(email, password)
-    
+    const { error } = await signUp(email, password);
+
     if (error) {
-      setError(error.message)
-      setLoading(false)
-      return
+      setError(error.message);
+      setLoading(false);
+      return;
     }
 
-    router.push('/auth?message=Check your email to confirm your account')
-    router.refresh()
+    router.push("/auth?message=Check your email to confirm your account");
+    router.refresh();
   }
 
   async function handleGoogleSignIn() {
-    setLoading(true)
-    setError('')
-    
-    const { error } = await signInWithGoogle()
-    
+    setLoading(true);
+    setError("");
+
+    const { error } = await signInWithGoogle();
+
     if (error) {
-      setError(error.message)
-      setLoading(false)
+      setError(error.message);
+      setLoading(false);
     }
   }
 
@@ -106,7 +106,6 @@ export function SignUpForm() {
               type="email"
               required
               placeholder="hello@brandsync.com"
-              className="relative h-11 w-full rounded-md bg-gray-50/50 px-4 font-medium shadow-input transition-all duration-300 placeholder:text-neutral-400 hover:bg-white focus:bg-white dark:bg-zinc-800/30 dark:text-white dark:hover:bg-zinc-800 dark:focus:bg-zinc-800 dark:shadow-[0px_0px_1px_1px_var(--zinc-800)] focus:!ring-pink-500/20 hover:!border-pink-500/30 focus:!border-pink-500/30"
             />
             <BottomGradient />
           </div>
@@ -120,7 +119,6 @@ export function SignUpForm() {
               type="password"
               required
               placeholder="••••••••"
-              className="relative h-11 w-full rounded-md bg-gray-50/50 px-4 font-medium shadow-input transition-all duration-300 placeholder:text-neutral-400 hover:bg-white focus:bg-white dark:bg-zinc-800/30 dark:text-white dark:hover:bg-zinc-800 dark:focus:bg-zinc-800 dark:shadow-[0px_0px_1px_1px_var(--zinc-800)] focus:!ring-pink-500/20 hover:!border-pink-500/30 focus:!border-pink-500/30"
               minLength={6}
             />
             <BottomGradient />
@@ -135,7 +133,6 @@ export function SignUpForm() {
               type="password"
               required
               placeholder="••••••••"
-              className="relative h-11 w-full rounded-md bg-gray-50/50 px-4 font-medium shadow-input transition-all duration-300 placeholder:text-neutral-400 hover:bg-white focus:bg-white dark:bg-zinc-800/30 dark:text-white dark:hover:bg-zinc-800 dark:focus:bg-zinc-800 dark:shadow-[0px_0px_1px_1px_var(--zinc-800)] focus:!ring-pink-500/20 hover:!border-pink-500/30 focus:!border-pink-500/30"
               minLength={6}
             />
             <BottomGradient />
@@ -146,7 +143,7 @@ export function SignUpForm() {
           type="submit"
           disabled={loading}
         >
-          {loading ? 'Creating account...' : 'Sign up'}
+          {loading ? "Creating account..." : "Sign up"}
           <BottomGradient />
         </button>
       </form>
@@ -184,12 +181,12 @@ export function SignUpForm() {
       <p className="mt-6 text-center text-sm text-muted-foreground">
         Already have an account?{" "}
         <button
-          onClick={() => router.push('/auth')}
+          onClick={() => router.push("/auth")}
           className="text-pink-500 hover:text-pink-600 font-medium underline-offset-4 hover:underline"
         >
           Sign in
         </button>
       </p>
     </div>
-  )
+  );
 }
