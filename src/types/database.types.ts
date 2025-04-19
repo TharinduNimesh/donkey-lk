@@ -650,6 +650,18 @@ export type Database = {
         }
         Returns: undefined
       }
+      get_dashboard_data: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          total_buyers: number
+          total_influencers: number
+          active_tasks: number
+          total_campaign_tasks: number
+          total_revenue: number
+          total_monthly_revenue: number
+          pending_payments: number
+        }[]
+      }
       is_a_buyer: {
         Args: { user_id_input: string }
         Returns: boolean

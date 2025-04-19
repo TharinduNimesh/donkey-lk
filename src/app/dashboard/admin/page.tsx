@@ -15,12 +15,40 @@ export default function AdminDashboardPage() {
   const supabase = createClientComponentClient<Database>();
   const [isLoading, setIsLoading] = useState(false);
   const [stats, setStats] = useState({
-    totalUsers: 0,
-    totalBrands: 0,
+    totalBuyers: 0,
     totalInfluencers: 0,
-    totalTasks: 0,
-    totalRevenue: 0
+    activeTasks: 0,
+    totalCampaignTasks: 0,
+    totalRevenue: 0,
+    totalMonthlyRevenue: 0,
+    pendingPayments: 0
   });
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const { data, error } = await supabase.rpc('get_dashboard_data');
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          const dashboardData = data[0];
+          setStats({
+            totalBuyers: dashboardData.total_buyers,
+            totalInfluencers: dashboardData.total_influencers,
+            activeTasks: dashboardData.active_tasks,
+            totalCampaignTasks: dashboardData.total_campaign_tasks,
+            totalRevenue: dashboardData.total_revenue,
+            totalMonthlyRevenue: dashboardData.total_monthly_revenue,
+            pendingPayments: dashboardData.pending_payments
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+      }
+    };
+
+    fetchDashboardData();
+  }, [supabase]);
 
   useEffect(() => {
     const checkAdminAccess = async () => {
@@ -72,12 +100,11 @@ export default function AdminDashboardPage() {
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader>
-            <CardTitle>Total Users</CardTitle>
+            <CardTitle>Total Buyers</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">{stats.totalUsers}</p>
+            <p className="text-3xl font-bold">{stats.totalBuyers}</p>
             <div className="mt-2 space-y-1">
-              <p className="text-sm text-muted-foreground">Brands: {stats.totalBrands}</p>
               <p className="text-sm text-muted-foreground">Influencers: {stats.totalInfluencers}</p>
             </div>
           </CardContent>
@@ -88,8 +115,8 @@ export default function AdminDashboardPage() {
             <CardTitle>Active Tasks</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">{stats.totalTasks}</p>
-            <p className="text-sm text-muted-foreground">Total campaign tasks</p>
+            <p className="text-3xl font-bold">{stats.activeTasks}</p>
+            <p className="text-sm text-muted-foreground">Total campaign tasks: {stats.totalCampaignTasks}</p>
           </CardContent>
         </Card>
 
@@ -99,7 +126,8 @@ export default function AdminDashboardPage() {
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold">${stats.totalRevenue.toLocaleString()}</p>
-            <p className="text-sm text-muted-foreground">Platform earnings</p>
+            <p className="text-sm text-muted-foreground">Monthly revenue: ${stats.totalMonthlyRevenue.toLocaleString()}</p>
+            <p className="text-sm text-muted-foreground">Pending payments: ${stats.pendingPayments.toLocaleString()}</p>
           </CardContent>
         </Card>
       </div>
