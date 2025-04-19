@@ -108,14 +108,4 @@ export async function updatePaymentStatus(
     .eq('task_id', taskId);
 
   if (costError) throw costError;
-
-  // Update task status to ACTIVE if payment is successful
-  if (paymentDetails.is_paid) {
-    const { error: taskError } = await supabaseAdmin
-      .from('tasks')
-      .update({ status: 'ACTIVE' })
-      .eq('id', taskId);
-
-    if (taskError) throw taskError;
-  }
 }

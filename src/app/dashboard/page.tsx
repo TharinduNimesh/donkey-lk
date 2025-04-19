@@ -24,6 +24,10 @@ export default async function DashboardPage() {
   }
 
   // Redirect based on role
+  if (profile.role.includes("ADMIN")) {
+    return redirect("/dashboard/admin");
+  }
+  
   if (profile.role.includes("INFLUENCER")) {
     return redirect("/dashboard/influencer");
   }

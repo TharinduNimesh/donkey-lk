@@ -1,6 +1,7 @@
+import { Database } from '@/types/database.types'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 
-export const supabase = createClientComponentClient()
+export const supabase = createClientComponentClient<Database>()
 
 export type AuthError = {
   message: string

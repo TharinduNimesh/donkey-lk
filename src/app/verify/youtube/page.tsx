@@ -271,6 +271,7 @@ function YouTubeVerificationContent() {
           platform: 'YOUTUBE',
           name: channelInfo?.title || '',
           followers: channelInfo?.subscribers || '0',
+          profile_pic: channelInfo?.thumbnail || '',
           url: channelUrl,
           is_verified: false
         });

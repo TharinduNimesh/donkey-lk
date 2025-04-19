@@ -26,9 +26,9 @@ interface TaskForm {
   contentFile: File | null;
   platforms: {
     platform: Platform;
-    target_views: string; // Changed from number to string
+    target_views: string;
     deadline_option: "3d" | "1w" | "2w" | "1m" | "2m" | "3m" | "6m" | "flexible";
-    deadline: string;
+    deadline: string | null;
     estimatedCost?: number;
   }[];
   payment?: {
@@ -109,7 +109,7 @@ export default function CreateTaskPage() {
         platform,
         target_views: "0", // Changed to string
         deadline_option: "flexible",
-        deadline: ""
+        deadline: null
       }]
     }));
   };
@@ -133,9 +133,13 @@ export default function CreateTaskPage() {
           let updatedPlatform = { ...p, [field]: value };
 
           if (field === 'deadline_option') {
-            const option = deadlineOptions.find(opt => opt.value === value);
-            if (option) {
-              updatedPlatform.deadline = option.getFutureDate().toISOString();
+            if (value === 'flexible') {
+              updatedPlatform.deadline = null;
+            } else {
+              const option = deadlineOptions.find(opt => opt.value === value);
+              if (option) {
+                updatedPlatform.deadline = option.getFutureDate().toISOString();
+              }
             }
           }
 
@@ -558,7 +562,14 @@ export default function CreateTaskPage() {
                           )}
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          <p>{formatViewCount(parseViewCount(platform.target_views))} views by {new Date(platform.deadline).toLocaleDateString()}</p>
+                          <p>
+                            {formatViewCount(parseViewCount(platform.target_views))} views
+                            {platform.deadline ? (
+                              <> by {new Date(platform.deadline).toLocaleDateString()}</>
+                            ) : (
+                              <> (Flexible deadline)</>
+                            )}
+                          </p>
                         </div>
                       </div>
                     ))}
