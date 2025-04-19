@@ -121,8 +121,8 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
                 {
                   type: proof.proof_type,
                   content: proof.content,
-                  status: proof.proof_status?.[0]?.status,
-                  reviewedAt: proof.proof_status?.[0]?.reviewed_at
+                  status: proof.proof_status?.status,
+                  reviewedAt: proof.proof_status?.reviewed_at
                 }
               ]
             }), {});
@@ -188,8 +188,11 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
       const newUrls: Record<string, string> = {};
       for (const [platform, proofs] of Object.entries(existingProofs)) {
         for (const proof of proofs) {
-          if (proof.type === 'IMAGE') {
-            newUrls[proof.content] = await getProofImageUrl(proof.content);
+          if (proof.type === 'IMAGE' && proof.content) {
+            const url = await getProofImageUrl(proof.content);
+            if (url) {  // Only add the URL if it's not null
+              newUrls[proof.content] = url;
+            }
           }
         }
       }
