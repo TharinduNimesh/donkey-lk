@@ -83,7 +83,7 @@ export async function verifyYouTubeChannel(channelUrl: string, userId: string, c
   }
 }
 
-export async function generateVerificationCode(profileId: string) {
+export async function generateVerificationCode(profileId: number) {
   try {
     const response = await fetch('/api/verification/generate', {
       method: 'POST',

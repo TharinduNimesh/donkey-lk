@@ -29,6 +29,16 @@ export async function setupUserProfile({
       throw checkError;
     }
 
+    const user = await supabase.auth.getUser();
+    if (!user.data.user) {
+      throw new Error("User not authenticated");
+    }
+    // Check if the user is the same as the one being set up
+    if (user.data.user.id !== userId) {
+      throw new Error("User ID does not match the authenticated user");
+    }
+
+
     // Create profile only if it doesn't exist
     if (!existingProfile) {
       const { error: profileError } = await supabase
@@ -37,6 +47,7 @@ export async function setupUserProfile({
           id: userId,
           name,
           role,
+          email: user.data.user.email || '',
         });
 
       if (profileError) {

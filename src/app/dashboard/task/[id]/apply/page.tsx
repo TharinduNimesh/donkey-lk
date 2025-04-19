@@ -114,23 +114,15 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
               content: string;
               status?: Database["public"]["Enums"]["ProofStatus"];
               reviewedAt?: string | null;
-            }>>, proof: {
-              platform: Database["public"]["Enums"]["Platforms"];
-              proof_type: Database["public"]["Enums"]["ProofType"];
-              content: string;
-              proof_status?: {
-                status: Database["public"]["Enums"]["ProofStatus"];
-                reviewed_at: string | null;
-              }
-            }) => ({
+            }>>, proof) => ({
               ...acc,
               [proof.platform]: [
                 ...(acc[proof.platform] || []),
                 {
                   type: proof.proof_type,
                   content: proof.content,
-                  status: proof.proof_status?.status,
-                  reviewedAt: proof.proof_status?.reviewed_at
+                  status: proof.proof_status?.[0]?.status,
+                  reviewedAt: proof.proof_status?.[0]?.reviewed_at
                 }
               ]
             }), {});

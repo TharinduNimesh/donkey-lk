@@ -261,6 +261,7 @@ export type Database = {
           is_verified: boolean
           name: string
           platform: Database["public"]["Enums"]["Platforms"]
+          profile_pic: string | null
           updated_at: string | null
           url: string
           user_id: string | null
@@ -272,6 +273,7 @@ export type Database = {
           is_verified?: boolean
           name: string
           platform: Database["public"]["Enums"]["Platforms"]
+          profile_pic?: string | null
           updated_at?: string | null
           url: string
           user_id?: string | null
@@ -283,6 +285,7 @@ export type Database = {
           is_verified?: boolean
           name?: string
           platform?: Database["public"]["Enums"]["Platforms"]
+          profile_pic?: string | null
           updated_at?: string | null
           url?: string
           user_id?: string | null
@@ -364,6 +367,7 @@ export type Database = {
       profile: {
         Row: {
           created_at: string
+          email: string
           id: string
           name: string
           profile_pic: string | null
@@ -371,6 +375,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          email: string
           id: string
           name: string
           profile_pic?: string | null
@@ -378,6 +383,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          email?: string
           id?: string
           name?: string
           profile_pic?: string | null
@@ -635,6 +641,15 @@ export type Database = {
       }
     }
     Functions: {
+      accept_influencer_verification: {
+        Args: {
+          p_request_id: number
+          p_name: string
+          p_followers: string
+          p_pic: string
+        }
+        Returns: undefined
+      }
       is_a_buyer: {
         Args: { user_id_input: string }
         Returns: boolean
