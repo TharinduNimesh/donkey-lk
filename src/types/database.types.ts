@@ -420,7 +420,7 @@ export type Database = {
           {
             foreignKeyName: "proof_status_proof_id_fkey"
             columns: ["proof_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "application_proofs"
             referencedColumns: ["id"]
           },

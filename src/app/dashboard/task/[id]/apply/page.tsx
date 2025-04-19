@@ -17,7 +17,7 @@ import { formatDateToNow } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { uploadProofImage } from "@/lib/utils/storage";
 import { getProofImageUrl, submitApplicationProofs, getApplicationProofs } from "@/lib/utils/proofs";
-import { MultipleProofUpload } from "@/components/ui/multiple-proof-upload";
+import { ProofUpload } from "@/components/ui/proof-upload";
 
 type TaskDetail = Database['public']['Views']['task_details']['Row'];
 type InfluencerProfile = Database['public']['Tables']['influencer_profile']['Row'];
@@ -257,10 +257,24 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
       );
 
       const resolvedProofs = await Promise.all(proofPromises);
-      await submitApplicationProofs(existingApplication.id, resolvedProofs);
 
-      toast.success("Proofs submitted successfully!");
-      router.refresh();
+      try {
+        await submitApplicationProofs(existingApplication.id, resolvedProofs);
+        toast.success("Proofs submitted successfully!");
+        
+        // Reset selected proofs after successful submission
+        setSelectedProofs({});
+        
+        // Refresh the page to show new proofs
+        router.refresh();
+      } catch (err: any) {
+        // Handle unique constraint violation
+        if (err.message?.includes('application_proofs_platform_type_app_unique')) {
+          toast.error("You can only submit one proof of each type per platform");
+        } else {
+          throw err;
+        }
+      }
     } catch (error) {
       console.error('Error submitting proofs:', error);
       toast.error("Failed to submit proofs. Please try again.");
@@ -512,7 +526,7 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
                     </div>
                   </div>
                   
-                  <MultipleProofUpload
+                  <ProofUpload
                     platform={promise.platform}
                     existingProofs={existingProofs[promise.platform] || []}
                     selectedProofs={selectedProofs[promise.platform] || []}

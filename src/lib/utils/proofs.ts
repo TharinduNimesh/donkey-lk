@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import { Database } from "@/types/database.types";
+import { getStorageUrl } from "./storage";
 
 export async function submitApplicationProofs(applicationId: number, proofs: Array<{
   platform: Database["public"]["Enums"]["Platforms"];
@@ -47,11 +48,9 @@ export async function getApplicationProofs(applicationId: number) {
 
 export async function getProofImageUrl(filePath: string) {
   try {
-    const { data } = await supabase.storage
-      .from('proof-images')
-      .getPublicUrl(filePath);
+    const url = await getStorageUrl('proof-images', filePath);
 
-    return data.publicUrl;
+    return url;
   } catch (error) {
     console.error('Error getting proof image URL:', error);
     throw error;
