@@ -56,7 +56,7 @@ export function FinalStep({ onBack }: FinalStepProps) {
       const { error } = await setupUserProfile({
         userId: user.id,
         name: personalInfo.name,
-        role: userType === "influencer" ? ['INFLUENCER'] : ['BRAND'],
+        role: userType === "influencer" ? ['INFLUENCER'] : ['BUYER'],
         mobile: personalInfo.mobile,
         onError: (error) => {
           toast.error("Failed to setup profile. Please try again.", {
@@ -109,10 +109,9 @@ export function FinalStep({ onBack }: FinalStepProps) {
       <motion.div
         whileHover="hover"
         variants={cardVariants}
-        transition={{ duration: 0.2 }}
+        transition={{ delay: 0.1, duration: 0.3 }}
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1, duration: 0.3 }}
       >
         <Card className="overflow-hidden border border-pink-100/50 dark:border-pink-900/50 transition-all duration-200">
           <div className="p-6">
