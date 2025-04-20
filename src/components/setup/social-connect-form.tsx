@@ -54,10 +54,15 @@ export function SocialConnectForm({ onBack }: SocialConnectFormProps) {
         return;
       }
 
+      // Determine destination based on user type
+      const destination = userType === "influencer"
+        ? "/dashboard/influencer"
+        : "/dashboard/buyer";
+
       const { error } = await setupUserProfile({
         userId: user.id,
         name: personalInfo.name,
-        role: ['INFLUENCER'],
+        role: userType === "influencer" ? ['INFLUENCER'] : ['BUYER'],
         mobile: personalInfo.mobile,
         onError: (error) => {
           toast.error("Failed to setup profile. Please try again.", {
@@ -73,11 +78,14 @@ export function SocialConnectForm({ onBack }: SocialConnectFormProps) {
           id: toastId
         });
 
-        router.push('/dashboard');
-        router.refresh();
+        // Force navigation to the appropriate dashboard
+        window.location.href = destination;
       }
     } catch (error) {
       console.error('Error saving profile:', error);
+      toast.error("An unexpected error occurred. Please try again.", {
+        id: toastId
+      });
     } finally {
       setIsLoading(false);
       setIsSkipping(false);

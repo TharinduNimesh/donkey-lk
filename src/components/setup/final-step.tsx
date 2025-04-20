@@ -19,19 +19,7 @@ export function FinalStep({ onBack }: FinalStepProps) {
   const router = useRouter();
   const { personalInfo, userType } = useSetupStore();
   const [isLoading, setIsLoading] = useState(false);
-
-  if (!personalInfo || !userType) {
-    return (
-      <div className="space-y-6 text-center">
-        <h2 className="text-2xl font-semibold">Missing Information</h2>
-        <p className="text-muted-foreground">
-          Some required information is missing. Please go back and complete
-          previous steps.
-        </p>
-        <Button onClick={onBack}>Back</Button>
-      </div>
-    );
-  }
+  const [isNavigating, setIsNavigating] = useState(false);
 
   const handleComplete = async () => {
     setIsLoading(true);
@@ -40,10 +28,22 @@ export function FinalStep({ onBack }: FinalStepProps) {
     try {
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
+      
+      // Check if we have all required data
       if (!user) {
-        toast.error("Authentication error. Please try logging in again.", {
+        toast.error("Authentication error. Please sign in again.", {
           id: toastId
         });
+        setIsLoading(false);
+        router.push('/auth');
+        return;
+      }
+
+      if (!personalInfo?.name || !personalInfo?.mobile || !userType) {
+        toast.error("Required information is missing. Please complete all fields.", {
+          id: toastId
+        });
+        setIsLoading(false);
         return;
       }
 
@@ -61,26 +61,64 @@ export function FinalStep({ onBack }: FinalStepProps) {
         onError: (error) => {
           toast.error("Failed to setup profile. Please try again.", {
             id: toastId,
-            description: error.message,
+            description: error?.message || "Unknown error occurred",
             richColors: true,
           });
         },
       });
 
-      if (!error) {
-        toast.success("Account setup completed successfully!", {
+      if (error) {
+        toast.error("Failed to setup profile. Please try again.", {
           id: toastId,
+          description: (error as any).message || "Unknown error",
+          richColors: true,
         });
-
-        router.push(destination);
-        router.refresh();
+        setIsLoading(false);
+        return;
       }
+      
+      // Success - show toast and navigate to dashboard
+      toast.success("Account setup completed successfully!", {
+        id: toastId,
+      });
+
+      // Force navigation to dashboard
+      setIsNavigating(true);
+      setTimeout(() => {
+        window.location.href = destination;
+      }, 500);
+      
     } catch (error) {
       console.error("Error saving profile:", error);
-    } finally {
+      toast.error("An unexpected error occurred. Please try again.", {
+        id: toastId,
+      });
       setIsLoading(false);
     }
   };
+
+  // If missing info but not yet submitted, just automatically go back instead of showing error
+  if (!isNavigating && (!personalInfo || !userType)) {
+    // Navigate back silently
+    setTimeout(() => onBack(), 0);
+    
+    return (
+      <div className="flex flex-col items-center justify-center py-12">
+        <div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-pink-500 rounded-full mb-4"></div>
+        <p className="text-muted-foreground">Loading your information...</p>
+      </div>
+    );
+  }
+
+  // If already navigating or loading, show loading state
+  if (isNavigating || (isLoading && (!personalInfo || !userType))) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12">
+        <div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-pink-500 rounded-full mb-4"></div>
+        <p className="text-muted-foreground">Redirecting to your dashboard...</p>
+      </div>
+    );
+  }
 
   const cardVariants = {
     hover: {
@@ -90,6 +128,7 @@ export function FinalStep({ onBack }: FinalStepProps) {
     },
   };
 
+  // The rest of the component remains the same
   return (
     <div className="space-y-6">
       <motion.div 
@@ -120,12 +159,12 @@ export function FinalStep({ onBack }: FinalStepProps) {
             <div className="mt-4 space-y-4">
               <div>
                 <span className="text-sm text-muted-foreground">Name</span>
-                <p className="font-medium">{personalInfo.name}</p>
+                <p className="font-medium">{personalInfo?.name}</p>
               </div>
               
               <div>
                 <span className="text-sm text-muted-foreground">Mobile</span>
-                <p className="font-medium">{personalInfo.mobile}</p>
+                <p className="font-medium">{personalInfo?.mobile}</p>
               </div>
               
               <div>
@@ -192,7 +231,7 @@ export function FinalStep({ onBack }: FinalStepProps) {
         <Button
           variant="ghost"
           onClick={onBack}
-          disabled={isLoading}
+          disabled={isLoading || isNavigating}
           className="text-muted-foreground hover:text-foreground"
         >
           <svg
@@ -212,16 +251,16 @@ export function FinalStep({ onBack }: FinalStepProps) {
         </Button>
         <Button 
           onClick={handleComplete} 
-          disabled={isLoading}
+          disabled={isLoading || isNavigating}
           className="bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white"
         >
-          {isLoading ? (
+          {isLoading || isNavigating ? (
             <span className="flex items-center">
               <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
-              Setting up...
+              {isNavigating ? "Redirecting..." : "Setting up..."}
             </span>
           ) : "Complete Setup"}
         </Button>

@@ -67,16 +67,9 @@ function SetupContent() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-pink-50/30 dark:to-pink-950/10 py-12 px-4">
-      {/* Stepper centered with dedicated styling */}
-      <div className="flex justify-center mb-12">
-        <div className="w-full max-w-3xl mx-auto px-4">
-          <Stepper steps={steps} currentStep={currentStep} />
-        </div>
-      </div>
-      
-      {/* Card content */}
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-b from-background to-pink-50/30 dark:to-pink-950/10 py-20 px-4">
+      <div className="max-w-4xl mx-auto space-y-8">
+        <Stepper steps={steps} currentStep={currentStep} />
         <Card className="p-6 border border-pink-100/50 dark:border-pink-900/50 shadow-sm">
           {currentStep === 0 && <WelcomeScreen onNext={handleNext} />}
           {currentStep === 1 && <PersonalInfoForm onNext={handleNext} />}
