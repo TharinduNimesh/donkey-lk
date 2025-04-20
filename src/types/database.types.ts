@@ -9,6 +9,111 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      account_balance: {
+        Row: {
+          balance: number
+          created_at: string
+          id: number
+          last_withdrawal: string | null
+          total_earning: number
+          user_id: string
+        }
+        Insert: {
+          balance?: number
+          created_at?: string
+          id?: number
+          last_withdrawal?: string | null
+          total_earning?: number
+          user_id: string
+        }
+        Update: {
+          balance?: number
+          created_at?: string
+          id?: number
+          last_withdrawal?: string | null
+          total_earning?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "account_balance_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profile"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      application_promises: {
+        Row: {
+          application_id: number
+          created_at: string
+          est_profit: string
+          id: number
+          platform: Database["public"]["Enums"]["Platforms"]
+          promised_reach: string
+        }
+        Insert: {
+          application_id: number
+          created_at?: string
+          est_profit: string
+          id?: number
+          platform: Database["public"]["Enums"]["Platforms"]
+          promised_reach: string
+        }
+        Update: {
+          application_id?: number
+          created_at?: string
+          est_profit?: string
+          id?: number
+          platform?: Database["public"]["Enums"]["Platforms"]
+          promised_reach?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "application_promises_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "task_applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      application_proofs: {
+        Row: {
+          application_id: number
+          content: string
+          created_at: string
+          id: number
+          platform: Database["public"]["Enums"]["Platforms"]
+          proof_type: Database["public"]["Enums"]["ProofType"]
+        }
+        Insert: {
+          application_id: number
+          content: string
+          created_at?: string
+          id?: number
+          platform: Database["public"]["Enums"]["Platforms"]
+          proof_type: Database["public"]["Enums"]["ProofType"]
+        }
+        Update: {
+          application_id?: number
+          content?: string
+          created_at?: string
+          id?: number
+          platform?: Database["public"]["Enums"]["Platforms"]
+          proof_type?: Database["public"]["Enums"]["ProofType"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "application_proofs_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "task_applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bank_transfer_slip: {
         Row: {
           created_at: string
@@ -32,15 +137,57 @@ export type Database = {
           {
             foreignKeyName: "bank_transfer_slip_task_id_fkey"
             columns: ["task_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "task_details"
             referencedColumns: ["task_id"]
           },
           {
             foreignKeyName: "bank_transfer_slip_task_id_fkey"
             columns: ["task_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bank_transfer_status: {
+        Row: {
+          created_at: string
+          id: number
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: Database["public"]["Enums"]["BankTransferStatus"]
+          transfer_id: number
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["BankTransferStatus"]
+          transfer_id: number
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["BankTransferStatus"]
+          transfer_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bank_transfer_status_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profile"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bank_transfer_status_transfer_id_fkey"
+            columns: ["transfer_id"]
+            isOneToOne: true
+            referencedRelation: "bank_transfer_slip"
             referencedColumns: ["id"]
           },
         ]
@@ -149,6 +296,7 @@ export type Database = {
           is_verified: boolean
           name: string
           platform: Database["public"]["Enums"]["Platforms"]
+          profile_pic: string | null
           updated_at: string | null
           url: string
           user_id: string | null
@@ -160,6 +308,7 @@ export type Database = {
           is_verified?: boolean
           name: string
           platform: Database["public"]["Enums"]["Platforms"]
+          profile_pic?: string | null
           updated_at?: string | null
           url: string
           user_id?: string | null
@@ -171,6 +320,7 @@ export type Database = {
           is_verified?: boolean
           name?: string
           platform?: Database["public"]["Enums"]["Platforms"]
+          profile_pic?: string | null
           updated_at?: string | null
           url?: string
           user_id?: string | null
@@ -252,6 +402,7 @@ export type Database = {
       profile: {
         Row: {
           created_at: string
+          email: string
           id: string
           name: string
           profile_pic: string | null
@@ -259,6 +410,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          email: string
           id: string
           name: string
           profile_pic?: string | null
@@ -266,12 +418,101 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          email?: string
           id?: string
           name?: string
           profile_pic?: string | null
           role?: Database["public"]["Enums"]["Roles"][]
         }
         Relationships: []
+      }
+      proof_status: {
+        Row: {
+          created_at: string
+          id: number
+          proof_id: number
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: Database["public"]["Enums"]["ProofStatus"]
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          proof_id: number
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["ProofStatus"]
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          proof_id?: number
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["ProofStatus"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proof_status_proof_id_fkey"
+            columns: ["proof_id"]
+            isOneToOne: true
+            referencedRelation: "application_proofs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proof_status_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profile"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_applications: {
+        Row: {
+          created_at: string
+          id: number
+          is_cancelled: boolean
+          task_id: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          is_cancelled?: boolean
+          task_id: number
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          is_cancelled?: boolean
+          task_id?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_applications_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "task_details"
+            referencedColumns: ["task_id"]
+          },
+          {
+            foreignKeyName: "task_applications_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_applications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profile"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       task_cost: {
         Row: {
@@ -435,12 +676,45 @@ export type Database = {
       }
     }
     Functions: {
+      accept_influencer_verification: {
+        Args: {
+          p_request_id: number
+          p_name: string
+          p_followers: string
+          p_pic: string
+        }
+        Returns: undefined
+      }
+      get_dashboard_data: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          total_buyers: number
+          total_influencers: number
+          active_tasks: number
+          total_campaign_tasks: number
+          total_revenue: number
+          total_monthly_revenue: number
+          pending_payments: number
+        }[]
+      }
       is_a_buyer: {
+        Args: { user_id_input: string }
+        Returns: boolean
+      }
+      is_active_task: {
+        Args: { task_id_input: number }
+        Returns: boolean
+      }
+      is_an_admin: {
         Args: { user_id_input: string }
         Returns: boolean
       }
       is_an_influencer: {
         Args: { user_id_input: string }
+        Returns: boolean
+      }
+      is_it_my_application: {
+        Args: { application_id_input: number }
         Returns: boolean
       }
       is_it_my_contact: {
@@ -451,15 +725,26 @@ export type Database = {
         Args: { task_id_input: number }
         Returns: boolean
       }
+      update_bank_transfer_payment: {
+        Args: {
+          transfer_id_param: number
+          task_cost_id_param: number
+          is_accepted_param: boolean
+        }
+        Returns: undefined
+      }
       verify_youtube_channel: {
         Args: { p_profile_id: number; p_verification_id: number }
         Returns: undefined
       }
     }
     Enums: {
+      BankTransferStatus: "PENDING" | "ACCEPTED" | "REJECTED"
       ContactTypes: "EMAIL" | "MOBILE" | "WHATSAPP"
       PaymentMethod: "PAYMENT_GATEWAY" | "BANK_TRANSFER"
       Platforms: "YOUTUBE" | "FACEBOOK" | "TIKTOK" | "INSTAGRAM"
+      ProofStatus: "UNDER_REVIEW" | "ACCEPTED" | "REJECTED"
+      ProofType: "IMAGE" | "URL"
       Roles: "ADMIN" | "BUYER" | "INFLUENCER"
       TaskStatus: "DRAFT" | "ACTIVE" | "ARCHIVED" | "COMPLETED"
     }
@@ -577,9 +862,12 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      BankTransferStatus: ["PENDING", "ACCEPTED", "REJECTED"],
       ContactTypes: ["EMAIL", "MOBILE", "WHATSAPP"],
       PaymentMethod: ["PAYMENT_GATEWAY", "BANK_TRANSFER"],
       Platforms: ["YOUTUBE", "FACEBOOK", "TIKTOK", "INSTAGRAM"],
+      ProofStatus: ["UNDER_REVIEW", "ACCEPTED", "REJECTED"],
+      ProofType: ["IMAGE", "URL"],
       Roles: ["ADMIN", "BUYER", "INFLUENCER"],
       TaskStatus: ["DRAFT", "ACTIVE", "ARCHIVED", "COMPLETED"],
     },

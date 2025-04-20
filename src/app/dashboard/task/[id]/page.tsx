@@ -12,16 +12,32 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 import { parseViewCount, formatViewCount } from "@/lib/utils/views";
 import { uploadBankTransferSlip } from "@/lib/utils/storage";
+import { createTask } from "@/lib/utils/tasks";
 
 type TaskDetail = Database['public']['Views']['task_details']['Row'];
-type BankTransferSlip = Database['public']['Tables']['bank_transfer_slip']['Row'];
+type BankTransferSlip = Database['public']['Tables']['bank_transfer_slip']['Row'] & {
+  status?: {
+    status: Database['public']['Enums']['BankTransferStatus'];
+    reviewed_at: string | null;
+    reviewed_by: string | null;
+  } | null;
+};
+type TaskApplication = Database['public']['Tables']['task_applications']['Row'];
+type ApplicationPromise = Database['public']['Tables']['application_promises']['Row'];
+type InfluencerProfile = Database['public']['Tables']['influencer_profile']['Row'];
+
+interface ApplicationWithDetails extends TaskApplication {
+  promises: ApplicationPromise[];
+  influencer: InfluencerProfile | null;
+}
 
 export default function TaskPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const [task, setTask] = useState<TaskDetail | null>(null);
-  const [bankSlip, setBankSlip] = useState<BankTransferSlip | null>(null);
+  const [bankSlips, setBankSlips] = useState<BankTransferSlip[]>([]);
+  const [applications, setApplications] = useState<ApplicationWithDetails[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [payment, setPayment] = useState<{
     method?: 'bank-transfer' | 'card';
@@ -31,7 +47,7 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
   const supabase = createClientComponentClient<Database>();
 
   useEffect(() => {
-    const fetchTaskAndSlip = async () => {
+    const fetchTaskAndData = async () => {
       try {
         // Fetch task details
         const { data: taskData, error: taskError } = await supabase
@@ -41,20 +57,62 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
           .single();
 
         if (taskError) throw taskError;
-        
         setTask(taskData);
 
-        // Fetch bank transfer slip if exists
+        // Fetch all bank transfer slips with status if exists
         if (taskData?.task_id) {
-          const { data: slipData, error: slipError } = await supabase
+          const { data: slipsData, error: slipsError } = await supabase
             .from('bank_transfer_slip')
-            .select('*')
+            .select(`
+              *,
+              status:bank_transfer_status (
+                status,
+                reviewed_at,
+                reviewed_by
+              )
+            `)
             .eq('task_id', taskData.task_id)
-            .single();
+            .order('created_at', { ascending: false });
 
-          if (!slipError) {
-            setBankSlip(slipData);
+          if (!slipsError && slipsData) {
+            setBankSlips(slipsData);
           }
+
+          // Fetch applications with promises
+          const { data: applicationsData, error: applicationsError } = await supabase
+            .from('task_applications')
+            .select(`
+              *,
+              promises: application_promises(*)
+            `)
+            .eq('task_id', taskData.task_id)
+            .eq('is_cancelled', false);
+
+          if (applicationsError) throw applicationsError;
+
+          // Fetch influencer profiles for each application
+          const applicationsWithProfiles = await Promise.all(
+            applicationsData.map(async (application) => {
+              const platform = application.promises[0]?.platform;
+              if (!platform || !application.user_id) {
+                return { ...application, influencer: null };
+              }
+
+              const { data: profileData } = await supabase
+                .from('influencer_profile')
+                .select('*')
+                .eq('user_id', application.user_id)
+                .eq('platform', platform)
+                .single();
+
+              return {
+                ...application,
+                influencer: profileData || null
+              };
+            })
+          );
+
+          setApplications(applicationsWithProfiles);
         }
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -64,7 +122,7 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
       }
     };
 
-    fetchTaskAndSlip();
+    fetchTaskAndData();
   }, [id]);
 
   const handlePaymentMethodSelect = (method: 'bank-transfer' | 'card') => {
@@ -95,13 +153,6 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
         // Upload bank transfer slip
         await uploadBankTransferSlip(payment.bankSlip, task.task_id);
         
-        // Update task status to ACTIVE after successful slip upload
-        const { error } = await supabase
-          .from('tasks')
-          .update({ status: 'ACTIVE' })
-          .eq('id', task.task_id);
-
-        if (error) throw error;
         toast.success("Payment verification in progress");
         router.push('/dashboard/buyer');
       } else {
@@ -153,15 +204,13 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
     }
   };
 
-  const handleDeleteSlip = async () => {
-    if (!bankSlip || !task?.task_id) return;
-
+  const handleDeleteSpecificSlip = async (slipId: number, slipName: string) => {
     setIsLoading(true);
     try {
       // Delete from storage
       const { error: storageError } = await supabase.storage
         .from('bank-transfer-slips')
-        .remove([bankSlip.slip]);
+        .remove([slipName]);
 
       if (storageError) throw storageError;
 
@@ -169,15 +218,66 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
       const { error: dbError } = await supabase
         .from('bank_transfer_slip')
         .delete()
-        .eq('id', bankSlip.id);
+        .eq('id', slipId);
 
       if (dbError) throw dbError;
 
-      setBankSlip(null);
+      setBankSlips(bankSlips.filter(slip => slip.id !== slipId));
       toast.success("Bank transfer slip deleted successfully");
     } catch (error) {
       console.error('Error deleting slip:', error);
       toast.error("Failed to delete bank transfer slip");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleArchiveTask = async () => {
+    if (!task?.task_id) return;
+
+    setIsLoading(true);
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ 
+          status: 'ARCHIVED',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', task.task_id);
+
+      if (error) throw error;
+      
+      toast.success("Task archived successfully");
+      router.push('/dashboard/buyer');
+    } catch (error) {
+      console.error('Error archiving task:', error);
+      toast.error("Failed to archive task");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCompleteTask = async () => {
+    if (!task?.task_id) return;
+
+    setIsLoading(true);
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ 
+          status: 'COMPLETED',
+          completed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', task.task_id);
+
+      if (error) throw error;
+      
+      toast.success("Task marked as completed");
+      router.push('/dashboard/buyer');
+    } catch (error) {
+      console.error('Error completing task:', error);
+      toast.error("Failed to complete task");
     } finally {
       setIsLoading(false);
     }
@@ -261,7 +361,7 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
             <div className="space-y-4">
               <div className="flex justify-between items-center p-4 border rounded-lg">
                 <span className="font-medium">Total Amount</span>
-                <span className="text-xl font-bold">${cost?.amount.toLocaleString()}</span>
+                <span className="text-xl font-bold">Rs. {cost?.amount.toLocaleString()}</span>
               </div>
               
               {cost?.is_paid ? (
@@ -271,30 +371,81 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
                 </div>
               ) : task?.status === 'DRAFT' ? (
                 <div className="space-y-4">
-                  {bankSlip ? (
-                    <div className="border rounded-lg p-4 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h4 className="font-medium text-yellow-600 dark:text-yellow-400">
-                            Payment Verification in Progress
-                          </h4>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            Bank transfer slip uploaded on {format(new Date(bankSlip.created_at), 'MMM d, yyyy')}
-                          </p>
+                  {bankSlips.length > 0 ? (
+                    <div className="space-y-4">
+                      {bankSlips.map((slip) => (
+                        <div key={slip.id} className="border rounded-lg p-4 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <h4 className={`font-medium ${
+                                slip.status?.status === 'ACCEPTED' ? 'text-green-600 dark:text-green-400' :
+                                slip.status?.status === 'REJECTED' ? 'text-red-600 dark:text-red-400' :
+                                'text-yellow-600 dark:text-yellow-400'
+                              }`}>
+                                {slip.status?.status === 'ACCEPTED' ? 'Payment Accepted' :
+                                 slip.status?.status === 'REJECTED' ? 'Payment Rejected' :
+                                 'Payment Verification in Progress'}
+                              </h4>
+                              <p className="text-sm text-muted-foreground mt-1">
+                                Bank transfer slip uploaded on {format(new Date(slip.created_at), 'MMM d, yyyy')}
+                                {slip.status?.reviewed_at && (
+                                  <> • Reviewed on {format(new Date(slip.status.reviewed_at), 'MMM d, yyyy')}</>
+                                )}
+                              </p>
+                            </div>
+                            {slip.status?.status !== 'ACCEPTED' && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-red-600 border-red-200 hover:border-red-600"
+                                onClick={() => handleDeleteSpecificSlip(slip.id, slip.slip)}
+                                disabled={isLoading}
+                              >
+                                Delete Slip
+                              </Button>
+                            )}
+                          </div>
+                          {slip.status?.status === 'REJECTED' ? (
+                            <p className="text-sm text-red-600 dark:text-red-400">
+                              Your payment was rejected. Please upload a new bank transfer slip or try a different payment method.
+                            </p>
+                          ) : slip.status?.status === 'ACCEPTED' ? (
+                            <p className="text-sm text-green-600 dark:text-green-400">
+                              Your payment has been verified and your task is now active.
+                            </p>
+                          ) : (
+                            <p className="text-sm text-muted-foreground">
+                              Our team will verify your payment shortly. Once verified, your task will be activated automatically.
+                            </p>
+                          )}
                         </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-red-600 border-red-200 hover:border-red-600"
-                          onClick={handleDeleteSlip}
-                          disabled={isLoading}
-                        >
-                          Delete Slip
-                        </Button>
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        Our team will verify your payment shortly. Once verified, your task will be activated automatically.
-                      </p>
+                      ))}
+                      
+                      {/* Show payment form only if no pending or accepted slips */}
+                      {!bankSlips.some(slip => 
+                        slip.status?.status === 'PENDING' || 
+                        slip.status?.status === 'ACCEPTED'
+                      ) && (
+                        <div className="border rounded-lg p-4">
+                          <h3 className="font-semibold mb-4">Select Payment Method</h3>
+                          <PaymentMethodSelect
+                            selectedMethod={payment.method}
+                            onMethodSelect={handlePaymentMethodSelect}
+                            onSlipUpload={handleBankSlipUpload}
+                            bankSlip={payment.bankSlip}
+                          />
+                          
+                          <div className="mt-6 flex justify-end">
+                            <Button
+                              onClick={handleProceedToPayment}
+                              disabled={isLoading || !payment.method}
+                              className="bg-gradient-to-r from-purple-600 to-blue-600 hover:opacity-90"
+                            >
+                              {isLoading ? 'Processing...' : 'Complete Payment'}
+                            </Button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <>
@@ -333,12 +484,46 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
         {task.status === 'ACTIVE' && (
           <Card>
             <CardHeader>
-              <CardTitle>Progress Tracking</CardTitle>
+              <CardTitle>Task Applications</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-center text-muted-foreground p-8">
-                Progress tracking feature coming soon
-              </div>
+              {applications.length > 0 ? (
+                <div className="space-y-4">
+                  {applications.map((application) => (
+                    <div key={application.id} className="p-4 border rounded-lg">
+                      {application.influencer ? (
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h4 className="font-medium">{application.influencer.name}</h4>
+                            <div className="text-sm text-muted-foreground mt-1">
+                              <span className="capitalize">{application.influencer.platform.toLowerCase()}</span>
+                              <span className="mx-2">•</span>
+                              <span>{application.influencer.followers} followers</span>
+                              {application.promises[0] && (
+                                <>
+                                  <span className="mx-2">•</span>
+                                  <span>Promised reach: {application.promises[0].promised_reach}</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            Applied on {format(new Date(application.created_at), 'MMM d, yyyy')}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-sm text-muted-foreground">
+                          Application data unavailable
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center text-muted-foreground p-8">
+                  No applications yet
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
@@ -351,18 +536,28 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
             Back
           </Button>
           
-          {task.status === 'ACTIVE' && (
-            <Button
-              variant="outline"
-              className="text-red-600 border-red-600 hover:bg-red-50"
-              onClick={() => {
-                // TODO: Implement archive functionality
-                toast.info("Archive functionality coming soon");
-              }}
-            >
-              Archive Task
-            </Button>
-          )}
+          <div className="space-x-4">
+            {(task.status === 'DRAFT' || task.status === 'ACTIVE') && (
+              <Button
+                variant="outline"
+                className="text-red-600 border-red-600 hover:bg-red-50"
+                onClick={handleArchiveTask}
+                disabled={isLoading}
+              >
+                {isLoading ? 'Archiving...' : 'Archive Task'}
+              </Button>
+            )}
+            
+            {task.status === 'ACTIVE' && (
+              <Button
+                className="bg-gradient-to-r from-green-600 to-green-500 text-white hover:opacity-90"
+                onClick={handleCompleteTask}
+                disabled={isLoading}
+              >
+                {isLoading ? 'Completing...' : 'Mark as Completed'}
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     </div>

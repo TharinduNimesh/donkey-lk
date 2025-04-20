@@ -1,6 +1,23 @@
 import { supabase } from "@/lib/supabase";
 import { v4 as uuidv4 } from 'uuid';
 
+export async function getStorageUrl(bucket: string, filePath: string) {
+  try {
+    const { data, error } = await supabase.storage
+      .from(bucket)
+      .createSignedUrl(filePath, 3600); // 1 hour expiry
+
+    if (error) {
+      throw error;
+    }
+
+    return data.signedUrl;
+  } catch (error) {
+    console.error('Error generating signed URL:', error);
+    return null;
+  }
+}
+
 export async function uploadTaskContent(file: File) {
   try {
     const fileExt = file.name.split('.').pop();
@@ -59,6 +76,29 @@ export async function uploadBankTransferSlip(file: File, taskId: number) {
     return filePath;
   } catch (error) {
     console.error('Error uploading bank transfer slip:', error);
+    throw error;
+  }
+}
+
+export async function uploadProofImage(file: File) {
+  try {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${uuidv4()}.${fileExt}`;
+    const { data: { user } } = await supabase.auth.getUser();
+    const filePath = `${user?.id}/${fileName}`;
+
+    // Upload file to Supabase storage
+    const { error: uploadError } = await supabase.storage
+      .from('proof-images')
+      .upload(filePath, file);
+
+    if (uploadError) {
+      throw uploadError;
+    }
+
+    return filePath;
+  } catch (error) {
+    console.error('Error uploading proof image:', error);
     throw error;
   }
 }

@@ -2,18 +2,18 @@ import { supabase } from "@/lib/supabase";
 import { Database } from "@/types/database.types";
 import { uploadTaskContent } from "./storage";
 
-export type CreateTaskInput = {
+interface TaskInput {
   title: string;
   description: string;
   contentFile: File;
   platforms: {
     platform: Database["public"]["Enums"]["Platforms"];
     views: number;
-    due_date: string;
+    due_date: string | null;
   }[];
-};
+}
 
-export async function createTask(input: CreateTaskInput, isDraft = true) {
+export async function createTask(input: TaskInput, isDraft = true) {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
@@ -54,19 +54,17 @@ export async function createTask(input: CreateTaskInput, isDraft = true) {
       throw new Error('Failed to create task targets');
     }
 
-    // If not a draft, trigger cost calculation
-    if (!isDraft) {
-      const response = await fetch('/api/tasks/calculate-cost', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ taskId: task.id }),
-      });
+    // Calculate cost for both draft and non-draft tasks
+    const response = await fetch('/api/tasks/calculate-cost', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ taskId: task.id }),
+    });
 
-      if (!response.ok) {
-        throw new Error('Failed to calculate task cost');
-      }
+    if (!response.ok) {
+      throw new Error('Failed to calculate task cost');
     }
 
     return { task };

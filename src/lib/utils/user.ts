@@ -29,6 +29,16 @@ export async function setupUserProfile({
       throw checkError;
     }
 
+    const user = await supabase.auth.getUser();
+    if (!user.data.user) {
+      throw new Error("User not authenticated");
+    }
+    // Check if the user is the same as the one being set up
+    if (user.data.user.id !== userId) {
+      throw new Error("User ID does not match the authenticated user");
+    }
+
+
     // Create profile only if it doesn't exist
     if (!existingProfile) {
       const { error: profileError } = await supabase
@@ -37,6 +47,7 @@ export async function setupUserProfile({
           id: userId,
           name,
           role,
+          email: user.data.user.email || '',
         });
 
       if (profileError) {
@@ -149,4 +160,31 @@ export async function fetchUserContactDetails() {
     console.error("Error fetching user contact details:", error);
     throw error;
   }
+}
+
+export async function isUserBuyer(userId: string) {
+  const { data, error } = await supabase
+    .rpc('is_a_buyer', { user_id_input: userId });
+
+  if (error) throw error;
+  return data;
+}
+
+export async function isUserInfluencer(userId: string) {
+  const { data, error } = await supabase
+    .rpc('is_an_influencer', { user_id_input: userId });
+
+  if (error) throw error;
+  return data;
+}
+
+export async function getUserVerifiedPlatforms(userId: string) {
+  const { data, error } = await supabase
+    .from('influencer_profile')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('is_verified', true);
+
+  if (error) throw error;
+  return data || [];
 }
