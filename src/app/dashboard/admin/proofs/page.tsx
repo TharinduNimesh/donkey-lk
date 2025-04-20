@@ -317,7 +317,7 @@ export default function AdminProofsPage() {
                         <span className="font-medium">{formatViewCount(parseViewCount(promise.promised_reach))} views</span>
                         <span className="mx-2">•</span>
                         <span className="text-muted-foreground">Est. Earnings: </span>
-                        <span className="font-medium">${parseFloat(promise.est_profit).toFixed(2)}</span>
+                        <span className="font-medium">Rs. {parseFloat(promise.est_profit).toFixed(2)}</span>
                       </div>
                     </div>
 

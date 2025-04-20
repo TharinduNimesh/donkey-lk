@@ -420,7 +420,7 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
                     </div>
                     <div className="flex justify-between items-center text-sm text-green-600 dark:text-green-400">
                       <span>Estimated Earnings</span>
-                      <span className="font-semibold">${parseFloat(promise.est_profit).toFixed(2)}</span>
+                      <span className="font-semibold">Rs. {parseFloat(promise.est_profit).toFixed(2)}</span>
                     </div>
                   </div>
                 ))}
@@ -429,7 +429,7 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
                   <div className="flex justify-between items-center">
                     <span className="font-medium text-green-700 dark:text-green-300">Total Potential Earnings</span>
                     <span className="text-lg font-bold text-green-700 dark:text-green-300">
-                      ${calculateTotalEarnings(existingApplication)}
+                      Rs. {calculateTotalEarnings(existingApplication)}
                     </span>
                   </div>
                 </div>
@@ -490,7 +490,7 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
                       {earnings[target.platform] > 0 && (
                         <div className="flex justify-between items-center text-sm text-green-600 dark:text-green-400">
                           <span>Potential Earnings</span>
-                          <span className="font-semibold">${earnings[target.platform]}</span>
+                          <span className="font-semibold">Rs. {earnings[target.platform]}</span>
                         </div>
                       )}
                     </div>
@@ -500,7 +500,7 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
                       <div className="flex justify-between items-center">
                         <span className="font-medium text-green-700 dark:text-green-300">Total Potential Earnings</span>
                         <span className="text-lg font-bold text-green-700 dark:text-green-300">
-                          ${Object.values(earnings).reduce((sum, current) => sum + current, 0).toFixed(2)}
+                          Rs. {Object.values(earnings).reduce((sum, current) => sum + current, 0).toFixed(2)}
                         </span>
                       </div>
                     </div>

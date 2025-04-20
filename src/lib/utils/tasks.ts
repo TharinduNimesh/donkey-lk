@@ -54,19 +54,17 @@ export async function createTask(input: TaskInput, isDraft = true) {
       throw new Error('Failed to create task targets');
     }
 
-    // If not a draft, trigger cost calculation
-    if (!isDraft) {
-      const response = await fetch('/api/tasks/calculate-cost', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ taskId: task.id }),
-      });
+    // Calculate cost for both draft and non-draft tasks
+    const response = await fetch('/api/tasks/calculate-cost', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ taskId: task.id }),
+    });
 
-      if (!response.ok) {
-        throw new Error('Failed to calculate task cost');
-      }
+    if (!response.ok) {
+      throw new Error('Failed to calculate task cost');
     }
 
     return { task };

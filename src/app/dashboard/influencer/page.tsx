@@ -16,12 +16,14 @@ type TaskApplication =
   Database["public"]["Tables"]["task_applications"]["Row"] & {
     application_promises: Database["public"]["Tables"]["application_promises"]["Row"][];
   };
+type AccountBalance = Database["public"]["Tables"]["account_balance"]["Row"];
 
 export default function InfluencerDashboardPage() {
   const router = useRouter();
   const supabase = createClientComponentClient<Database>();
   const [isLoading, setIsLoading] = useState(false);
   const [profiles, setProfiles] = useState<InfluencerProfile[]>([]);
+  const [accountBalance, setAccountBalance] = useState<AccountBalance | null>(null);
   const [appliedTasks, setAppliedTasks] = useState<
     (TaskDetail & { application?: TaskApplication })[]
   >([]);
@@ -38,6 +40,15 @@ export default function InfluencerDashboardPage() {
         router.push("/auth");
         return;
       }
+
+      // Fetch account balance
+      const { data: balanceData } = await supabase
+        .from("account_balance")
+        .select("*")
+        .eq("user_id", user.id)
+        .single();
+
+      setAccountBalance(balanceData);
 
       // Fetch connected social media profiles
       const { data: profilesData } = await supabase
@@ -142,6 +153,45 @@ export default function InfluencerDashboardPage() {
         </Button>
       </div>
 
+      {/* Account Balance */}
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle>Account Balance</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-6 md:grid-cols-3">
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium text-muted-foreground">Current Balance</h3>
+              <div className="text-2xl font-bold text-pink-600">
+                Rs. {(accountBalance?.balance || 0).toFixed(2)}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium text-muted-foreground">Total Earnings</h3>
+              <div className="text-2xl font-bold text-green-600">
+                Rs. {(accountBalance?.total_earning || 0).toFixed(2)}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium text-muted-foreground">Last Withdrawal</h3>
+              <div className="text-lg">
+                {accountBalance?.last_withdrawal 
+                  ? new Date(accountBalance.last_withdrawal).toLocaleDateString()
+                  : 'No withdrawals yet'}
+              </div>
+            </div>
+          </div>
+          <div className="mt-6">
+            <Button 
+              className="bg-gradient-to-r from-pink-500 to-pink-600 hover:opacity-90"
+              disabled={(accountBalance?.balance || 0) <= 0}
+            >
+              Request Withdrawal
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Connected Social Media Accounts */}
       <Card className="mb-8">
         <CardHeader>
@@ -240,7 +290,7 @@ export default function InfluencerDashboardPage() {
                                   {promise.promised_reach} views
                                 </span>
                                 <span className="text-green-600">
-                                  (${parseFloat(promise.est_profit).toFixed(2)})
+                                  (Rs. {parseFloat(promise.est_profit).toFixed(2)})
                                 </span>
                               </Badge>
                             )
@@ -252,7 +302,7 @@ export default function InfluencerDashboardPage() {
                               Total Potential Earnings
                             </span>
                             <span className="text-lg font-bold text-green-700 dark:text-green-300">
-                              $
+                              Rs.
                               {task.application
                                 ? calculateTotalEarnings(
                                     task.application

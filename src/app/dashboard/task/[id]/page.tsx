@@ -12,6 +12,7 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 import { parseViewCount, formatViewCount } from "@/lib/utils/views";
 import { uploadBankTransferSlip } from "@/lib/utils/storage";
+import { createTask } from "@/lib/utils/tasks";
 
 type TaskDetail = Database['public']['Views']['task_details']['Row'];
 type BankTransferSlip = Database['public']['Tables']['bank_transfer_slip']['Row'] & {
@@ -360,7 +361,7 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
             <div className="space-y-4">
               <div className="flex justify-between items-center p-4 border rounded-lg">
                 <span className="font-medium">Total Amount</span>
-                <span className="text-xl font-bold">${cost?.amount.toLocaleString()}</span>
+                <span className="text-xl font-bold">Rs. {cost?.amount.toLocaleString()}</span>
               </div>
               
               {cost?.is_paid ? (
