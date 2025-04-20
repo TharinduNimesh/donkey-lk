@@ -9,6 +9,41 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      account_balance: {
+        Row: {
+          balance: number
+          created_at: string
+          id: number
+          last_withdrawal: string | null
+          total_earning: number
+          user_id: string
+        }
+        Insert: {
+          balance?: number
+          created_at?: string
+          id?: number
+          last_withdrawal?: string | null
+          total_earning?: number
+          user_id: string
+        }
+        Update: {
+          balance?: number
+          created_at?: string
+          id?: number
+          last_withdrawal?: string | null
+          total_earning?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "account_balance_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profile"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       application_promises: {
         Row: {
           application_id: number
@@ -420,7 +455,7 @@ export type Database = {
           {
             foreignKeyName: "proof_status_proof_id_fkey"
             columns: ["proof_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "application_proofs"
             referencedColumns: ["id"]
           },

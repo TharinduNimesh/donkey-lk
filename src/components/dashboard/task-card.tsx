@@ -71,7 +71,7 @@ export function TaskCard({ task }: TaskCardProps) {
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Total Budget:</span>
             <span className="font-medium">
-              ${cost?.amount.toLocaleString() ?? 'Calculating...'}
+              Rs. {cost?.amount.toLocaleString() ?? 'Calculating...'}
             </span>
           </div>
           

@@ -110,7 +110,7 @@ export default function BuyerDashboardPage() {
             <CardTitle>Total Budget</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">${totalBudget.toLocaleString()}</p>
+            <p className="text-3xl font-bold">Rs. {totalBudget.toLocaleString()}</p>
             <p className="text-sm text-muted-foreground">Across all campaigns</p>
           </CardContent>
         </Card>

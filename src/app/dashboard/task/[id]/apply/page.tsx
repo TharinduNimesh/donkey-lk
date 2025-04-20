@@ -17,7 +17,7 @@ import { formatDateToNow } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { uploadProofImage } from "@/lib/utils/storage";
 import { getProofImageUrl, submitApplicationProofs, getApplicationProofs } from "@/lib/utils/proofs";
-import { MultipleProofUpload } from "@/components/ui/multiple-proof-upload";
+import { ProofUpload } from "@/components/ui/proof-upload";
 
 type TaskDetail = Database['public']['Views']['task_details']['Row'];
 type InfluencerProfile = Database['public']['Tables']['influencer_profile']['Row'];
@@ -121,8 +121,8 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
                 {
                   type: proof.proof_type,
                   content: proof.content,
-                  status: proof.proof_status?.[0]?.status,
-                  reviewedAt: proof.proof_status?.[0]?.reviewed_at
+                  status: proof.proof_status?.status,
+                  reviewedAt: proof.proof_status?.reviewed_at
                 }
               ]
             }), {});
@@ -188,8 +188,11 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
       const newUrls: Record<string, string> = {};
       for (const [platform, proofs] of Object.entries(existingProofs)) {
         for (const proof of proofs) {
-          if (proof.type === 'IMAGE') {
-            newUrls[proof.content] = await getProofImageUrl(proof.content);
+          if (proof.type === 'IMAGE' && proof.content) {
+            const url = await getProofImageUrl(proof.content);
+            if (url) {  // Only add the URL if it's not null
+              newUrls[proof.content] = url;
+            }
           }
         }
       }
@@ -257,10 +260,24 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
       );
 
       const resolvedProofs = await Promise.all(proofPromises);
-      await submitApplicationProofs(existingApplication.id, resolvedProofs);
 
-      toast.success("Proofs submitted successfully!");
-      router.refresh();
+      try {
+        await submitApplicationProofs(existingApplication.id, resolvedProofs);
+        toast.success("Proofs submitted successfully!");
+        
+        // Reset selected proofs after successful submission
+        setSelectedProofs({});
+        
+        // Refresh the page to show new proofs
+        router.refresh();
+      } catch (err: any) {
+        // Handle unique constraint violation
+        if (err.message?.includes('application_proofs_platform_type_app_unique')) {
+          toast.error("You can only submit one proof of each type per platform");
+        } else {
+          throw err;
+        }
+      }
     } catch (error) {
       console.error('Error submitting proofs:', error);
       toast.error("Failed to submit proofs. Please try again.");
@@ -403,7 +420,7 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
                     </div>
                     <div className="flex justify-between items-center text-sm text-green-600 dark:text-green-400">
                       <span>Estimated Earnings</span>
-                      <span className="font-semibold">${parseFloat(promise.est_profit).toFixed(2)}</span>
+                      <span className="font-semibold">Rs. {parseFloat(promise.est_profit).toFixed(2)}</span>
                     </div>
                   </div>
                 ))}
@@ -412,7 +429,7 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
                   <div className="flex justify-between items-center">
                     <span className="font-medium text-green-700 dark:text-green-300">Total Potential Earnings</span>
                     <span className="text-lg font-bold text-green-700 dark:text-green-300">
-                      ${calculateTotalEarnings(existingApplication)}
+                      Rs. {calculateTotalEarnings(existingApplication)}
                     </span>
                   </div>
                 </div>
@@ -473,7 +490,7 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
                       {earnings[target.platform] > 0 && (
                         <div className="flex justify-between items-center text-sm text-green-600 dark:text-green-400">
                           <span>Potential Earnings</span>
-                          <span className="font-semibold">${earnings[target.platform]}</span>
+                          <span className="font-semibold">Rs. {earnings[target.platform]}</span>
                         </div>
                       )}
                     </div>
@@ -483,7 +500,7 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
                       <div className="flex justify-between items-center">
                         <span className="font-medium text-green-700 dark:text-green-300">Total Potential Earnings</span>
                         <span className="text-lg font-bold text-green-700 dark:text-green-300">
-                          ${Object.values(earnings).reduce((sum, current) => sum + current, 0).toFixed(2)}
+                          Rs. {Object.values(earnings).reduce((sum, current) => sum + current, 0).toFixed(2)}
                         </span>
                       </div>
                     </div>
@@ -512,7 +529,7 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
                     </div>
                   </div>
                   
-                  <MultipleProofUpload
+                  <ProofUpload
                     platform={promise.platform}
                     existingProofs={existingProofs[promise.platform] || []}
                     selectedProofs={selectedProofs[promise.platform] || []}

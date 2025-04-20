@@ -182,7 +182,7 @@ export default function AdminPaymentsPage() {
                           </div>
                         </td>
                         <td className="py-3 px-4">
-                          ${cost?.amount.toLocaleString()}
+                          Rs. {cost?.amount.toLocaleString()}
                         </td>
                         <td className="py-3 px-4">
                           <span className={`

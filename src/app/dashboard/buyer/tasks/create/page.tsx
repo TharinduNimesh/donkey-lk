@@ -179,17 +179,6 @@ export default function CreateTaskPage() {
         }))
       }, true);
 
-      // Calculate and store cost after task creation
-      const response = await fetch('/api/tasks/calculate-cost', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ taskId: task.id })
-      });
-
-      if (!response.ok) {
-        console.error('Failed to calculate cost:', await response.json());
-      }
-
       toast.success("Task saved as draft");
       router.push('/dashboard/buyer');
       router.refresh();
@@ -234,7 +223,7 @@ export default function CreateTaskPage() {
 
     setIsLoading(true);
     try {
-      // Create the task first
+      // Save as draft first
       const { task } = await createTask({
         title: form.title,
         description: form.description,
@@ -244,19 +233,25 @@ export default function CreateTaskPage() {
           views: parseViewCount(platform.target_views),
           due_date: platform.deadline
         }))
-      }, false);
+      }, true);
+
+      if (!task?.id) {
+        throw new Error('Failed to create task');
+      }
 
       if (form.payment.method === 'bank-transfer') {
         if (!form.payment.bankSlip) {
           toast.error("Please upload your bank transfer slip");
           return;
         }
-        // Handle bank transfer slip upload logic...
+        
         await uploadBankTransferSlip(form.payment.bankSlip, task.id);
         toast.success("Payment verification in progress");
         router.push('/dashboard/buyer');
+        router.refresh();
       } else {
-        console.log("Processing card payment");
+        console.log("Initializing card payment for task:", task.id);
+        
         // Initialize PayHere payment
         const response = await fetch('/api/payment/initialize', {
           method: 'POST',
@@ -264,12 +259,30 @@ export default function CreateTaskPage() {
           body: JSON.stringify({ taskId: task.id })
         });
 
+        let errorMessage = 'Failed to initialize payment';
+        
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to initialize payment');
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.message || errorData.error || errorMessage;
+          } catch (e) {
+            console.error('Error parsing error response:', e);
+          }
+          throw new Error(errorMessage);
         }
 
-        const formData = await response.json();
+        let formData;
+        try {
+          formData = await response.json();
+        } catch (e) {
+          console.error('Error parsing payment form data:', e);
+          throw new Error('Invalid payment response from server');
+        }
+
+        if (!formData || !formData.checkout_url) {
+          throw new Error('Invalid payment configuration received');
+        }
+
         console.log("Payment form data:", formData);
 
         // Create and submit PayHere form
@@ -293,9 +306,14 @@ export default function CreateTaskPage() {
         document.body.appendChild(paymentForm);
         console.log("Submitting payment form...");
         paymentForm.submit();
+        
+        // Add a small delay before removing the form
         setTimeout(() => {
           document.body.removeChild(paymentForm);
         }, 100);
+
+        // Optionally redirect to dashboard after opening payment window
+        router.push('/dashboard/buyer');
       }
     } catch (error) {
       console.error('Error processing payment:', error);
@@ -456,7 +474,7 @@ export default function CreateTaskPage() {
                       <h4 className="font-medium">{platform.platform}</h4>
                       {platform.estimatedCost && (
                         <span className="text-sm">
-                          Estimated Total: ${platform.estimatedCost}
+                          Estimated Total: Rs. {platform.estimatedCost}
                         </span>
                       )}
                     </div>
@@ -492,16 +510,16 @@ export default function CreateTaskPage() {
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
                         <span className="text-sm">Base Cost</span>
-                        <span className="font-medium">${calculateTotalEstimatedCost().baseCost}</span>
+                        <span className="font-medium">Rs. {calculateTotalEstimatedCost().baseCost}</span>
                       </div>
                       <div className="flex justify-between items-center text-muted-foreground">
                         <span className="text-sm">Service Fee (10%)</span>
-                        <span className="font-medium">${calculateTotalEstimatedCost().serviceFee}</span>
+                        <span className="font-medium">Rs. {calculateTotalEstimatedCost().serviceFee}</span>
                       </div>
                       <div className="flex justify-between items-center pt-2 border-t">
                         <span className="font-semibold">Total Cost</span>
                         <span className="text-xl font-bold">
-                          ${calculateTotalEstimatedCost().totalCost}
+                          Rs. {calculateTotalEstimatedCost().totalCost}
                         </span>
                       </div>
                     </div>
@@ -557,7 +575,7 @@ export default function CreateTaskPage() {
                           <span className="font-semibold">{platform.platform}</span>
                           {platform.estimatedCost && (
                             <span className="text-sm font-semibold">
-                              Estimated Cost: ${platform.estimatedCost}
+                              Estimated Cost: Rs. {platform.estimatedCost}
                             </span>
                           )}
                         </div>

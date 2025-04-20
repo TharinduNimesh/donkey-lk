@@ -125,9 +125,9 @@ export default function AdminDashboardPage() {
             <CardTitle>Total Revenue</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">${stats.totalRevenue.toLocaleString()}</p>
-            <p className="text-sm text-muted-foreground">Monthly revenue: ${stats.totalMonthlyRevenue.toLocaleString()}</p>
-            <p className="text-sm text-muted-foreground">Pending payments: ${stats.pendingPayments.toLocaleString()}</p>
+            <p className="text-3xl font-bold">Rs. {stats.totalRevenue.toLocaleString()}</p>
+            <p className="text-sm text-muted-foreground">Monthly revenue: Rs. {stats.totalMonthlyRevenue.toLocaleString()}</p>
+            <p className="text-sm text-muted-foreground">Pending payments: Rs. {stats.pendingPayments.toLocaleString()}</p>
           </CardContent>
         </Card>
       </div>
