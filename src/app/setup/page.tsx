@@ -8,7 +8,8 @@ import {
   PersonalInfoForm,
   UserTypeForm,
   SocialConnectForm,
-  FinalStep
+  FinalStep,
+  WelcomeScreen,
 } from "@/components/setup";
 import { useSetupStore } from "@/lib/store";
 
@@ -16,12 +17,15 @@ function SetupContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { userType } = useSetupStore();
-  
+
   // Get step from URL or default to 0
-  const urlStep = searchParams.get('step');
-  const [currentStep, setCurrentStep] = useState(urlStep ? parseInt(urlStep) : 0);
+  const urlStep = searchParams.get("step");
+  const [currentStep, setCurrentStep] = useState(
+    urlStep ? parseInt(urlStep) : 0
+  );
 
   const steps = [
+    { title: "Welcome" },
     { title: "Personal Info" },
     { title: "Account Type" },
     { title: userType === "influencer" ? "Connect Socials" : "Final Step" },
@@ -31,16 +35,20 @@ function SetupContent() {
   const updateStep = (step: number) => {
     setCurrentStep(step);
     const params = new URLSearchParams(searchParams);
-    params.set('step', step.toString());
+    params.set("step", step.toString());
     router.push(`/setup?${params.toString()}`);
   };
 
   // Handle direct URL access and browser back/forward
   useEffect(() => {
-    const step = searchParams.get('step');
+    const step = searchParams.get("step");
     if (step !== null) {
       const stepNumber = parseInt(step);
-      if (stepNumber >= 0 && stepNumber < steps.length && stepNumber !== currentStep) {
+      if (
+        stepNumber >= 0 &&
+        stepNumber < steps.length &&
+        stepNumber !== currentStep
+      ) {
         setCurrentStep(stepNumber);
       }
     }
@@ -59,21 +67,19 @@ function SetupContent() {
   };
 
   return (
-    <div className="min-h-screen bg-background py-20 px-4">
+    <div className="min-h-screen bg-gradient-to-b from-background to-pink-50/30 dark:to-pink-950/10 py-20 px-4">
       <div className="max-w-4xl mx-auto space-y-8">
         <Stepper steps={steps} currentStep={currentStep} />
-        
-        <Card className="p-6">
-          {currentStep === 0 && (
-            <PersonalInfoForm onNext={handleNext} />
-          )}
-          {currentStep === 1 && (
+        <Card className="p-6 border border-pink-100/50 dark:border-pink-900/50 shadow-sm">
+          {currentStep === 0 && <WelcomeScreen onNext={handleNext} />}
+          {currentStep === 1 && <PersonalInfoForm onNext={handleNext} />}
+          {currentStep === 2 && (
             <UserTypeForm onNext={handleNext} onBack={handleBack} />
           )}
-          {currentStep === 2 && userType === "influencer" && (
+          {currentStep === 3 && userType === "influencer" && (
             <SocialConnectForm onBack={handleBack} />
           )}
-          {currentStep === 2 && userType !== "influencer" && (
+          {currentStep === 3 && userType !== "influencer" && (
             <FinalStep onBack={handleBack} />
           )}
         </Card>
@@ -84,7 +90,13 @@ function SetupContent() {
 
 export default function SetupPage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center">
+          <div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-pink-500 rounded-full"></div>
+        </div>
+      }
+    >
       <SetupContent />
     </Suspense>
   );
