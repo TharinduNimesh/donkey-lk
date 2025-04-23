@@ -9,6 +9,8 @@ import type { Database } from "@/types/database.types";
 import { format } from "date-fns";
 import { getStorageUrl } from "@/lib/utils/storage";
 import { toast } from "sonner";
+import { sendMail } from "@/lib/utils/email";
+import { PaymentConfirmationModal, type RejectionReason, rejectionReasonsList, type RejectionReasonItem } from "@/components/dashboard/payment-confirmation-modal";
 import {
   Select,
   SelectContent,
@@ -24,8 +26,20 @@ type BankTransferSlip = Database["public"]["Tables"]["bank_transfer_slip"]["Row"
 type BankTransferStatus = Database["public"]["Tables"]["bank_transfer_status"]["Row"];
 type TaskDetail = Database["public"]["Views"]["task_details"]["Row"];
 
-type PaymentWithDetails = BankTransferSlip & {
-  task: TaskDetail;
+interface TaskCost {
+  id: number;
+  amount: number;
+  is_paid: boolean;
+  payment_method: Database["public"]["Enums"]["PaymentMethod"];
+  metadata: any;
+  paid_at: string | null;
+  created_at: string;
+}
+
+interface PaymentWithDetails extends BankTransferSlip {
+  task: TaskDetail & {
+    cost: TaskCost;
+  };
   slipUrl: string | null;
   status?: BankTransferStatus;
   buyer?: {
@@ -35,6 +49,23 @@ type PaymentWithDetails = BankTransferSlip & {
     totalPaid: number;
     totalPending: number;
   };
+}
+
+const getActionRequired = (reason: RejectionReason, customReason: string, expectedAmount: string) => {
+  switch (reason) {
+    case 'INSUFFICIENT_AMOUNT':
+      return `The payment amount does not match the task cost. Please submit a new payment with the correct amount of Rs. ${expectedAmount}.`;
+    case 'INVALID_ACCOUNT':
+      return 'The bank account details in the transfer slip do not match our records. Please ensure you\'re transferring to the correct account and submit a new payment.';
+    case 'FAKE_RECEIPT':
+      return 'We could not verify the authenticity of the submitted receipt. Please submit a valid bank transfer receipt.';
+    case 'REFERENCE_NOT_FOUND':
+      return 'We could not locate the transfer using the provided reference number. Please ensure the transfer has been completed and submit the correct receipt.';
+    case 'OTHER':
+      return customReason;
+    default:
+      return 'Please submit a new payment after addressing the issue mentioned above.';
+  }
 };
 
 export default function AdminPaymentsPage() {
@@ -46,6 +77,15 @@ export default function AdminPaymentsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPayments, setTotalPayments] = useState(0);
   const [statusFilter, setStatusFilter] = useState<"ALL" | Database["public"]["Enums"]["BankTransferStatus"]>("ALL");
+  const [confirmationModal, setConfirmationModal] = useState<{
+    isOpen: boolean;
+    action: 'accept' | 'reject';
+    payment: PaymentWithDetails | null;
+  }>({
+    isOpen: false,
+    action: 'accept',
+    payment: null
+  });
 
   const fetchPayments = async () => {
     try {
@@ -180,17 +220,71 @@ export default function AdminPaymentsPage() {
     }
   };
 
-  const handlePaymentUpdate = async (transferId: number, taskCost: any, isAccepted: boolean) => {
+  const handlePaymentAction = (payment: PaymentWithDetails, action: 'accept' | 'reject') => {
+    setConfirmationModal({
+      isOpen: true,
+      action,
+      payment
+    });
+  };
+
+  const handlePaymentUpdate = async (
+    isAccepted: boolean, 
+    rejectionReason?: RejectionReason, 
+    customReason?: string
+  ) => {
+    const payment = confirmationModal.payment;
+    if (!payment || !payment.task?.cost) return;
+
     try {
-      setProcessingPayment(transferId);
+      setProcessingPayment(payment.id);
 
       const { error } = await supabase.rpc('update_bank_transfer_payment', {
-        transfer_id_param: transferId,
-        task_cost_id_param: taskCost.id,
+        transfer_id_param: payment.id,
+        task_cost_id_param: payment.task.cost.id,
         is_accepted_param: isAccepted
       });
 
       if (error) throw error;
+
+      // Send email notification
+      const emailContext: Record<string, string> = {
+        name: payment.buyer?.name || 'User',
+        taskTitle: payment.task.title || '',
+        taskId: payment.task.task_id?.toString() || '',
+        amount: payment.task.cost.amount.toString(),
+        date: format(new Date(), 'MMMM d, yyyy'),
+      };
+
+      if (isAccepted) {
+        await sendMail({
+          to: payment.buyer?.email || '',
+          subject: 'Payment Accepted - BrandSync',
+          template: 'payment-accepted',
+          context: emailContext,
+          from: 'accounts@brandsync.lk'
+        });
+      } else if (rejectionReason) {
+        const rejectionLabel = rejectionReasonsList.find(
+          (r) => r.value === rejectionReason
+        )?.label || 'Payment Rejected';
+
+        await sendMail({
+          to: payment.buyer?.email || '',
+          subject: 'Payment Rejected - BrandSync',
+          template: 'payment-rejected',
+          context: {
+            ...emailContext,
+            rejectionReason: rejectionLabel,
+            actionRequired: getActionRequired(
+              rejectionReason,
+              customReason || '',
+              payment.task.cost.amount.toString()
+            )
+          },
+          from: 'accounts@brandsync.lk'
+        });
+      }
 
       toast.success(`Payment ${isAccepted ? 'accepted' : 'rejected'} successfully`);
       
@@ -201,6 +295,7 @@ export default function AdminPaymentsPage() {
       toast.error(`Failed to ${isAccepted ? 'accept' : 'reject'} payment`);
     } finally {
       setProcessingPayment(null);
+      setConfirmationModal(prev => ({ ...prev, isOpen: false }));
     }
   };
 
@@ -298,15 +393,7 @@ export default function AdminPaymentsPage() {
                 </thead>
                 <tbody>
                   {payments.map((payment) => {
-                    const cost = payment.task?.cost as { 
-                      id: number;
-                      amount: number;
-                      is_paid: boolean;
-                      payment_method: Database["public"]["Enums"]["PaymentMethod"];
-                      metadata: any;
-                      paid_at: string | null;
-                      created_at: string;
-                    } | null;
+                    const cost = payment.task?.cost;
                     
                     return (
                       <tr key={payment.id} className="border-b">
@@ -369,7 +456,7 @@ export default function AdminPaymentsPage() {
                                   size="sm"
                                   variant="outline"
                                   className="text-green-600 border-green-200 hover:bg-green-50 hover:text-green-700"
-                                  onClick={() => handlePaymentUpdate(payment.id, cost, true)}
+                                  onClick={() => handlePaymentAction(payment, 'accept')}
                                   disabled={processingPayment === payment.id}
                                 >
                                   Accept
@@ -378,7 +465,7 @@ export default function AdminPaymentsPage() {
                                   size="sm"
                                   variant="outline"
                                   className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
-                                  onClick={() => handlePaymentUpdate(payment.id, cost, false)}
+                                  onClick={() => handlePaymentAction(payment, 'reject')}
                                   disabled={processingPayment === payment.id}
                                 >
                                   Reject
@@ -397,6 +484,19 @@ export default function AdminPaymentsPage() {
           )}
         </CardContent>
       </Card>
+
+      {confirmationModal.payment && (
+        <PaymentConfirmationModal
+          isOpen={confirmationModal.isOpen}
+          onClose={() => setConfirmationModal(prev => ({ ...prev, isOpen: false }))}
+          onConfirm={handlePaymentUpdate}
+          action={confirmationModal.action}
+          paymentDetails={{
+            taskTitle: confirmationModal.payment.task?.title || '',
+            amount: confirmationModal.payment.task?.cost?.amount || 0,
+          }}
+        />
+      )}
     </div>
   );
 }

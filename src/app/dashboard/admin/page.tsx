@@ -166,17 +166,6 @@ export default function AdminDashboardPage() {
     checkAdminAccess();
   }, [supabase, router]);
 
-  const handleLogout = async () => {
-    setIsLoading(true);
-    const { error } = await signOut();
-    if (!error) {
-      router.push('/auth');
-      router.refresh();
-    }
-    setIsLoading(false);
-  };
-
-  // Pagination helpers
   const totalBuyersPages = Math.ceil(totalBuyers / ITEMS_PER_PAGE);
   const totalInfluencersPages = Math.ceil(totalInfluencers / ITEMS_PER_PAGE);
 
@@ -226,15 +215,8 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="container mx-auto py-8 px-4">
-      <div className="flex justify-between items-center mb-8">
+      <div className="mb-8">
         <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-        <Button 
-          variant="outline" 
-          onClick={handleLogout}
-          disabled={isLoading}
-        >
-          {isLoading ? 'Logging out...' : 'Logout'}
-        </Button>
       </div>
       
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -276,33 +258,45 @@ export default function AdminDashboardPage() {
         <h2 className="text-2xl font-bold mb-6">Buyers</h2>
         <Card>
           <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Total Tasks</TableHead>
-                  <TableHead>Total Paid (Rs.)</TableHead>
-                  <TableHead>Pending Payment (Rs.)</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {buyers.map((buyer) => (
-                  <TableRow key={buyer.id}>
-                    <TableCell>{buyer.name}</TableCell>
-                    <TableCell>{buyer.email}</TableCell>
-                    <TableCell>{buyer.totalTasks}</TableCell>
-                    <TableCell>{buyer.totalPaid.toLocaleString()}</TableCell>
-                    <TableCell>{buyer.totalPending.toLocaleString()}</TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-b">
+                    <TableHead className="py-3 px-4">Name</TableHead>
+                    <TableHead className="py-3 px-4">Email</TableHead>
+                    <TableHead className="py-3 px-4">Total Tasks</TableHead>
+                    <TableHead className="py-3 px-4">Total Paid (Rs.)</TableHead>
+                    <TableHead className="py-3 px-4">Pending Payment (Rs.)</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-            <PaginationControls 
-              currentPage={currentBuyersPage}
-              totalPages={totalBuyersPages}
-              onPageChange={setCurrentBuyersPage}
-            />
+                </TableHeader>
+                <TableBody>
+                  {buyers.map((buyer) => (
+                    <TableRow key={buyer.id} className="border-b hover:bg-muted/50">
+                      <TableCell className="py-3 px-4">
+                        <div className="font-medium">{buyer.name}</div>
+                      </TableCell>
+                      <TableCell className="py-3 px-4">
+                        <div className="text-muted-foreground">{buyer.email}</div>
+                      </TableCell>
+                      <TableCell className="py-3 px-4">{buyer.totalTasks}</TableCell>
+                      <TableCell className="py-3 px-4 text-green-600">Rs. {buyer.totalPaid.toLocaleString()}</TableCell>
+                      <TableCell className="py-3 px-4 text-amber-600">Rs. {buyer.totalPending.toLocaleString()}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              {buyers.length > 0 ? (
+                <PaginationControls 
+                  currentPage={currentBuyersPage}
+                  totalPages={totalBuyersPages}
+                  onPageChange={setCurrentBuyersPage}
+                />
+              ) : (
+                <div className="text-center text-muted-foreground py-8">
+                  No buyers found
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -311,33 +305,45 @@ export default function AdminDashboardPage() {
         <h2 className="text-2xl font-bold mb-6">Influencers</h2>
         <Card>
           <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Verified Profiles</TableHead>
-                  <TableHead>Completed Tasks</TableHead>
-                  <TableHead>Total Earnings (Rs.)</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {influencers.map((influencer) => (
-                  <TableRow key={influencer.id}>
-                    <TableCell>{influencer.name}</TableCell>
-                    <TableCell>{influencer.email}</TableCell>
-                    <TableCell>{influencer.verifiedProfiles}</TableCell>
-                    <TableCell>{influencer.completedTasks}</TableCell>
-                    <TableCell>{influencer.totalEarnings.toLocaleString()}</TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-b">
+                    <TableHead className="py-3 px-4">Name</TableHead>
+                    <TableHead className="py-3 px-4">Email</TableHead>
+                    <TableHead className="py-3 px-4">Verified Profiles</TableHead>
+                    <TableHead className="py-3 px-4">Completed Tasks</TableHead>
+                    <TableHead className="py-3 px-4">Total Earnings (Rs.)</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-            <PaginationControls 
-              currentPage={currentInfluencersPage}
-              totalPages={totalInfluencersPages}
-              onPageChange={setCurrentInfluencersPage}
-            />
+                </TableHeader>
+                <TableBody>
+                  {influencers.map((influencer) => (
+                    <TableRow key={influencer.id} className="border-b hover:bg-muted/50">
+                      <TableCell className="py-3 px-4">
+                        <div className="font-medium">{influencer.name}</div>
+                      </TableCell>
+                      <TableCell className="py-3 px-4">
+                        <div className="text-muted-foreground">{influencer.email}</div>
+                      </TableCell>
+                      <TableCell className="py-3 px-4">{influencer.verifiedProfiles}</TableCell>
+                      <TableCell className="py-3 px-4">{influencer.completedTasks}</TableCell>
+                      <TableCell className="py-3 px-4 text-green-600">Rs. {influencer.totalEarnings.toLocaleString()}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              {influencers.length > 0 ? (
+                <PaginationControls 
+                  currentPage={currentInfluencersPage}
+                  totalPages={totalInfluencersPages}
+                  onPageChange={setCurrentInfluencersPage}
+                />
+              ) : (
+                <div className="text-center text-muted-foreground py-8">
+                  No influencers found
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>

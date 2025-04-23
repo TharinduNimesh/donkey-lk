@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #FF4D8D; color: white; padding: 20px; text-align: center; }
+        .content { padding: 20px; }
+        .details { background: #f9f9f9; padding: 15px; margin: 20px 0; border-radius: 5px; }
+        .reason { background: #ffe8e8; padding: 15px; margin: 20px 0; border-radius: 5px; }
+        .footer { text-align: center; padding: 20px; font-size: 12px; color: #666; }
+        .action-needed { color: #d32f2f; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Payment Review Update</h1>
+        </div>
+        <div class="content">
+            <p>Dear {{name}},</p>
+            <p>We have reviewed your payment submission for task "{{taskTitle}}" and unfortunately, we cannot accept it at this time.</p>
+            
+            <div class="details">
+                <p><strong>Task Details:</strong></p>
+                <ul>
+                    <li>Task ID: {{taskId}}</li>
+                    <li>Amount: Rs. {{amount}}</li>
+                    <li>Submission Date: {{date}}</li>
+                </ul>
+            </div>
+
+            <div class="reason">
+                <p><strong>Reason for Rejection:</strong></p>
+                <p>{{rejectionReason}}</p>
+                
+                <p><strong>Action Required:</strong></p>
+                <p class="action-needed">{{actionRequired}}</p>
+            </div>
+
+            <p>You can submit a new payment by following these steps:</p>
+            <ol>
+                <li>Go to your BrandSync dashboard</li>
+                <li>Navigate to the task details</li>
+                <li>Click on "Submit Payment" and follow the instructions</li>
+            </ol>
+            
+            <p>If you believe this is an error or need assistance, please contact our support team immediately.</p>
+        </div>
+        <div class="footer">
+            <p>© 2025 BrandSync. All rights reserved.</p>
+            <p>For immediate assistance, please email support@brandsync.lk</p>
+        </div>
+    </div>
+</body>
+</html>

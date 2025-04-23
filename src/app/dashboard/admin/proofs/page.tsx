@@ -16,6 +16,8 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { getProofImageUrl } from "@/lib/utils/proofs";
 import { parseViewCount, formatViewCount } from "@/lib/utils/views";
+import { ProofVerificationModal, type ProofRejectionReason, proofRejectionReasons } from "@/components/dashboard/proof-verification-modal";
+import { sendMail } from "@/lib/utils/email";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -85,6 +87,15 @@ export default function AdminProofsPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
   const [platformFilter, setPlatformFilter] = useState<PlatformFilter>('ALL');
   const [dateFilter, setDateFilter] = useState<Date | null>(null);
+  const [verificationModal, setVerificationModal] = useState<{
+    isOpen: boolean;
+    action: 'accept' | 'reject';
+    proof: ApplicationProof | null;
+  }>({
+    isOpen: false,
+    action: 'accept',
+    proof: null
+  });
   const supabase = createClientComponentClient<Database>();
 
   useEffect(() => {
@@ -261,7 +272,33 @@ export default function AdminProofsPage() {
     fetchProofs();
   }, [currentPage, sortBy, statusFilter, platformFilter, dateFilter]);
 
-  const handleProofStatusUpdate = async (proofId: number, status: Database["public"]["Enums"]["ProofStatus"]) => {
+  const getActionRequired = (reason: ProofRejectionReason, customReason: string) => {
+    switch (reason) {
+      case 'INVALID_PROOFS':
+        return 'Please ensure your proof submission includes clear, valid screenshots or links that demonstrate the task completion.';
+      case 'VIEWS_NOT_REACHED':
+        return 'Please wait until your content reaches the promised view count before submitting proof.';
+      case 'FAKE_OWNERSHIP':
+        return 'Please submit proof from a verified account that you own. You may need to complete the platform verification process first.';
+      case 'DUPLICATE_SUBMISSION':
+        return 'Please submit unique proof for each task. The same content cannot be used for multiple tasks.';
+      case 'CONTENT_REMOVED':
+        return 'Please ensure the promoted content is still accessible and submit new proof.';
+      case 'METRICS_MISMATCH':
+        return 'Please submit proof that accurately reflects the current engagement metrics from your platform analytics.';
+      case 'OTHER':
+        return customReason;
+      default:
+        return 'Please review the rejection reason and submit new proof that addresses these concerns.';
+    }
+  };
+
+  const handleProofStatusUpdate = async (
+    proofId: number, 
+    status: Database["public"]["Enums"]["ProofStatus"],
+    rejectionReason?: ProofRejectionReason,
+    customReason?: string
+  ) => {
     try {
       const reviewedAt = new Date().toISOString();
       const { data: { user } } = await supabase.auth.getUser();
@@ -278,23 +315,67 @@ export default function AdminProofsPage() {
 
       if (error) throw error;
 
+      const proof = verificationModal.proof;
+      if (!proof) return;
+
+      const promiseDetails = proof.task_application.application_promises
+        .find(p => p.platform === proof.platform);
+
+      if (!promiseDetails) return;
+
+      const emailContext: Record<string, string> = {
+        name: proof.task_application.user.name,
+        taskTitle: proof.task_application.task.title,
+        taskId: proof.application_id.toString(),
+        platform: proof.platform,
+        date: format(new Date(), 'MMMM d, yyyy'),
+        promisedViews: formatViewCount(parseViewCount(promiseDetails.promised_reach)),
+        earnings: parseFloat(promiseDetails.est_profit).toFixed(2)
+      };
+
+      if (status === 'ACCEPTED') {
+        await sendMail({
+          to: proof.task_application.user.email,
+          subject: 'Proof Accepted - BrandSync',
+          template: 'proof-accepted',
+          context: emailContext,
+          from: 'verify@brandsync.lk'
+        });
+      } else if (rejectionReason) {
+        const rejectionLabel = proofRejectionReasons.find(
+          (r) => r.value === rejectionReason
+        )?.label || 'Proof Rejected';
+
+        await sendMail({
+          to: proof.task_application.user.email,
+          subject: 'Proof Rejected - BrandSync',
+          template: 'proof-rejected',
+          context: {
+            ...emailContext,
+            rejectionReason: rejectionLabel,
+            actionRequired: getActionRequired(rejectionReason, customReason || '')
+          },
+          from: 'verify@brandsync.lk'
+        });
+      }
+
       setGroupedProofs(prevGroups => {
         return prevGroups.map(group => ({
           ...group,
           promises: group.promises.map(promise => ({
             ...promise,
-            proofs: promise.proofs.map(proof => 
-              proof.id === proofId
+            proofs: promise.proofs.map(p => 
+              p.id === proofId
                 ? {
-                    ...proof,
+                    ...p,
                     proof_status: {
-                      ...proof.proof_status,
+                      ...p.proof_status,
                       status: status,
                       reviewed_at: reviewedAt,
-                      reviewed_by: reviewerId ?? null
+                      reviewed_by: reviewerId
                     }
                   } as ApplicationProof
-                : proof
+                : p
             )
           }))
         }));
@@ -304,7 +385,17 @@ export default function AdminProofsPage() {
     } catch (error) {
       console.error('Error updating proof status:', error);
       toast.error('Failed to update proof status');
+    } finally {
+      setVerificationModal(prev => ({ ...prev, isOpen: false }));
     }
+  };
+
+  const handleProofAction = (proof: ApplicationProof, action: 'accept' | 'reject') => {
+    setVerificationModal({
+      isOpen: true,
+      action,
+      proof
+    });
   };
 
   const getStatusBadgeVariant = (status?: Database["public"]["Enums"]["ProofStatus"]) => {
@@ -574,7 +665,7 @@ export default function AdminProofsPage() {
                                         size="sm"
                                         variant="outline"
                                         className="text-green-600 border-green-200 hover:bg-green-50 hover:text-green-700"
-                                        onClick={() => handleProofStatusUpdate(proof.id, 'ACCEPTED')}
+                                        onClick={() => handleProofAction(proof, 'accept')}
                                       >
                                         Accept
                                       </Button>
@@ -582,7 +673,7 @@ export default function AdminProofsPage() {
                                         size="sm"
                                         variant="outline"
                                         className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
-                                        onClick={() => handleProofStatusUpdate(proof.id, 'REJECTED')}
+                                        onClick={() => handleProofAction(proof, 'reject')}
                                       >
                                         Reject
                                       </Button>
@@ -607,6 +698,31 @@ export default function AdminProofsPage() {
         )}
         {groupedProofs.length > 0 && <PaginationControls />}
       </div>
+      {verificationModal.proof && (
+        <ProofVerificationModal
+          isOpen={verificationModal.isOpen}
+          onClose={() => setVerificationModal(prev => ({ ...prev, isOpen: false }))}
+          onConfirm={async (isAccepted, reason, customReason) => {
+            if (verificationModal.proof) {
+              await handleProofStatusUpdate(
+                verificationModal.proof.id,
+                isAccepted ? 'ACCEPTED' : 'REJECTED',
+                reason,
+                customReason
+              );
+            }
+          }}
+          action={verificationModal.action}
+          proofDetails={{
+            platform: verificationModal.proof.platform,
+            promisedViews: parseViewCount(
+              verificationModal.proof.task_application.application_promises.find(
+                p => p.platform === verificationModal.proof?.platform
+              )?.promised_reach || '0'
+            )
+          }}
+        />
+      )}
     </div>
   );
 }

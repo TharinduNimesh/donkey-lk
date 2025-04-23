@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #FF4D8D; color: white; padding: 20px; text-align: center; }
+        .content { padding: 20px; }
+        .details { background: #f9f9f9; padding: 15px; margin: 20px 0; border-radius: 5px; }
+        .metrics { background: #e8f5e9; padding: 15px; margin: 20px 0; border-radius: 5px; }
+        .footer { text-align: center; padding: 20px; font-size: 12px; color: #666; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Proof Verification Update</h1>
+        </div>
+        <div class="content">
+            <p>Dear {{name}},</p>
+            <p>Great news! We have reviewed your proof submission for the task "{{taskTitle}}" and we're happy to confirm that it has been accepted.</p>
+            
+            <div class="details">
+                <p><strong>Task Details:</strong></p>
+                <ul>
+                    <li>Task ID: {{taskId}}</li>
+                    <li>Platform: {{platform}}</li>
+                    <li>Submission Date: {{date}}</li>
+                </ul>
+            </div>
+
+            <div class="metrics">
+                <p><strong>Performance Metrics:</strong></p>
+                <ul>
+                    <li>Promised Views: {{promisedViews}}</li>
+                    <li>Estimated Earnings: Rs. {{earnings}}</li>
+                </ul>
+            </div>
+
+            <p>Your earnings will be processed according to our payment schedule. You can track your earnings and upcoming payments in your BrandSync dashboard.</p>
+            
+            <p>Thank you for maintaining high-quality standards in your content delivery. Keep up the great work!</p>
+        </div>
+        <div class="footer">
+            <p>© 2025 BrandSync. All rights reserved.</p>
+            <p>For immediate assistance, please email support@brandsync.lk</p>
+        </div>
+    </div>
+</body>
+</html>
