@@ -33,12 +33,16 @@ export function TaskCard({ task }: TaskCardProps) {
 
   return (
     <Card 
-      className="group hover:border-primary transition-colors cursor-pointer"
+      className="group relative overflow-hidden hover:shadow-2xl transition-all duration-300 hover:border-pink-400 dark:hover:border-pink-500 cursor-pointer bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm h-[420px] flex flex-col"
       onClick={() => router.push(`/dashboard/task/${task.task_id}`)}
     >
-      <CardHeader>
+      {/* Decorative gradient elements */}
+      <div className="absolute inset-0 bg-gradient-to-br from-pink-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+      <div className="absolute -right-20 -top-20 w-40 h-40 bg-pink-500/10 rounded-full blur-3xl group-hover:bg-pink-500/20 transition-all duration-300" />
+      
+      <CardHeader className="relative z-10">
         <CardTitle className="flex items-center justify-between">
-          <span className="text-lg font-semibold">{task.title}</span>
+          <span className="text-lg font-semibold font-['P22MackinacPro-Medium'] line-clamp-1">{task.title}</span>
           <span className={`
             px-2 py-1 rounded-full text-xs font-medium
             ${task.status === 'ACTIVE' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : ''}
@@ -50,35 +54,38 @@ export function TaskCard({ task }: TaskCardProps) {
           </span>
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <p className="text-sm text-muted-foreground line-clamp-2">{task.description}</p>
-        
-        <div className="space-y-2">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">Platforms:</span>
-            <div className="flex gap-2">
-              {targets?.map((target, index) => (
-                <span 
-                  key={index}
-                  className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary"
-                >
-                  {target.platform.charAt(0) + target.platform.slice(1).toLowerCase()}
-                </span>
-              ))}
+
+      <CardContent className="relative z-10 flex-1 flex flex-col">
+        <div className="space-y-4 flex-1">
+          <p className="text-sm text-muted-foreground line-clamp-2">{task.description}</p>
+          
+          <div className="space-y-3">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Platforms:</span>
+              <div className="flex gap-2">
+                {targets?.map((target, index) => (
+                  <span 
+                    key={index}
+                    className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-pink-50 text-pink-600 dark:bg-pink-900/30 dark:text-pink-400"
+                  >
+                    {target.platform.charAt(0) + target.platform.slice(1).toLowerCase()}
+                  </span>
+                ))}
+              </div>
+            </div>
+            
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Total Budget:</span>
+              <span className="font-medium text-pink-600 dark:text-pink-400">
+                Rs. {cost?.amount.toLocaleString() ?? 'Calculating...'}
+              </span>
             </div>
           </div>
-          
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">Total Budget:</span>
-            <span className="font-medium">
-              Rs. {cost?.amount.toLocaleString() ?? 'Calculating...'}
-            </span>
-          </div>
-          
+
           {earliestDeadline && (
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Earliest Deadline:</span>
-              <span className="font-medium">{format(new Date(earliestDeadline), 'MMM d, yyyy')}</span>
+            <div className="mt-auto pt-4 flex items-center justify-between border-t border-gray-100 dark:border-gray-800">
+              <span className="text-sm text-muted-foreground">Deadline:</span>
+              <span className="text-sm font-medium">{format(new Date(earliestDeadline), 'MMM d, yyyy')}</span>
             </div>
           )}
         </div>

@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { uploadProofImage } from "@/lib/utils/storage";
 import { getProofImageUrl, submitApplicationProofs, getApplicationProofs } from "@/lib/utils/proofs";
 import { ProofUpload } from "@/components/ui/proof-upload";
+import { motion } from "framer-motion";
 
 type TaskDetail = Database['public']['Views']['task_details']['Row'];
 type InfluencerProfile = Database['public']['Tables']['influencer_profile']['Row'];
@@ -365,11 +366,33 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
   };
 
   if (isLoading) {
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+    return (
+      <div className="min-h-screen w-full bg-gradient-to-b from-pink-50/30 to-white dark:from-gray-900 dark:to-gray-950 flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="w-16 h-16 mx-auto">
+            <div className="animate-spin w-full h-full rounded-full border-4 border-pink-500 border-t-transparent" />
+          </div>
+          <p className="text-muted-foreground">Loading task details...</p>
+        </div>
+      </div>
+    );
   }
 
   if (!task) {
-    return <div className="flex items-center justify-center min-h-screen">Task not found</div>;
+    return (
+      <div className="min-h-screen w-full bg-gradient-to-b from-pink-50/30 to-white dark:from-gray-900 dark:to-gray-950 flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <h2 className="text-2xl font-bold text-pink-600">Task Not Found</h2>
+          <p className="text-muted-foreground">The requested task could not be found.</p>
+          <Button 
+            onClick={() => router.back()}
+            className="bg-gradient-to-r from-pink-500 to-pink-600 hover:opacity-90"
+          >
+            Go Back
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   const targets = task.targets as Array<{
@@ -378,199 +401,344 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
     due_date: string;
   }>;
 
-  // Disable view selection and submission if already applied
   const isReadOnly = !!existingApplication;
 
   return (
-    <div className="container max-w-4xl mx-auto py-8 px-4">
-      <div className="mb-8">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold">Apply for Task</h1>
-          <span className={`
-            px-3 py-1 rounded-full text-sm font-medium
-            ${task.status === 'ACTIVE' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : ''}
-            ${task.status === 'DRAFT' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' : ''}
-          `}>
-            {task.status}
-          </span>
+    <div className="min-h-screen w-full bg-gradient-to-b from-pink-50/30 to-white dark:from-gray-900 dark:to-gray-950">
+      <div className="container max-w-4xl mx-auto py-8 px-4">
+        <div className="mb-8 space-y-3">
+          <div className="flex items-center justify-between">
+            <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-pink-600 font-['P22MackinacPro-Bold']">
+              Apply for Task
+            </h1>
+            <Badge
+              className={`
+                px-3 py-1 rounded-full text-sm font-medium
+                ${task.status === 'ACTIVE' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : ''}
+                ${task.status === 'DRAFT' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' : ''}
+              `}
+            >
+              {task.status}
+            </Badge>
+          </div>
+          <p className="text-muted-foreground max-w-2xl">{task.description}</p>
         </div>
-        <p className="text-muted-foreground mt-2">{task.description}</p>
-      </div>
 
-      {existingApplication ? (
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="text-blue-600 dark:text-blue-400">Your Existing Application</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between text-sm text-muted-foreground">
-                <span>Applied {formatDateToNow(existingApplication.created_at)}</span>
-                <Badge variant="outline" className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
-                  Active Application
-                </Badge>
-              </div>
-              
-              <div className="grid gap-4">
-                {existingApplication.application_promises.map((promise, index) => (
-                  <div key={index} className="p-4 border rounded-lg space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium">{promise.platform}</span>
-                      <span className="text-lg">{promise.promised_reach} views</span>
-                    </div>
-                    <div className="flex justify-between items-center text-sm text-green-600 dark:text-green-400">
-                      <span>Estimated Earnings</span>
-                      <span className="font-semibold">Rs. {parseFloat(promise.est_profit).toFixed(2)}</span>
-                    </div>
-                  </div>
-                ))}
-
-                <div className="mt-4 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900 rounded-lg">
-                  <div className="flex justify-between items-center">
-                    <span className="font-medium text-green-700 dark:text-green-300">Total Potential Earnings</span>
-                    <span className="text-lg font-bold text-green-700 dark:text-green-300">
-                      Rs. {calculateTotalEarnings(existingApplication)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      ) : (
-        <>
-          <div className="space-y-6">
-            <Card>
+        {existingApplication ? (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <Card className="mb-6 border border-pink-100 dark:border-pink-900/20 overflow-hidden">
+              <div className="absolute right-0 top-0 h-full w-1/2 bg-gradient-to-l from-pink-500/5 to-transparent"/>
               <CardHeader>
-                <CardTitle>Task Overview</CardTitle>
+                <CardTitle className="text-blue-600 dark:text-blue-400 font-['P22MackinacPro-Medium']">
+                  Your Existing Application
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
+                  <div className="flex items-center justify-between text-sm text-muted-foreground">
+                    <span>Applied {formatDateToNow(existingApplication.created_at)}</span>
+                    <Badge variant="outline" className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                      Active Application
+                    </Badge>
+                  </div>
+                  
                   <div className="grid gap-4">
-                    <div className="p-4 border rounded-lg">
-                      <h3 className="font-semibold mb-2">Task Details</h3>
-                      <p className="text-sm text-muted-foreground">{task.description}</p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                    {existingApplication.application_promises.map((promise, index) => (
+                      <motion.div
+                        key={index}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3, delay: index * 0.1 }}
+                      >
+                        <Card className="border border-pink-100 dark:border-pink-900/20 hover:border-pink-200 dark:hover:border-pink-800 transition-all">
+                          <CardContent className="p-4 space-y-2">
+                            <div className="flex justify-between items-center">
+                              <span className="font-['P22MackinacPro-Medium']">{promise.platform}</span>
+                              <span className="text-lg">{promise.promised_reach} views</span>
+                            </div>
+                            <div className="flex justify-between items-center text-sm text-green-600 dark:text-green-400">
+                              <span>Estimated Earnings</span>
+                              <span className="font-['P22MackinacPro-Bold']">Rs. {parseFloat(promise.est_profit).toFixed(2)}</span>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </motion.div>
+                    ))}
 
-            <div className="space-y-4">
-              <h2 className="text-xl font-semibold">Platform Requirements</h2>
-              <div className="grid gap-4 md:grid-cols-2">
-                {targets?.map((target) => (
-                  <TaskApplicationCard
-                    key={target.platform}
-                    platform={target.platform}
-                    targetViews={target.views}
-                    dueDate={target.due_date}
-                    verifiedProfiles={verifiedProfiles}
-                    onViewsChange={(views) => handleViewsChange(target.platform, views)}
-                    selectedViews={selectedViews[target.platform] || "0"}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Your Application Summary</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {targets?.map((target) => (
-                    <div key={target.platform} className="p-4 border rounded-lg space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="font-medium">{target.platform}</span>
-                        <span className="text-lg">
-                          {formatViewCount(calculateTotalViews(target.platform))} / {formatViewCount(parseViewCount(target.views))} views
-                        </span>
-                      </div>
-                      {earnings[target.platform] > 0 && (
-                        <div className="flex justify-between items-center text-sm text-green-600 dark:text-green-400">
-                          <span>Potential Earnings</span>
-                          <span className="font-semibold">Rs. {earnings[target.platform]}</span>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                  {Object.values(earnings).some(e => e > 0) && (
                     <div className="mt-4 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900 rounded-lg">
                       <div className="flex justify-between items-center">
                         <span className="font-medium text-green-700 dark:text-green-300">Total Potential Earnings</span>
-                        <span className="text-lg font-bold text-green-700 dark:text-green-300">
-                          Rs. {Object.values(earnings).reduce((sum, current) => sum + current, 0).toFixed(2)}
+                        <span className="text-lg font-bold text-green-700 dark:text-green-300 font-['P22MackinacPro-Bold']">
+                          Rs. {calculateTotalEarnings(existingApplication).toFixed(2)}
                         </span>
                       </div>
                     </div>
-                  )}
+                  </div>
                 </div>
               </CardContent>
             </Card>
-          </div>
-        </>
-      )}
-
-      {existingApplication && (
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Submit Proofs</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-6">
-              {/* Only show platforms that have promises */}
-              {existingApplication.application_promises.map((promise) => (
-                <div key={promise.platform} className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-semibold">{promise.platform} Proofs</h3>
-                    <div className="text-sm text-muted-foreground">
-                      Promised: {formatViewCount(parseViewCount(promise.promised_reach))} views
+          </motion.div>
+        ) : (
+          <>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="space-y-6"
+            >
+              <Card className="border border-pink-100 dark:border-pink-900/20">
+                <CardHeader>
+                  <CardTitle className="font-['P22MackinacPro-Medium']">Task Overview</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="grid gap-4">
+                      <div className="p-4 border rounded-lg bg-gradient-to-r from-pink-50/50 to-transparent dark:from-pink-950/20 dark:to-transparent">
+                        <h3 className="font-['P22MackinacPro-Medium'] mb-2">Task Details</h3>
+                        <p className="text-sm text-muted-foreground">{task.description}</p>
+                      </div>
                     </div>
                   </div>
-                  
-                  <ProofUpload
-                    platform={promise.platform}
-                    existingProofs={existingProofs[promise.platform] || []}
-                    selectedProofs={selectedProofs[promise.platform] || []}
-                    proofUrls={proofUrls}
-                    onProofAdd={(type, content) => handleProofAdd(promise.platform, type, content)}
-                    onProofRemove={(index) => handleProofRemove(promise.platform, index)}
-                  />
+                </CardContent>
+              </Card>
+
+              <div className="space-y-4">
+                <h2 className="text-xl font-['P22MackinacPro-Bold'] bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-pink-600">Platform Requirements</h2>
+                <div className="grid gap-6 md:grid-cols-2">
+                  {targets?.map((target, index) => (
+                    <motion.div
+                      key={target.platform}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.5, delay: index * 0.1 }}
+                      className="group"
+                    >
+                      <Card className="relative overflow-hidden border border-pink-100 dark:border-pink-900/20 hover:border-pink-300 dark:hover:border-pink-700 transition-all duration-300 backdrop-blur-sm">
+                        <div className="absolute inset-0 bg-gradient-to-br from-pink-500/5 via-transparent to-transparent group-hover:from-pink-500/10 transition-all duration-300" />
+                        <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-pink-500/10 blur-3xl group-hover:bg-pink-500/20 transition-all duration-300" />
+                        
+                        <CardContent className="p-6 relative z-10">
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center space-x-3">
+                              <div className="p-2 rounded-xl bg-pink-100 dark:bg-pink-900/30">
+                                <span className="text-xl text-pink-600 dark:text-pink-400">
+                                  {target.platform === 'FACEBOOK' ? '󰈌' : 
+                                   target.platform === 'YOUTUBE' ? '󰗃' : 
+                                   target.platform === 'TIKTOK' ? '' : ''}
+                                </span>
+                              </div>
+                              <h3 className="text-lg font-['P22MackinacPro-Bold'] text-foreground">
+                                {target.platform}
+                              </h3>
+                            </div>
+                            {verifiedProfiles.some(p => p.platform === target.platform) ? (
+                              <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                                Verified
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="border-yellow-200 text-yellow-700 dark:border-yellow-800 dark:text-yellow-400">
+                                Not Verified
+                              </Badge>
+                            )}
+                          </div>
+
+                          <div className="space-y-4">
+                            <div className="flex justify-between text-sm text-muted-foreground">
+                              <span>Target Views</span>
+                              <span className="font-medium text-foreground">{formatViewCount(parseViewCount(target.views))}</span>
+                            </div>
+
+                            {target.due_date && (
+                              <div className="flex justify-between text-sm text-muted-foreground">
+                                <span>Due Date</span>
+                                <span className="font-medium text-foreground">
+                                  {format(new Date(target.due_date), 'MMM dd, yyyy')}
+                                </span>
+                              </div>
+                            )}
+
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium text-muted-foreground">Your Reach</label>
+                              <input
+                                type="text"
+                                value={selectedViews[target.platform] || "0"}
+                                onChange={(e) => handleViewsChange(target.platform, e.target.value)}
+                                placeholder="Enter views you can deliver"
+                                className="w-full px-3 py-2 rounded-lg border border-pink-100 dark:border-pink-900/20 
+                                         bg-white dark:bg-gray-900 focus:ring-2 focus:ring-pink-500/20 
+                                         focus:border-pink-500 transition-all duration-200"
+                                disabled={!verifiedProfiles.some(p => p.platform === target.platform)}
+                              />
+                              {!verifiedProfiles.some(p => p.platform === target.platform) && (
+                                <p className="text-xs text-yellow-600 dark:text-yellow-400">
+                                  Please verify your {target.platform} account to apply
+                                </p>
+                              )}
+                            </div>
+
+                            {earnings[target.platform] > 0 && (
+                              <div className="mt-4 p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-900">
+                                <div className="flex justify-between items-center">
+                                  <span className="text-sm text-green-700 dark:text-green-300">Potential Earnings</span>
+                                  <span className="font-['P22MackinacPro-Bold'] text-green-700 dark:text-green-300">
+                                    Rs. {earnings[target.platform].toFixed(2)}
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  ))}
                 </div>
-              ))}
-
-              <div className="flex justify-end">
-                <Button
-                  onClick={handleProofSubmit}
-                  disabled={isLoading || Object.keys(selectedProofs).length === 0}
-                  className="bg-gradient-to-r from-pink-500 to-pink-600 hover:opacity-90"
-                >
-                  {isLoading ? 'Submitting...' : 'Submit Proofs'}
-                </Button>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
-      <div className="flex justify-between">
-        <Button
-          variant="outline"
-          onClick={() => router.back()}
-        >
-          Back
-        </Button>
-        
-        {!existingApplication && (
-          <Button
-            onClick={handleSubmitApplication}
-            disabled={isLoading || !Object.values(selectedViews).some(views => parseViewCount(views) > 0)}
-            className="bg-gradient-to-r from-pink-500 to-pink-600 hover:opacity-90"
-          >
-            {isLoading ? 'Submitting...' : 'Submit Application'}
-          </Button>
+              <Card className="border border-pink-100 dark:border-pink-900/20">
+                <CardHeader>
+                  <CardTitle className="font-['P22MackinacPro-Medium']">Your Application Summary</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {targets?.map((target) => (
+                      <motion.div
+                        key={target.platform}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        <Card className="border border-pink-100 dark:border-pink-900/20 hover:border-pink-200 dark:hover:border-pink-800 transition-all">
+                          <CardContent className="p-4 space-y-2">
+                            <div className="flex justify-between items-center">
+                              <span className="font-['P22MackinacPro-Medium']">{target.platform}</span>
+                              <span className="text-lg">
+                                {formatViewCount(calculateTotalViews(target.platform))} / {formatViewCount(parseViewCount(target.views))} views
+                              </span>
+                            </div>
+                            {earnings[target.platform] > 0 && (
+                              <div className="flex justify-between items-center text-sm text-green-600 dark:text-green-400">
+                                <span>Potential Earnings</span>
+                                <span className="font-['P22MackinacPro-Bold']">Rs. {earnings[target.platform].toFixed(2)}</span>
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      </motion.div>
+                    ))}
+                    {Object.values(earnings).some(e => e > 0) && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5, delay: 0.2 }}
+                      >
+                        <div className="mt-4 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900 rounded-lg">
+                          <div className="flex justify-between items-center">
+                            <span className="font-medium text-green-700 dark:text-green-300">Total Potential Earnings</span>
+                            <span className="text-lg font-bold text-green-700 dark:text-green-300 font-['P22MackinacPro-Bold']">
+                              Rs. {Object.values(earnings).reduce((sum, current) => sum + current, 0).toFixed(2)}
+                            </span>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          </>
         )}
+
+        {existingApplication && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+          >
+            <Card className="mb-6 border border-pink-100 dark:border-pink-900/20">
+              <CardHeader>
+                <CardTitle className="font-['P22MackinacPro-Medium']">Submit Proofs</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  {existingApplication.application_promises.map((promise, index) => (
+                    <motion.div
+                      key={promise.platform}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: index * 0.1 }}
+                      className="space-y-4"
+                    >
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-['P22MackinacPro-Medium']">{promise.platform} Proofs</h3>
+                        <div className="text-sm text-muted-foreground">
+                          Promised: {formatViewCount(parseViewCount(promise.promised_reach))} views
+                        </div>
+                      </div>
+                      
+                      <ProofUpload
+                        platform={promise.platform}
+                        existingProofs={existingProofs[promise.platform] || []}
+                        selectedProofs={selectedProofs[promise.platform] || []}
+                        proofUrls={proofUrls}
+                        onProofAdd={(type, content) => handleProofAdd(promise.platform, type, content)}
+                        onProofRemove={(index) => handleProofRemove(promise.platform, index)}
+                      />
+                    </motion.div>
+                  ))}
+
+                  <div className="flex justify-end">
+                    <Button
+                      onClick={handleProofSubmit}
+                      disabled={isLoading || Object.keys(selectedProofs).length === 0}
+                      className="bg-gradient-to-r from-pink-500 to-pink-600 hover:opacity-90 text-white"
+                    >
+                      {isLoading ? (
+                        <>
+                          <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"/>
+                          Submitting...
+                        </>
+                      ) : 'Submit Proofs'}
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.3, delay: 0.4 }}
+          className="flex justify-between"
+        >
+          <Button
+            variant="outline"
+            onClick={() => router.back()}
+            className="border-pink-200 dark:border-pink-800 hover:bg-pink-50 dark:hover:bg-pink-900/20"
+          >
+            Back
+          </Button>
+          
+          {!existingApplication && (
+            <Button
+              onClick={handleSubmitApplication}
+              disabled={isLoading || !Object.values(selectedViews).some(views => parseViewCount(views) > 0)}
+              className="bg-gradient-to-r from-pink-500 to-pink-600 hover:opacity-90 text-white"
+            >
+              {isLoading ? (
+                <>
+                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"/>
+                  Submitting...
+                </>
+              ) : 'Submit Application'}
+            </Button>
+          )}
+        </motion.div>
       </div>
     </div>
   );
