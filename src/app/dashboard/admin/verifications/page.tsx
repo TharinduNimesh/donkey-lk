@@ -8,16 +8,9 @@ import type { Database } from "@/types/database.types";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { OwnershipVerificationModal, type VerificationRejectionReason, verificationRejectionReasons } from "@/components/dashboard/ownership-verification-modal";
+import { sendMail } from "@/lib/utils/email";
 
 type Profile = Database["public"]["Tables"]["profile"]["Row"];
 type ContactDetail = Database["public"]["Tables"]["contact_details"]["Row"];
@@ -29,22 +22,49 @@ type RequestWithDetails = VerificationRequest & {
   };
 };
 
+const getActionRequired = (reason: VerificationRejectionReason, customReason: string) => {
+  switch (reason) {
+    case 'INSUFFICIENT_INFO':
+      return 'Please resubmit your verification request with complete and clear information about your account ownership.';
+    case 'ALREADY_VERIFIED':
+      return 'This account is already verified with another BrandSync profile. If you believe this is an error, please contact our support team.';
+    case 'FAKE_ACCOUNT':
+      return 'We could not verify the authenticity of this account. Please ensure you are the legitimate owner and provide clear proof of ownership.';
+    case 'LOW_FOLLOWERS':
+      return 'Your account does not meet our minimum follower requirement. Please reapply once you have grown your audience.';
+    case 'INACTIVE_PROFILE':
+      return 'Your account shows insufficient recent activity. Please maintain regular content posting and engagement before reapplying.';
+    case 'SUSPICIOUS_ACTIVITY':
+      return 'We detected unusual activity on your account. Please ensure your account follows our community guidelines and platform terms of service.';
+    case 'CONTENT_VIOLATION':
+      return 'Your account content violates our community guidelines. Please review our terms of service and content policies before reapplying.';
+    case 'INCOMPLETE_PROFILE':
+      return 'Please complete your social media profile with all required information and resubmit your verification request.';
+    case 'OTHER':
+      return customReason;
+    default:
+      return 'Please address the issues mentioned and submit a new verification request.';
+  }
+};
+
 export default function AdminVerificationsPage() {
   const router = useRouter();
   const supabase = createClientComponentClient<Database>();
   const [isLoading, setIsLoading] = useState(true);
   const [requests, setRequests] = useState<RequestWithDetails[]>([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedRequest, setSelectedRequest] = useState<RequestWithDetails | null>(null);
-  const [profileName, setProfileName] = useState("");
-  const [followerCount, setFollowerCount] = useState("");
-  const [profilePicUrl, setProfilePicUrl] = useState("");
-  const [isAccepting, setIsAccepting] = useState(false);
+  const [verificationModal, setVerificationModal] = useState<{
+    isOpen: boolean;
+    action: 'accept' | 'reject';
+    request: RequestWithDetails | null;
+  }>({
+    isOpen: false,
+    action: 'accept',
+    request: null
+  });
 
   useEffect(() => {
     const fetchRequests = async () => {
       try {
-        // Fetch verification requests with user profiles and contact details
         const { data: verificationRequests, error } = await supabase
           .from('influencer_profile_verification_requests')
           .select(`
@@ -65,7 +85,7 @@ export default function AdminVerificationsPage() {
           .order('created_at', { ascending: false });
 
         if (error) throw error;
-        
+
         setRequests(verificationRequests as RequestWithDetails[]);
       } catch (error) {
         console.error('Error fetching verification requests:', error);
@@ -81,57 +101,87 @@ export default function AdminVerificationsPage() {
     return contacts.find(contact => contact.type === type)?.detail;
   };
 
-  const handleAccept = async (request: RequestWithDetails) => {
-    setSelectedRequest(request);
-    setIsModalOpen(true);
+  const handleVerificationAction = (request: RequestWithDetails, action: 'accept' | 'reject') => {
+    setVerificationModal({
+      isOpen: true,
+      action,
+      request
+    });
   };
 
-  const handleReject = async (request: RequestWithDetails) => {
-    try {
-      const { error } = await supabase
-        .from('influencer_profile_verification_requests')
-        .delete()
-        .eq('id', request.id);
-
-      if (error) throw error;
-
-      // Remove from local state
-      setRequests(prev => prev.filter(r => r.id !== request.id));
-      toast.success('Verification request rejected successfully');
-    } catch (error) {
-      console.error('Error rejecting verification request:', error);
-      toast.error('Failed to reject verification request');
-    }
-  };
-
-  const handleConfirmAccept = async () => {
-    if (!selectedRequest) return;
-    setIsAccepting(true);
+  const handleVerificationUpdate = async (
+    isAccepted: boolean,
+    verificationDetails?: {
+      profileName: string;
+      followerCount: string;
+      profilePicUrl: string;
+    },
+    rejectionReason?: VerificationRejectionReason,
+    customReason?: string
+  ) => {
+    const request = verificationModal.request;
+    if (!request) return;
 
     try {
-      const { data, error } = await supabase
-        .rpc('accept_influencer_verification', {
-          p_request_id: selectedRequest.id,
-          p_name: profileName,
-          p_followers: followerCount,
-          p_pic: profilePicUrl
+      if (isAccepted && verificationDetails) {
+        const { error } = await supabase
+          .rpc('accept_influencer_verification', {
+            p_request_id: request.id,
+            p_name: verificationDetails.profileName,
+            p_followers: verificationDetails.followerCount,
+            p_pic: verificationDetails.profilePicUrl
+          });
+
+        if (error) throw error;
+
+        await sendMail({
+          to: request.profile.email,
+          subject: 'Account Verification Approved - BrandSync',
+          template: 'verification-accepted',
+          context: {
+            name: request.profile.name,
+            platform: request.platform,
+            profileName: verificationDetails.profileName,
+            followerCount: verificationDetails.followerCount,
+            date: format(new Date(), 'MMMM d, yyyy')
+          },
+          from: 'verify@brandsync.lk'
         });
+      } else if (!isAccepted && rejectionReason) {
+        const { error } = await supabase
+          .from('influencer_profile_verification_requests')
+          .delete()
+          .eq('id', request.id);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      // Update local state
-      setRequests(prev => prev.filter(r => r.id !== selectedRequest.id));
-      setIsModalOpen(false);
-      setSelectedRequest(null);
-      setProfileName("");
-      setFollowerCount("");
-      setProfilePicUrl("");
-      toast.success('Profile verified successfully');
+        const rejectionLabel = verificationRejectionReasons.find(
+          (r) => r.value === rejectionReason
+        )?.label || 'Verification Rejected';
+
+        await sendMail({
+          to: request.profile.email,
+          subject: 'Account Verification Update - BrandSync',
+          template: 'verification-rejected',
+          context: {
+            name: request.profile.name,
+            platform: request.platform,
+            profileUrl: request.profile_url,
+            date: format(new Date(), 'MMMM d, yyyy'),
+            rejectionReason: rejectionLabel,
+            actionRequired: getActionRequired(rejectionReason, customReason || '')
+          },
+          from: 'verify@brandsync.lk'
+        });
+      }
+
+      setRequests(prev => prev.filter(r => r.id !== request.id));
+      toast.success(`Verification request ${isAccepted ? 'accepted' : 'rejected'} successfully`);
     } catch (error) {
-      console.error('Error accepting verification request:', error);
-      toast.error('Failed to verify profile');
+      console.error('Error updating verification request:', error);
+      toast.error(`Failed to ${isAccepted ? 'accept' : 'reject'} verification request`);
     } finally {
-      setIsAccepting(false);
+      setVerificationModal(prev => ({ ...prev, isOpen: false }));
     }
   };
 
@@ -140,7 +190,7 @@ export default function AdminVerificationsPage() {
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">Ownership Verifications</h1>
       </div>
-      
+
       <Card>
         <CardHeader>
           <CardTitle>Platform Verification Requests</CardTitle>
@@ -211,7 +261,7 @@ export default function AdminVerificationsPage() {
                           <Button
                             variant="default"
                             size="sm"
-                            onClick={() => handleAccept(request)}
+                            onClick={() => handleVerificationAction(request, 'accept')}
                             className="bg-green-600 hover:bg-green-700"
                           >
                             Accept
@@ -219,7 +269,7 @@ export default function AdminVerificationsPage() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleReject(request)}
+                            onClick={() => handleVerificationAction(request, 'reject')}
                             className="text-red-600 border-red-600 hover:bg-red-50"
                           >
                             Reject
@@ -235,68 +285,15 @@ export default function AdminVerificationsPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Accept Profile Verification</DialogTitle>
-            <DialogDescription>
-              Enter the profile details to verify this account.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="profileName">Profile/Channel Name</Label>
-              <Input
-                id="profileName"
-                value={profileName}
-                onChange={(e) => setProfileName(e.target.value)}
-                placeholder="Enter profile or channel name"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="followers">Follower Count</Label>
-              <Input
-                id="followers"
-                value={followerCount}
-                onChange={(e) => setFollowerCount(e.target.value)}
-                placeholder="e.g. 10K, 1.4M, 500"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="profilePic">Profile Picture URL</Label>
-              <Input
-                id="profilePic"
-                value={profilePicUrl}
-                onChange={(e) => setProfilePicUrl(e.target.value)}
-                placeholder="Enter profile picture URL"
-                type="url"
-              />
-            </div>
-          </div>
-          <div className="flex justify-end gap-3">
-            <Button 
-              variant="outline" 
-              onClick={() => setIsModalOpen(false)}
-              disabled={isAccepting}
-            >
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleConfirmAccept}
-              disabled={isAccepting}
-            >
-              {isAccepting ? (
-                <>
-                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-background border-t-foreground"/>
-                  Verifying...
-                </>
-              ) : (
-                'Confirm Verification'
-              )}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {verificationModal.request && (
+        <OwnershipVerificationModal
+          isOpen={verificationModal.isOpen}
+          onClose={() => setVerificationModal(prev => ({ ...prev, isOpen: false }))}
+          onConfirm={handleVerificationUpdate}
+          action={verificationModal.action}
+          platform={verificationModal.request.platform}
+        />
+      )}
     </div>
   );
 }
