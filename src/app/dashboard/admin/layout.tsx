@@ -10,6 +10,10 @@ const adminRoutes = [
     path: "/dashboard/admin"
   },
   {
+    name: "Accounting",
+    path: "/dashboard/admin/accounting"
+  },
+  {
     name: "Task Payments",
     path: "/dashboard/admin/payments"
   },
