@@ -676,6 +676,125 @@ export type Database = {
           },
         ]
       }
+      withdrawal_options: {
+        Row: {
+          account_name: string
+          account_number: string
+          bank_name: string
+          branch_name: string
+          created_at: string
+          id: number
+          user_id: string
+        }
+        Insert: {
+          account_name: string
+          account_number: string
+          bank_name: string
+          branch_name: string
+          created_at?: string
+          id?: number
+          user_id?: string
+        }
+        Update: {
+          account_name?: string
+          account_number?: string
+          bank_name?: string
+          branch_name?: string
+          created_at?: string
+          id?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "withdrawal_options_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profile"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      withdrawal_request_status: {
+        Row: {
+          created_at: string
+          id: number
+          request_id: number
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: Database["public"]["Enums"]["WithdrawalStatus"]
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          request_id: number
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["WithdrawalStatus"]
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          request_id?: number
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["WithdrawalStatus"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "withdrawal_request_status_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "withdrawal_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "withdrawal_request_status_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profile"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      withdrawal_requests: {
+        Row: {
+          amount: number
+          created_at: string
+          id: number
+          user_id: string
+          withdrawal_option_id: number
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: number
+          user_id?: string
+          withdrawal_option_id: number
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: number
+          user_id?: string
+          withdrawal_option_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "withdrawal_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profile"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "withdrawal_requests_withdrawal_option_id_fkey"
+            columns: ["withdrawal_option_id"]
+            isOneToOne: false
+            referencedRelation: "withdrawal_options"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       task_details: {
@@ -802,6 +921,7 @@ export type Database = {
       ProofType: "IMAGE" | "URL"
       Roles: "ADMIN" | "BUYER" | "INFLUENCER"
       TaskStatus: "DRAFT" | "ACTIVE" | "ARCHIVED" | "COMPLETED"
+      WithdrawalStatus: "PENDING" | "ACCEPTED" | "REJECTED"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -925,6 +1045,7 @@ export const Constants = {
       ProofType: ["IMAGE", "URL"],
       Roles: ["ADMIN", "BUYER", "INFLUENCER"],
       TaskStatus: ["DRAFT", "ACTIVE", "ARCHIVED", "COMPLETED"],
+      WithdrawalStatus: ["PENDING", "ACCEPTED", "REJECTED"],
     },
   },
 } as const

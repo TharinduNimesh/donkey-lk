@@ -19,11 +19,18 @@ import { uploadProofImage } from "@/lib/utils/storage";
 import { getProofImageUrl, submitApplicationProofs, getApplicationProofs } from "@/lib/utils/proofs";
 import { ProofUpload } from "@/components/ui/proof-upload";
 import { motion } from "framer-motion";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-type TaskDetail = Database['public']['Views']['task_details']['Row'];
-type InfluencerProfile = Database['public']['Tables']['influencer_profile']['Row'];
-type TaskApplication = Database['public']['Tables']['task_applications']['Row'] & {
-  application_promises: Database['public']['Tables']['application_promises']['Row'][];
+type TaskDetail = Database["public"]["Views"]["task_details_view"]["Row"];
+type InfluencerProfile = Database["public"]["Tables"]["influencer_profile"]["Row"];
+type TaskApplication = Database["public"]["Tables"]["task_applications"]["Row"] & {
+  application_promises: Database["public"]["Tables"]["application_promises"]["Row"][];
 };
 
 export default function TaskApplicationPage({ params }: { params: Promise<{ id: string }> }) {
@@ -49,6 +56,20 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
 
   const supabase = createClientComponentClient<Database>();
 
+  const viewOptions = [
+    { value: '1000', label: '1K' },
+    { value: '5000', label: '5K' },
+    { value: '10000', label: '10K' },
+    { value: '20000', label: '20K' },
+    { value: '25000', label: '25K' },
+    { value: '50000', label: '50K' },
+  ];
+
+  const getAvailableViewOptions = (targetViews: string) => {
+    const targetViewCount = parseViewCount(targetViews);
+    return viewOptions.filter(option => parseInt(option.value) <= targetViewCount);
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -69,7 +90,7 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
 
         // Fetch task details with application status
         const { data: taskData, error: taskError } = await supabase
-          .from('task_details')
+          .from('task_details_view')
           .select(`
             *,
             applications:task_applications(
@@ -404,24 +425,22 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
   const isReadOnly = !!existingApplication;
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-b from-pink-50/30 to-white dark:from-gray-900 dark:to-gray-950">
+    <div className="min-h-screen w-full bg-white dark:bg-gray-950 font-['Roboto']">
       <div className="container max-w-4xl mx-auto py-8 px-4">
         <div className="mb-8 space-y-3">
           <div className="flex items-center justify-between">
-            <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-pink-600 font-['P22MackinacPro-Bold']">
-              Apply for Task
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+              {task?.title}
             </h1>
-            <Badge
-              className={`
-                px-3 py-1 rounded-full text-sm font-medium
-                ${task.status === 'ACTIVE' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : ''}
-                ${task.status === 'DRAFT' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' : ''}
-              `}
-            >
-              {task.status}
+            <Badge className={`
+              px-3 py-1 rounded-full text-sm pointer-events-none select-none
+              ${task?.status === 'ACTIVE' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : ''}
+              ${task?.status === 'DRAFT' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' : ''}
+            `}>
+              {task?.status}
             </Badge>
           </div>
-          <p className="text-muted-foreground max-w-2xl">{task.description}</p>
+          <p className="text-muted-foreground">{task?.description}</p>
         </div>
 
         {existingApplication ? (
@@ -430,18 +449,15 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <Card className="mb-6 border border-pink-100 dark:border-pink-900/20 overflow-hidden">
-              <div className="absolute right-0 top-0 h-full w-1/2 bg-gradient-to-l from-pink-500/5 to-transparent"/>
+            <Card className="mb-6 border border-gray-200 dark:border-gray-800">
               <CardHeader>
-                <CardTitle className="text-blue-600 dark:text-blue-400 font-['P22MackinacPro-Medium']">
-                  Your Existing Application
-                </CardTitle>
+                <CardTitle className="font-medium">Your Application</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   <div className="flex items-center justify-between text-sm text-muted-foreground">
                     <span>Applied {formatDateToNow(existingApplication.created_at)}</span>
-                    <Badge variant="outline" className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                    <Badge variant="outline" className="pointer-events-none select-none bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400">
                       Active Application
                     </Badge>
                   </div>
@@ -454,25 +470,50 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.3, delay: index * 0.1 }}
                       >
-                        <Card className="border border-pink-100 dark:border-pink-900/20 hover:border-pink-200 dark:hover:border-pink-800 transition-all">
+                        <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
                           <CardContent className="p-4 space-y-2">
                             <div className="flex justify-between items-center">
-                              <span className="font-['P22MackinacPro-Medium']">{promise.platform}</span>
-                              <span className="text-lg">{promise.promised_reach} views</span>
+                              <div className="flex items-center space-x-3">
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white
+                                  ${promise.platform === 'YOUTUBE' ? 'bg-red-500' :
+                                    promise.platform === 'FACEBOOK' ? 'bg-blue-600' :
+                                    promise.platform === 'TIKTOK' ? 'bg-black' :
+                                    'bg-pink-500'}`}
+                                >
+                                  {promise.platform === 'YOUTUBE' && (
+                                    <svg viewBox="0 0 24 24" className="w-5 h-5">
+                                      <path fill="currentColor" d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814z" />
+                                      <path fill="#fff" d="M9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+                                    </svg>
+                                  )}
+                                  {promise.platform === 'FACEBOOK' && (
+                                    <svg viewBox="0 0 24 24" className="w-5 h-5">
+                                      <path fill="currentColor" d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                                    </svg>
+                                  )}
+                                  {promise.platform === 'TIKTOK' && (
+                                    <svg viewBox="0 0 24 24" className="w-5 h-5">
+                                      <path fill="currentColor" d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1.04-.1z" />
+                                    </svg>
+                                  )}
+                                </div>
+                                <span className="font-medium">{promise.platform}</span>
+                              </div>
+                              <span className="text-lg">{formatViewCount(parseViewCount(promise.promised_reach))} views</span>
                             </div>
                             <div className="flex justify-between items-center text-sm text-green-600 dark:text-green-400">
                               <span>Estimated Earnings</span>
-                              <span className="font-['P22MackinacPro-Bold']">Rs. {parseFloat(promise.est_profit).toFixed(2)}</span>
+                              <span className="font-medium">Rs. {parseFloat(promise.est_profit).toFixed(2)}</span>
                             </div>
                           </CardContent>
                         </Card>
                       </motion.div>
                     ))}
 
-                    <div className="mt-4 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900 rounded-lg">
+                    <div className="p-4 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900">
                       <div className="flex justify-between items-center">
                         <span className="font-medium text-green-700 dark:text-green-300">Total Potential Earnings</span>
-                        <span className="text-lg font-bold text-green-700 dark:text-green-300 font-['P22MackinacPro-Bold']">
+                        <span className="text-lg font-medium text-green-700 dark:text-green-300">
                           Rs. {calculateTotalEarnings(existingApplication).toFixed(2)}
                         </span>
                       </div>
@@ -490,24 +531,8 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
               transition={{ duration: 0.5 }}
               className="space-y-6"
             >
-              <Card className="border border-pink-100 dark:border-pink-900/20">
-                <CardHeader>
-                  <CardTitle className="font-['P22MackinacPro-Medium']">Task Overview</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="grid gap-4">
-                      <div className="p-4 border rounded-lg bg-gradient-to-r from-pink-50/50 to-transparent dark:from-pink-950/20 dark:to-transparent">
-                        <h3 className="font-['P22MackinacPro-Medium'] mb-2">Task Details</h3>
-                        <p className="text-sm text-muted-foreground">{task.description}</p>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
               <div className="space-y-4">
-                <h2 className="text-xl font-['P22MackinacPro-Bold'] bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-pink-600">Platform Requirements</h2>
+                <h2 className="text-xl font-medium text-gray-900 dark:text-gray-100">Platform Requirements</h2>
                 <div className="grid gap-6 md:grid-cols-2">
                   {targets?.map((target, index) => (
                     <motion.div
@@ -515,32 +540,42 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.5, delay: index * 0.1 }}
-                      className="group"
                     >
-                      <Card className="relative overflow-hidden border border-pink-100 dark:border-pink-900/20 hover:border-pink-300 dark:hover:border-pink-700 transition-all duration-300 backdrop-blur-sm">
-                        <div className="absolute inset-0 bg-gradient-to-br from-pink-500/5 via-transparent to-transparent group-hover:from-pink-500/10 transition-all duration-300" />
-                        <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-pink-500/10 blur-3xl group-hover:bg-pink-500/20 transition-all duration-300" />
-                        
-                        <CardContent className="p-6 relative z-10">
+                      <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+                        <CardContent className="p-6">
                           <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center space-x-3">
-                              <div className="p-2 rounded-xl bg-pink-100 dark:bg-pink-900/30">
-                                <span className="text-xl text-pink-600 dark:text-pink-400">
-                                  {target.platform === 'FACEBOOK' ? '󰈌' : 
-                                   target.platform === 'YOUTUBE' ? '󰗃' : 
-                                   target.platform === 'TIKTOK' ? '' : ''}
-                                </span>
+                              <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white
+                                ${target.platform === 'YOUTUBE' ? 'bg-red-500' :
+                                  target.platform === 'FACEBOOK' ? 'bg-blue-600' :
+                                  target.platform === 'TIKTOK' ? 'bg-black' :
+                                  'bg-pink-500'}`}
+                              >
+                                {target.platform === 'YOUTUBE' && (
+                                  <svg viewBox="0 0 24 24" className="w-6 h-6">
+                                    <path fill="currentColor" d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814z" />
+                                    <path fill="#fff" d="M9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+                                  </svg>
+                                )}
+                                {target.platform === 'FACEBOOK' && (
+                                  <svg viewBox="0 0 24 24" className="w-6 h-6">
+                                    <path fill="currentColor" d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                                  </svg>
+                                )}
+                                {target.platform === 'TIKTOK' && (
+                                  <svg viewBox="0 0 24 24" className="w-6 h-6">
+                                    <path fill="currentColor" d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1.04-.1z" />
+                                  </svg>
+                                )}
                               </div>
-                              <h3 className="text-lg font-['P22MackinacPro-Bold'] text-foreground">
-                                {target.platform}
-                              </h3>
+                              <h3 className="font-medium text-gray-900 dark:text-gray-100">{target.platform}</h3>
                             </div>
                             {verifiedProfiles.some(p => p.platform === target.platform) ? (
-                              <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                              <Badge className="pointer-events-none select-none bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400">
                                 Verified
                               </Badge>
                             ) : (
-                              <Badge variant="outline" className="border-yellow-200 text-yellow-700 dark:border-yellow-800 dark:text-yellow-400">
+                              <Badge variant="outline" className="pointer-events-none select-none border-yellow-200 text-yellow-700 dark:border-yellow-800 dark:text-yellow-400">
                                 Not Verified
                               </Badge>
                             )}
@@ -562,17 +597,24 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
                             )}
 
                             <div className="space-y-2">
-                              <label className="text-sm font-medium text-muted-foreground">Your Reach</label>
-                              <input
-                                type="text"
+                              <label className="text-sm font-medium text-muted-foreground">Promised Reach</label>
+                              <Select
                                 value={selectedViews[target.platform] || "0"}
-                                onChange={(e) => handleViewsChange(target.platform, e.target.value)}
-                                placeholder="Enter views you can deliver"
-                                className="w-full px-3 py-2 rounded-lg border border-pink-100 dark:border-pink-900/20 
-                                         bg-white dark:bg-gray-900 focus:ring-2 focus:ring-pink-500/20 
-                                         focus:border-pink-500 transition-all duration-200"
+                                onValueChange={(value) => handleViewsChange(target.platform, value)}
                                 disabled={!verifiedProfiles.some(p => p.platform === target.platform)}
-                              />
+                              >
+                                <SelectTrigger className="w-full">
+                                  <SelectValue placeholder="Select promised views" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="0">Select promised views</SelectItem>
+                                  {getAvailableViewOptions(target.views).map((option) => (
+                                    <SelectItem key={option.value} value={option.value}>
+                                      {option.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
                               {!verifiedProfiles.some(p => p.platform === target.platform) && (
                                 <p className="text-xs text-yellow-600 dark:text-yellow-400">
                                   Please verify your {target.platform} account to apply
@@ -584,7 +626,7 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
                               <div className="mt-4 p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-900">
                                 <div className="flex justify-between items-center">
                                   <span className="text-sm text-green-700 dark:text-green-300">Potential Earnings</span>
-                                  <span className="font-['P22MackinacPro-Bold'] text-green-700 dark:text-green-300">
+                                  <span className="font-medium text-green-700 dark:text-green-300">
                                     Rs. {earnings[target.platform].toFixed(2)}
                                   </span>
                                 </div>
@@ -598,9 +640,9 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
                 </div>
               </div>
 
-              <Card className="border border-pink-100 dark:border-pink-900/20">
+              <Card className="border border-gray-200 dark:border-gray-800">
                 <CardHeader>
-                  <CardTitle className="font-['P22MackinacPro-Medium']">Your Application Summary</CardTitle>
+                  <CardTitle>Your Application Summary</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
@@ -611,10 +653,10 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ duration: 0.3 }}
                       >
-                        <Card className="border border-pink-100 dark:border-pink-900/20 hover:border-pink-200 dark:hover:border-pink-800 transition-all">
+                        <Card className="border border-gray-200 dark:border-gray-800 hover:border-pink-200 dark:hover:border-pink-800 transition-all">
                           <CardContent className="p-4 space-y-2">
                             <div className="flex justify-between items-center">
-                              <span className="font-['P22MackinacPro-Medium']">{target.platform}</span>
+                              <span className="font-medium">{target.platform}</span>
                               <span className="text-lg">
                                 {formatViewCount(calculateTotalViews(target.platform))} / {formatViewCount(parseViewCount(target.views))} views
                               </span>
@@ -622,7 +664,7 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
                             {earnings[target.platform] > 0 && (
                               <div className="flex justify-between items-center text-sm text-green-600 dark:text-green-400">
                                 <span>Potential Earnings</span>
-                                <span className="font-['P22MackinacPro-Bold']">Rs. {earnings[target.platform].toFixed(2)}</span>
+                                <span className="font-medium">Rs. {earnings[target.platform].toFixed(2)}</span>
                               </div>
                             )}
                           </CardContent>
@@ -638,7 +680,7 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
                         <div className="mt-4 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900 rounded-lg">
                           <div className="flex justify-between items-center">
                             <span className="font-medium text-green-700 dark:text-green-300">Total Potential Earnings</span>
-                            <span className="text-lg font-bold text-green-700 dark:text-green-300 font-['P22MackinacPro-Bold']">
+                            <span className="text-lg font-medium text-green-700 dark:text-green-300">
                               Rs. {Object.values(earnings).reduce((sum, current) => sum + current, 0).toFixed(2)}
                             </span>
                           </div>
@@ -658,9 +700,9 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
           >
-            <Card className="mb-6 border border-pink-100 dark:border-pink-900/20">
+            <Card className="mb-6 border border-gray-200 dark:border-gray-800">
               <CardHeader>
-                <CardTitle className="font-['P22MackinacPro-Medium']">Submit Proofs</CardTitle>
+                <CardTitle className="font-medium">Submit Proofs</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
@@ -673,7 +715,7 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
                       className="space-y-4"
                     >
                       <div className="flex items-center justify-between">
-                        <h3 className="font-['P22MackinacPro-Medium']">{promise.platform} Proofs</h3>
+                        <h3 className="font-medium">{promise.platform} Proofs</h3>
                         <div className="text-sm text-muted-foreground">
                           Promised: {formatViewCount(parseViewCount(promise.promised_reach))} views
                         </div>

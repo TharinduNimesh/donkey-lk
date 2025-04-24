@@ -3,7 +3,14 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardFooter,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,24 +27,44 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import { 
-  CheckCircle, 
-  ArrowLeft, 
-  RefreshCcw, 
-  DollarSign, 
-  Calendar,  
+import {
+  AlertTriangle,
+  CheckCircle,
+  ArrowLeft,
+  RefreshCcw,
+  DollarSign,
+  Calendar,
   CreditCard,
   ShieldCheck,
   Eye,
   EyeOff,
-  Banknote
+  Banknote,
+  Trash2,
 } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Database } from "@/types/database.types";
+
+interface Withdrawal {
+  id: string;
+  created_at: string;
+  amount: number;
+  status: string;
+  bank_name: string;
+  user_id: string;
+}
+
+type WithdrawalOption = Database["public"]["Tables"]["withdrawal_options"]["Row"];
+type WithdrawalRequest = Database['public']['Tables']['withdrawal_requests']['Row'] & {
+  withdrawal_options: Database['public']['Tables']['withdrawal_options']['Row'];
+  withdrawal_request_status: Database['public']['Tables']['withdrawal_request_status']['Row'][];
+};
 
 export default function WithdrawPage() {
   const router = useRouter();
   const supabase = createClientComponentClient();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [submittingOption, setSubmittingOption] = useState(false);
   const [balance, setBalance] = useState(0);
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [bankDetails, setBankDetails] = useState({
@@ -46,96 +73,93 @@ export default function WithdrawPage() {
     bankName: "",
     branch: "",
   });
-  
-  interface Withdrawal {
-    id: string;
-    created_at: string;
-    amount: number;
-    status: string;
-    bank_name: string;
-    user_id: string;
-  }
-  
+
   const [withdrawalHistory, setWithdrawalHistory] = useState<Withdrawal[]>([]);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [bankInfoSaved, setBankInfoSaved] = useState(false);
   const [showBankDetailsDialog, setShowBankDetailsDialog] = useState(false);
   const [showAccountNumber, setShowAccountNumber] = useState(false);
+  const [withdrawalOptions, setWithdrawalOptions] = useState<WithdrawalOption[]>([]);
+  const [selectedOption, setSelectedOption] = useState<WithdrawalOption | null>(null);
+  const [withdrawalRequests, setWithdrawalRequests] = useState<WithdrawalRequest[]>([]);
 
   useEffect(() => {
     async function fetchUserData() {
       setLoading(true);
 
       try {
-        // Get current user
-        const {
-          data: { user },
-          error: userError,
-        } = await supabase.auth.getUser();
-
-        if (userError) throw userError;
+        const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
           router.push("/auth");
           return;
         }
 
-        // Fetch user's balance
-        const { data: balanceData, error: balanceError } = await supabase
-          .from("earnings")
-          .select("current_balance")
-          .eq("user_id", user.id)
-          .single();
+        // Fetch balance, withdrawal options and requests in parallel
+        const [balanceResponse, optionsResponse, requestsResponse] = await Promise.all([
+          supabase
+            .from("account_balance")
+            .select("balance")
+            .eq("user_id", user.id)
+            .single(),
+          supabase
+            .from("withdrawal_options")
+            .select("*")
+            .eq("user_id", user.id)
+            .order('created_at', { ascending: false }),
+          supabase
+            .from("withdrawal_requests")
+            .select(`
+              *,
+              withdrawal_options (
+                bank_name,
+                account_name,
+                account_number,
+                branch_name
+              ),
+              withdrawal_request_status (
+                status,
+                created_at
+              )
+            `)
+            .eq("user_id", user.id)
+            .order('created_at', { ascending: false })
+        ]);
 
-        if (balanceError && balanceError.code !== "PGRST116") {
-          throw balanceError;
+        if (balanceResponse.error && balanceResponse.error.code !== "PGRST116") {
+          throw balanceResponse.error;
         }
 
-        if (balanceData) {
-          setBalance(balanceData.current_balance || 0);
+        if (optionsResponse.error) {
+          throw optionsResponse.error;
         }
 
-        // Fetch user's bank details
-        const { data: bankData, error: bankError } = await supabase
-          .from("user_profiles")
-          .select(
-            "bank_account_name, bank_account_number, bank_name, bank_branch"
-          )
-          .eq("id", user.id)
-          .single();
-
-        if (bankError && bankError.code !== "PGRST116") {
-          throw bankError;
+        if (balanceResponse.data) {
+          setBalance(balanceResponse.data.balance || 0);
         }
 
-        if (bankData) {
-          setBankDetails({
-            accountName: bankData.bank_account_name || "",
-            accountNumber: bankData.bank_account_number || "",
-            bankName: bankData.bank_name || "",
-            branch: bankData.bank_branch || "",
-          });
-          
-          // Check if bank info is complete
-          if (bankData.bank_account_name && 
-              bankData.bank_account_number && 
-              bankData.bank_name) {
+        if (optionsResponse.data) {
+          setWithdrawalOptions(optionsResponse.data);
+          // If there are saved options, select the first one by default
+          if (optionsResponse.data.length > 0) {
+            const firstOption = optionsResponse.data[0];
+            setSelectedOption(firstOption);
+            setBankDetails({
+              accountName: firstOption.account_name,
+              accountNumber: firstOption.account_number,
+              bankName: firstOption.bank_name,
+              branch: firstOption.branch_name,
+            });
             setBankInfoSaved(true);
           }
         }
 
-        // Fetch withdrawal history
-        const { data: withdrawalData, error: withdrawalError } = await supabase
-          .from("withdrawals")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false });
+        if (requestsResponse.data) {
+          setWithdrawalRequests(requestsResponse.data);
+        }
 
-        if (withdrawalError) throw withdrawalError;
-
-        setWithdrawalHistory(withdrawalData || []);
       } catch (error) {
-        console.error("Error fetching user data:", error);
-        toast.error("Failed to load account information");
+        console.error("Error fetching data:", error);
+        toast.error("Failed to load account data");
       } finally {
         setLoading(false);
       }
@@ -145,12 +169,8 @@ export default function WithdrawPage() {
   }, [supabase, router]);
 
   const handleSubmitWithdrawal = async () => {
-    if (
-      !bankDetails.accountName ||
-      !bankDetails.accountNumber ||
-      !bankDetails.bankName
-    ) {
-      toast.error("Please complete your bank details first");
+    if (!selectedOption) {
+      toast.error("Please select a bank account");
       return;
     }
 
@@ -165,55 +185,48 @@ export default function WithdrawPage() {
       return;
     }
 
+    if (amount < 1000) {
+      toast.error("Minimum withdrawal amount is LKR 1,000");
+      return;
+    }
+
     setSubmitting(true);
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        router.push("/auth");
-        return;
-      }
-
-      // Create withdrawal request
       const { data, error } = await supabase
-        .from("withdrawals")
-        .insert({
-          user_id: user.id,
-          amount,
-          status: "PENDING",
-          bank_account_name: bankDetails.accountName,
-          bank_account_number: bankDetails.accountNumber,
-          bank_name: bankDetails.bankName,
-          bank_branch: bankDetails.branch,
-        })
-        .select();
+        .from("withdrawal_requests")
+        .insert([
+          {
+            amount: amount,
+            withdrawal_option_id: selectedOption.id
+          }
+        ])
+        .select(`
+          *,
+          withdrawal_options (
+            bank_name,
+            account_name,
+            account_number,
+            branch_name
+          ),
+          withdrawal_request_status (
+            status,
+            created_at
+          )
+        `)
+        .single();
 
       if (error) throw error;
 
-      // Update user balance
-      const { error: updateError } = await supabase.rpc(
-        "update_user_balance_after_withdrawal",
-        {
-          user_id_param: user.id,
-          withdrawal_amount_param: amount,
-        }
-      );
-
-      if (updateError) throw updateError;
-
+      // Add the new request to the list
+      setWithdrawalRequests(prev => [data, ...prev]);
+      
+      // Update local balance
+      setBalance(prev => prev - amount);
+      
       toast.success("Withdrawal request submitted successfully");
       setWithdrawAmount("");
       setShowConfirmDialog(false);
 
-      // Refresh data
-      router.refresh();
-
-      // Add the new withdrawal to the history
-      if (data && data[0]) {
-        setWithdrawalHistory([data[0], ...withdrawalHistory]);
-      }
     } catch (error) {
       console.error("Error submitting withdrawal:", error);
       toast.error("Failed to submit withdrawal request");
@@ -232,33 +245,84 @@ export default function WithdrawPage() {
       return;
     }
 
+    setSubmittingOption(true);
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
+      const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        router.push("/auth");
-        return;
+        throw new Error("No authenticated user");
       }
 
-      const { error } = await supabase
-        .from("user_profiles")
-        .update({
-          bank_account_name: bankDetails.accountName,
-          bank_account_number: bankDetails.accountNumber,
-          bank_name: bankDetails.bankName,
-          bank_branch: bankDetails.branch,
-        })
-        .eq("id", user.id);
+      const { data, error } = await supabase
+        .from("withdrawal_options")
+        .insert([
+          {
+            account_name: bankDetails.accountName,
+            account_number: bankDetails.accountNumber,
+            bank_name: bankDetails.bankName,
+            branch_name: bankDetails.branch,
+            user_id: user.id,
+          },
+        ])
+        .select()
+        .single();
 
       if (error) throw error;
 
+      setWithdrawalOptions(prev => [data, ...prev]);
+      setSelectedOption(data);
       setBankInfoSaved(true);
-      toast.success("Bank details updated successfully");
+      toast.success("Bank details saved successfully");
     } catch (error) {
-      console.error("Error updating bank details:", error);
-      toast.error("Failed to update bank details");
+      console.error("Error saving bank details:", error);
+      toast.error("Failed to save bank details");
+    } finally {
+      setSubmittingOption(false);
+    }
+  };
+
+  const handleSelectBankAccount = (option: WithdrawalOption) => {
+    setSelectedOption(option);
+    setBankDetails({
+      accountName: option.account_name,
+      accountNumber: option.account_number,
+      bankName: option.bank_name,
+      branch: option.branch_name,
+    });
+    setBankInfoSaved(true);
+  };
+
+  const handleDeleteBankAccount = async (optionId: number) => {
+    const confirmed = window.confirm("Are you sure you want to delete this bank account?");
+    if (!confirmed) return;
+
+    try {
+      const { error } = await supabase
+        .from("withdrawal_options")
+        .delete()
+        .eq("id", optionId);
+
+      if (error) throw error;
+
+      setWithdrawalOptions(prev => prev.filter(opt => opt.id !== optionId));
+      if (selectedOption?.id === optionId) {
+        const remainingOptions = withdrawalOptions.filter(opt => opt.id !== optionId);
+        if (remainingOptions.length > 0) {
+          handleSelectBankAccount(remainingOptions[0]);
+        } else {
+          setSelectedOption(null);
+          setBankDetails({
+            accountName: "",
+            accountNumber: "",
+            bankName: "",
+            branch: "",
+          });
+          setBankInfoSaved(false);
+        }
+      }
+      toast.success("Bank account deleted successfully");
+    } catch (error) {
+      console.error("Error deleting bank account:", error);
+      toast.error("Failed to delete bank account");
     }
   };
 
@@ -279,52 +343,74 @@ export default function WithdrawPage() {
       <div className="flex flex-col md:flex-row gap-6">
         {/* Balance Card Skeleton */}
         <div className="w-full md:w-1/3 h-[180px] bg-gray-200 dark:bg-gray-800 rounded-xl"></div>
-        
+
         {/* Bank Details Skeleton */}
         <div className="w-full md:w-2/3 h-[300px] bg-gray-200 dark:bg-gray-800 rounded-xl"></div>
       </div>
-      
+
       {/* History Skeleton */}
       <div className="h-[400px] bg-gray-200 dark:bg-gray-800 rounded-xl"></div>
     </div>
   );
-  
+
   // Function to mask account number for security
   const maskAccountNumber = (accountNumber: string) => {
     if (!accountNumber) return "";
     if (accountNumber.length <= 4) return accountNumber;
-    
+
     const lastFourDigits = accountNumber.slice(-4);
-    const maskedPart = accountNumber.slice(0, -4).replace(/./g, '•');
+    const maskedPart = accountNumber.slice(0, -4).replace(/./g, "•");
     return maskedPart + lastFourDigits;
+  };
+
+  const handleSetMaxAmount = () => {
+    setWithdrawAmount(balance.toString());
   };
 
   return (
     <div className="min-h-screen w-full bg-gradient-to-b from-pink-50/30 via-white to-white dark:from-gray-900 dark:via-gray-950 dark:to-gray-950">
       <div className="container mx-auto py-12 px-4 max-w-6xl">
+        {/* Minimum Balance Alert */}
+        {balance < 1000 && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className="mb-8"
+          >
+            <Alert variant="destructive" className="bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-900">
+              <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-500" />
+              <AlertDescription className="text-yellow-700 dark:text-yellow-400">
+                Your balance is below the minimum withdrawal amount. You need at least LKR 1,000 to make a withdrawal.
+              </AlertDescription>
+            </Alert>
+          </motion.div>
+        )}
+
         {/* Header */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
           className="mb-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
         >
-          <div className="space-y-1">
-            <button 
+          <div className="flex items-center gap-4">
+            <button
               onClick={() => router.back()}
-              className="flex items-center text-muted-foreground hover:text-foreground text-sm mb-2 transition-colors"
+              className="text-muted-foreground hover:text-foreground transition-colors"
             >
-              <ArrowLeft size={16} className="mr-1" />
-              Back to Dashboard
+              <ArrowLeft size={20} />
             </button>
-            <h1 className="text-3xl md:text-4xl font-bold font-display bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-pink-600">
-              Withdraw Earnings
-            </h1>
-            <p className="text-muted-foreground">
-              Manage your withdrawals and payment preferences
-            </p>
+            <div>
+              <h1 className="text-3xl md:text-4xl font-bold font-display bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-pink-600">
+                Withdraw Earnings
+              </h1>
+              <p className="text-muted-foreground">
+                Manage your withdrawals and payment preferences
+              </p>
+            </div>
           </div>
-          
+
           <div className="flex items-center gap-2 mt-2 md:mt-0">
             {bankInfoSaved && (
               <Button
@@ -350,7 +436,7 @@ export default function WithdrawPage() {
         {loading ? (
           renderSkeleton()
         ) : (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.2 }}
@@ -360,7 +446,7 @@ export default function WithdrawPage() {
                 <TabsTrigger value="withdraw">Withdraw</TabsTrigger>
                 <TabsTrigger value="history">History</TabsTrigger>
               </TabsList>
-              
+
               <TabsContent value="withdraw" className="space-y-8">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   {/* Balance Card */}
@@ -373,23 +459,27 @@ export default function WithdrawPage() {
                     <Card className="overflow-hidden border-pink-100 dark:border-pink-900/20 shadow-md hover:shadow-lg transition-shadow duration-300">
                       <CardHeader className="pb-2">
                         <div className="flex justify-between items-start">
-                          <CardTitle className="text-lg font-medium">Available Balance</CardTitle>
+                          <CardTitle className="text-lg font-medium">
+                            Available Balance
+                          </CardTitle>
                           <div className="bg-pink-100 dark:bg-pink-900/30 p-2 rounded-full">
                             <DollarSign className="h-5 w-5 text-pink-500 dark:text-pink-400" />
                           </div>
                         </div>
-                        <CardDescription>Available for withdrawal</CardDescription>
+                        <CardDescription>
+                          Available for withdrawal
+                        </CardDescription>
                       </CardHeader>
                       <CardContent>
                         <div className="relative group hover:scale-[1.01] transition-transform duration-200">
                           <div className="absolute -inset-1 bg-gradient-to-r from-pink-500/20 to-purple-500/20 rounded-lg blur-lg opacity-60 group-hover:opacity-100 transition-opacity duration-300"></div>
                           <div className="relative bg-white dark:bg-gray-950 rounded-lg p-4 border border-pink-100 dark:border-pink-900/30">
                             <div className="text-3xl font-bold text-pink-600 dark:text-pink-400 font-display">
-                              ${balance.toFixed(2)}
+                              LKR {balance.toFixed(2)}
                             </div>
                             <div className="text-sm text-muted-foreground mt-2">
                               <div className="flex items-center">
-                                <Calendar size={14} className="mr-1" /> 
+                                <Calendar size={14} className="mr-1" />
                                 Last updated: {new Date().toLocaleDateString()}
                               </div>
                             </div>
@@ -401,36 +491,58 @@ export default function WithdrawPage() {
                     {/* Withdraw Card */}
                     <Card className="mt-6 border-pink-100 dark:border-pink-900/20 shadow-md hover:shadow-lg transition-shadow duration-300">
                       <CardHeader>
-                        <CardTitle className="text-lg font-medium">Request Withdrawal</CardTitle>
-                        <CardDescription>Enter amount you want to withdraw</CardDescription>
+                        <CardTitle className="text-lg font-medium">
+                          Request Withdrawal
+                        </CardTitle>
+                        <CardDescription>
+                          Enter amount you want to withdraw
+                        </CardDescription>
                       </CardHeader>
                       <CardContent>
                         <div className="space-y-4">
                           <div>
-                            <Label htmlFor="withdrawAmount" className="text-sm font-medium">Amount</Label>
+                            <Label
+                              htmlFor="withdrawAmount"
+                              className="text-sm font-medium"
+                            >
+                              Amount
+                            </Label>
                             <div className="relative mt-1.5">
-                              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">
-                                $
-                              </span>
-                              <Input
-                                id="withdrawAmount"
-                                type="number"
-                                value={withdrawAmount}
-                                onChange={(e) => setWithdrawAmount(e.target.value)}
-                                className="pl-8 bg-white dark:bg-gray-900 border-pink-100 dark:border-pink-900/30"
-                                placeholder="0.00"
-                                disabled={!bankInfoSaved}
-                              />
+                              <div className="relative flex items-center">
+                                <Input
+                                  id="withdrawAmount"
+                                  type="number"
+                                  value={withdrawAmount}
+                                  onChange={(e) => setWithdrawAmount(e.target.value)}
+                                  className="pl-[4.5rem] pr-20 bg-white dark:bg-gray-900 border-pink-100 dark:border-pink-900/30 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                  placeholder="0.00"
+                                />
+                                <div className="absolute left-3 top-1/2 -translate-y-1/2 px-2 py-0.5 text-sm font-medium text-muted-foreground select-none border-r">
+                                  LKR
+                                </div>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={handleSetMaxAmount}
+                                  className="absolute right-1 px-2 h-7 text-xs border-pink-200 dark:border-pink-900 hover:bg-pink-50 dark:hover:bg-pink-900/20"
+                                >
+                                  Max
+                                </Button>
+                              </div>
+                              {!bankInfoSaved && (
+                                <p className="text-amber-600 dark:text-amber-400 text-xs mt-2 flex items-center">
+                                  <span className="inline-block w-2 h-2 rounded-full bg-amber-500 mr-2"></span>
+                                  Please complete and save your bank details first
+                                </p>
+                              )}
                             </div>
-                            {!bankInfoSaved && (
-                              <p className="text-amber-600 dark:text-amber-400 text-xs mt-2 flex items-center">
-                                <span className="inline-block w-2 h-2 rounded-full bg-amber-500 mr-2"></span>
-                                Please complete and save your bank details first
-                              </p>
-                            )}
                           </div>
 
-                          <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+                          <Dialog
+                            open={showConfirmDialog}
+                            onOpenChange={setShowConfirmDialog}
+                          >
                             <Button
                               onClick={() => setShowConfirmDialog(true)}
                               className="w-full bg-gradient-to-r from-pink-500 to-pink-600 hover:opacity-90 text-white"
@@ -447,24 +559,44 @@ export default function WithdrawPage() {
                               <DialogHeader>
                                 <DialogTitle>Confirm Withdrawal</DialogTitle>
                                 <DialogDescription>
-                                  You are about to request a withdrawal of ${parseFloat(withdrawAmount || "0").toFixed(2)}
+                                  Review your withdrawal request details
                                 </DialogDescription>
                               </DialogHeader>
                               <div className="space-y-4 py-4">
                                 <div className="bg-pink-50 dark:bg-pink-900/20 p-4 rounded-lg border border-pink-100 dark:border-pink-800/30">
-                                  <p className="text-sm text-pink-700 dark:text-pink-300">
-                                    Withdrawal requests typically take 1-3 business days to process. You'll receive an email notification when the status changes.
-                                  </p>
+                                  <div className="space-y-3">
+                                    <div className="flex justify-between items-center text-sm">
+                                      <span className="text-gray-600 dark:text-gray-300">Withdrawal Amount:</span>
+                                      <span className="font-medium">LKR {parseFloat(withdrawAmount || "0").toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-sm text-red-600 dark:text-red-400">
+                                      <span>Platform Fee (10%):</span>
+                                      <span>- LKR {(parseFloat(withdrawAmount || "0") * 0.1).toFixed(2)}</span>
+                                    </div>
+                                    <div className="pt-2 border-t border-pink-200 dark:border-pink-800">
+                                      <div className="flex justify-between items-center font-medium">
+                                        <span className="text-gray-700 dark:text-gray-200">You will receive:</span>
+                                        <span className="text-pink-600 dark:text-pink-400">
+                                          LKR {(parseFloat(withdrawAmount || "0") * 0.9).toFixed(2)}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
                                 </div>
+
                                 <div className="grid grid-cols-2 gap-y-3 gap-x-2 text-sm">
-                                  <p className="font-medium">Amount:</p>
-                                  <p className="font-bold text-pink-600 dark:text-pink-400">${parseFloat(withdrawAmount || "0").toFixed(2)}</p>
                                   <p className="font-medium">Bank:</p>
                                   <p>{bankDetails.bankName}</p>
                                   <p className="font-medium">Account:</p>
                                   <p>{bankDetails.accountNumber}</p>
                                   <p className="font-medium">Name:</p>
                                   <p>{bankDetails.accountName}</p>
+                                </div>
+
+                                <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-100 dark:border-blue-800/30">
+                                  <p className="text-sm text-blue-700 dark:text-blue-300">
+                                    Withdrawal requests typically take 1-3 business days to process. You'll receive an email notification when the status changes.
+                                  </p>
                                 </div>
                               </div>
                               <DialogFooter>
@@ -517,90 +649,180 @@ export default function WithdrawPage() {
                         </div>
                       </CardHeader>
                       <CardContent className="pb-0">
-                        <div className="space-y-6">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {withdrawalOptions.length > 0 && (
+                          <div className="mb-6">
+                            <Label className="text-sm font-medium mb-2">Saved Bank Accounts</Label>
                             <div className="space-y-2">
-                              <Label htmlFor="accountName" className="text-sm font-medium">Account Holder Name<span className="text-pink-500">*</span></Label>
-                              <Input
-                                id="accountName"
-                                value={bankDetails.accountName}
-                                onChange={(e) =>
-                                  setBankDetails({
-                                    ...bankDetails,
-                                    accountName: e.target.value,
-                                  })
-                                }
-                                placeholder="Enter account name"
-                                className="bg-white dark:bg-gray-900 border-pink-100 dark:border-pink-900/30"
-                              />
+                              {withdrawalOptions.map((option) => (
+                                <div
+                                  key={option.id}
+                                  className={`p-3 rounded-lg cursor-pointer transition-all duration-200 ${
+                                    selectedOption?.id === option.id
+                                      ? "bg-pink-50 dark:bg-pink-900/20 border-pink-200 dark:border-pink-800"
+                                      : "bg-gray-50 dark:bg-gray-900/50 border-gray-200 dark:border-gray-800 hover:border-pink-200 dark:hover:border-pink-800"
+                                  } border`}
+                                >
+                                  <div className="flex justify-between items-center">
+                                    <div className="flex-1" onClick={() => handleSelectBankAccount(option)}>
+                                      <p className="font-medium">{option.bank_name}</p>
+                                      <p className="text-sm text-muted-foreground">
+                                        {option.account_name} • {maskAccountNumber(option.account_number)}
+                                      </p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      {selectedOption?.id === option.id && (
+                                        <CheckCircle className="h-5 w-5 text-pink-500" />
+                                      )}
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleDeleteBankAccount(option.id)}
+                                        className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
                             </div>
-                            <div className="space-y-2">
-                              <Label htmlFor="accountNumber" className="text-sm font-medium">Account Number<span className="text-pink-500">*</span></Label>
-                              <Input
-                                id="accountNumber"
-                                value={bankDetails.accountNumber}
-                                onChange={(e) =>
+                            <div className="mt-4">
+                              <Button
+                                variant="outline"
+                                onClick={() => {
                                   setBankDetails({
-                                    ...bankDetails,
-                                    accountNumber: e.target.value,
-                                  })
-                                }
-                                placeholder="Enter account number"
-                                className="bg-white dark:bg-gray-900 border-pink-100 dark:border-pink-900/30"
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label htmlFor="bankName" className="text-sm font-medium">Bank Name<span className="text-pink-500">*</span></Label>
-                              <Input
-                                id="bankName"
-                                value={bankDetails.bankName}
-                                onChange={(e) =>
-                                  setBankDetails({
-                                    ...bankDetails,
-                                    bankName: e.target.value,
-                                  })
-                                }
-                                placeholder="Enter bank name"
-                                className="bg-white dark:bg-gray-900 border-pink-100 dark:border-pink-900/30"
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label htmlFor="branch" className="text-sm font-medium">Branch</Label>
-                              <Input
-                                id="branch"
-                                value={bankDetails.branch}
-                                onChange={(e) =>
-                                  setBankDetails({ ...bankDetails, branch: e.target.value })
-                                }
-                                placeholder="Enter branch name (optional)"
-                                className="bg-white dark:bg-gray-900 border-pink-100 dark:border-pink-900/30"
-                              />
+                                    accountName: "",
+                                    accountNumber: "",
+                                    bankName: "",
+                                    branch: "",
+                                  });
+                                  setSelectedOption(null);
+                                  setBankInfoSaved(false);
+                                }}
+                                className="w-full border-pink-200 dark:border-pink-800 hover:bg-pink-50 dark:hover:bg-pink-900/20"
+                              >
+                                + Add Another Bank Account
+                              </Button>
                             </div>
                           </div>
-                        </div>
+                        )}
+
+                        {(!withdrawalOptions.length || !selectedOption) && (
+                          <div className="space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                              <div className="space-y-2">
+                                <Label
+                                  htmlFor="accountName"
+                                  className="text-sm font-medium"
+                                >
+                                  Account Holder Name
+                                  <span className="text-pink-500">*</span>
+                                </Label>
+                                <Input
+                                  id="accountName"
+                                  value={bankDetails.accountName}
+                                  onChange={(e) =>
+                                    setBankDetails({
+                                      ...bankDetails,
+                                      accountName: e.target.value,
+                                    })
+                                  }
+                                  placeholder="Enter account name"
+                                  className="bg-white dark:bg-gray-900 border-pink-100 dark:border-pink-900/30"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label
+                                  htmlFor="accountNumber"
+                                  className="text-sm font-medium"
+                                >
+                                  Account Number
+                                  <span className="text-pink-500">*</span>
+                                </Label>
+                                <Input
+                                  id="accountNumber"
+                                  value={bankDetails.accountNumber}
+                                  onChange={(e) =>
+                                    setBankDetails({
+                                      ...bankDetails,
+                                      accountNumber: e.target.value,
+                                    })
+                                  }
+                                  placeholder="Enter account number"
+                                  className="bg-white dark:bg-gray-900 border-pink-100 dark:border-pink-900/30"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label
+                                  htmlFor="bankName"
+                                  className="text-sm font-medium"
+                                >
+                                  Bank Name
+                                  <span className="text-pink-500">*</span>
+                                </Label>
+                                <Input
+                                  id="bankName"
+                                  value={bankDetails.bankName}
+                                  onChange={(e) =>
+                                    setBankDetails({
+                                      ...bankDetails,
+                                      bankName: e.target.value,
+                                    })
+                                  }
+                                  placeholder="Enter bank name"
+                                  className="bg-white dark:bg-gray-900 border-pink-100 dark:border-pink-900/30"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label
+                                  htmlFor="branch"
+                                  className="text-sm font-medium"
+                                >
+                                  Branch
+                                </Label>
+                                <Input
+                                  id="branch"
+                                  value={bankDetails.branch}
+                                  onChange={(e) =>
+                                    setBankDetails({
+                                      ...bankDetails,
+                                      branch: e.target.value,
+                                    })
+                                  }
+                                  placeholder="Enter branch name (optional)"
+                                  className="bg-white dark:bg-gray-900 border-pink-100 dark:border-pink-900/30"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </CardContent>
-                      <CardFooter className="pt-6 pb-6 flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between">
-                        <p className="text-xs text-muted-foreground">
-                          <span className="text-pink-500">*</span> Required fields
-                        </p>
-                        <Button
-                          onClick={handleSaveBankDetails}
-                          className="sm:w-auto w-full bg-gradient-to-r from-pink-500 to-pink-600 hover:opacity-90 text-white"
-                        >
-                          {bankInfoSaved ? (
-                            <>
-                              <CheckCircle size={16} className="mr-2" /> Bank Details Saved
-                            </>
-                          ) : (
-                            "Save Bank Details"
-                          )}
-                        </Button>
-                      </CardFooter>
+                      {(!withdrawalOptions.length || !selectedOption) && (
+                        <CardFooter className="pt-6 pb-6 flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between">
+                          <p className="text-xs text-muted-foreground">
+                            <span className="text-pink-500">*</span> Required fields
+                          </p>
+                          <Button
+                            onClick={handleSaveBankDetails}
+                            disabled={submittingOption}
+                            className="sm:w-auto w-full bg-gradient-to-r from-pink-500 to-pink-600 hover:opacity-90 text-white"
+                          >
+                            {submittingOption ? (
+                              <>
+                                <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                                Saving...
+                              </>
+                            ) : (
+                              "Save Bank Details"
+                            )}
+                          </Button>
+                        </CardFooter>
+                      )}
                     </Card>
                   </motion.div>
                 </div>
               </TabsContent>
-              
+
               <TabsContent value="history">
                 <motion.div
                   initial={{ opacity: 0 }}
@@ -611,8 +833,12 @@ export default function WithdrawPage() {
                     <CardHeader className="pb-2">
                       <div className="flex justify-between items-start">
                         <div>
-                          <CardTitle className="text-lg font-medium">Withdrawal History</CardTitle>
-                          <CardDescription>Track your previous withdrawal requests</CardDescription>
+                          <CardTitle className="text-lg font-medium">
+                            Withdrawal History
+                          </CardTitle>
+                          <CardDescription>
+                            Track your withdrawal requests
+                          </CardDescription>
                         </div>
                         <div className="bg-pink-100 dark:bg-pink-900/30 p-2 rounded-full">
                           <CreditCard className="h-5 w-5 text-pink-500 dark:text-pink-400" />
@@ -639,28 +865,36 @@ export default function WithdrawPage() {
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-pink-100 dark:divide-pink-900/20">
-                            {withdrawalHistory.length > 0 ? (
-                              withdrawalHistory.map((withdrawal) => (
+                            {withdrawalRequests.length > 0 ? (
+                              withdrawalRequests.map((request) => (
                                 <tr
-                                  key={withdrawal.id}
+                                  key={request.id}
                                   className="hover:bg-pink-50/30 dark:hover:bg-pink-900/5 transition-colors"
                                 >
                                   <td className="px-4 py-4 whitespace-nowrap text-sm">
-                                    {new Date(withdrawal.created_at).toLocaleDateString(undefined, {
-                                      year: 'numeric',
-                                      month: 'short',
-                                      day: 'numeric',
+                                    {new Date(request.created_at).toLocaleDateString(undefined, {
+                                      year: "numeric",
+                                      month: "short",
+                                      day: "numeric",
                                     })}
                                   </td>
                                   <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
-                                    ${withdrawal.amount.toFixed(2)}
+                                    LKR {request.amount.toFixed(2)}
                                   </td>
                                   <td className="px-4 py-4 whitespace-nowrap text-sm">
-                                    {withdrawal.bank_name}
+                                    {request.withdrawal_options.bank_name}
                                   </td>
                                   <td className="px-4 py-4 whitespace-nowrap text-sm">
-                                    <Badge className={getStatusBadgeClass(withdrawal.status)}>
-                                      {withdrawal.status}
+                                    <Badge
+                                      className={
+                                        request.withdrawal_request_status?.[0]?.status === "ACCEPTED"
+                                          ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                                          : request.withdrawal_request_status?.[0]?.status === "REJECTED"
+                                          ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                                          : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
+                                      }
+                                    >
+                                      {request.withdrawal_request_status?.[0]?.status || "PENDING"}
                                     </Badge>
                                   </td>
                                 </tr>
@@ -676,9 +910,14 @@ export default function WithdrawPage() {
                                       <CreditCard className="h-6 w-6 text-pink-400" />
                                     </div>
                                     <div>No withdrawal history available</div>
-                                    <Button 
-                                      variant="link" 
-                                      onClick={() => document.querySelector('[value="withdraw"]')?.click()}
+                                    <Button
+                                      variant="link"
+                                      onClick={() => {
+                                        const tabButton = document.querySelector(
+                                          '[value="withdraw"]'
+                                        ) as HTMLButtonElement;
+                                        tabButton?.click();
+                                      }}
                                       className="text-pink-500"
                                     >
                                       Make your first withdrawal
@@ -690,18 +929,21 @@ export default function WithdrawPage() {
                           </tbody>
                         </table>
                       </div>
-                      
-                      {withdrawalHistory.length > 0 && (
+
+                      {withdrawalRequests.length > 0 && (
                         <div className="mt-6 pt-4 border-t border-pink-100 dark:border-pink-900/20">
                           <div className="text-xs text-muted-foreground">
                             <p className="mb-1">
-                              <span className="font-medium">PENDING:</span> Your withdrawal request is being processed
+                              <span className="font-medium">PENDING:</span> Your
+                              withdrawal request is being processed
                             </p>
                             <p className="mb-1">
-                              <span className="font-medium">COMPLETED:</span> Funds have been transferred to your account
+                              <span className="font-medium">ACCEPTED:</span>{" "}
+                              Funds have been transferred to your account
                             </p>
                             <p className="mb-1">
-                              <span className="font-medium">REJECTED:</span> Request was declined - please contact support
+                              <span className="font-medium">REJECTED:</span>{" "}
+                              Request was declined - please contact support
                             </p>
                           </div>
                         </div>
@@ -713,9 +955,12 @@ export default function WithdrawPage() {
             </Tabs>
           </motion.div>
         )}
-        
+
         {/* Bank Details Dialog */}
-        <Dialog open={showBankDetailsDialog} onOpenChange={setShowBankDetailsDialog}>
+        <Dialog
+          open={showBankDetailsDialog}
+          onOpenChange={setShowBankDetailsDialog}
+        >
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle className="flex items-center">
@@ -726,7 +971,7 @@ export default function WithdrawPage() {
                 Review your bank account information used for withdrawals
               </DialogDescription>
             </DialogHeader>
-            
+
             <div className="space-y-6 py-4">
               <div className="bg-pink-50 dark:bg-pink-900/20 p-4 rounded-lg">
                 <div className="flex items-center mb-4">
@@ -735,49 +980,70 @@ export default function WithdrawPage() {
                     Bank Information
                   </h3>
                 </div>
-                
+
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                    <p className="font-medium text-gray-600 dark:text-gray-300">Bank Name:</p>
-                    <p className="text-gray-800 dark:text-gray-200 font-medium">{bankDetails.bankName}</p>
-                    
-                    <p className="font-medium text-gray-600 dark:text-gray-300">Account Name:</p>
-                    <p className="text-gray-800 dark:text-gray-200 font-medium">{bankDetails.accountName}</p>
-                    
-                    <p className="font-medium text-gray-600 dark:text-gray-300">Account Number:</p>
+                    <p className="font-medium text-gray-600 dark:text-gray-300">
+                      Bank Name:
+                    </p>
+                    <p className="text-gray-800 dark:text-gray-200 font-medium">
+                      {bankDetails.bankName}
+                    </p>
+
+                    <p className="font-medium text-gray-600 dark:text-gray-300">
+                      Account Name:
+                    </p>
+                    <p className="text-gray-800 dark:text-gray-200 font-medium">
+                      {bankDetails.accountName}
+                    </p>
+
+                    <p className="font-medium text-gray-600 dark:text-gray-300">
+                      Account Number:
+                    </p>
                     <div className="flex items-center">
                       <p className="text-gray-800 dark:text-gray-200 font-medium mr-2">
-                        {showAccountNumber ? bankDetails.accountNumber : maskAccountNumber(bankDetails.accountNumber)}
+                        {showAccountNumber
+                          ? bankDetails.accountNumber
+                          : maskAccountNumber(bankDetails.accountNumber)}
                       </p>
-                      <button 
+                      <button
                         onClick={() => setShowAccountNumber(!showAccountNumber)}
                         className="text-pink-500 hover:text-pink-600 dark:text-pink-400 dark:hover:text-pink-300"
                       >
-                        {showAccountNumber ? <EyeOff size={16} /> : <Eye size={16} />}
+                        {showAccountNumber ? (
+                          <EyeOff size={16} />
+                        ) : (
+                          <Eye size={16} />
+                        )}
                       </button>
                     </div>
-                    
+
                     {bankDetails.branch && (
                       <>
-                        <p className="font-medium text-gray-600 dark:text-gray-300">Branch:</p>
-                        <p className="text-gray-800 dark:text-gray-200">{bankDetails.branch}</p>
+                        <p className="font-medium text-gray-600 dark:text-gray-300">
+                          Branch:
+                        </p>
+                        <p className="text-gray-800 dark:text-gray-200">
+                          {bankDetails.branch}
+                        </p>
                       </>
                     )}
                   </div>
                 </div>
               </div>
-              
+
               <div className="text-xs text-muted-foreground">
                 <p className="mb-1 flex items-center">
                   <ShieldCheck size={14} className="mr-1 text-green-500" />
                   Your bank details are securely stored and encrypted
                 </p>
                 <p>
-                  To update your bank details, use the form on the withdrawal page
+                  To update your bank details, use the form on the withdrawal
+                  page
                 </p>
               </div>
             </div>
-            
+
             <DialogFooter className="sm:justify-between">
               <Button
                 variant="outline"
@@ -788,7 +1054,8 @@ export default function WithdrawPage() {
               </Button>
               <Button
                 onClick={() => {
-                  document.querySelector('[value="withdraw"]')?.click();
+                  const tabButton = document.querySelector('[value="withdraw"]') as HTMLButtonElement;
+                  tabButton?.click();
                   setShowBankDetailsDialog(false);
                 }}
                 className="bg-gradient-to-r from-pink-500 to-pink-600 hover:opacity-90 text-white"
