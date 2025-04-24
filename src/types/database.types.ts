@@ -875,6 +875,10 @@ export type Database = {
         Args: { user_id_input: string }
         Returns: boolean
       }
+      is_a_superadmin: {
+        Args: { user_id_input: string }
+        Returns: boolean
+      }
       is_active_task: {
         Args: { task_id_input: number }
         Returns: boolean

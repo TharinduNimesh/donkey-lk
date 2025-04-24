@@ -7,49 +7,36 @@
         .header { background: #FF4D8D; color: white; padding: 20px; text-align: center; }
         .content { padding: 20px; }
         .details { background: #f9f9f9; padding: 15px; margin: 20px 0; border-radius: 5px; }
-        .reason { background: #ffe8e8; padding: 15px; margin: 20px 0; border-radius: 5px; }
         .footer { text-align: center; padding: 20px; font-size: 12px; color: #666; }
-        .action-needed { color: #d32f2f; font-weight: bold; }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>Payment Review Update</h1>
+            <h1>Payment Rejected</h1>
         </div>
         <div class="content">
             <p>Dear {{name}},</p>
-            <p>We have reviewed your payment submission for task "{{taskTitle}}" and unfortunately, we cannot accept it at this time.</p>
+            <p>We regret to inform you that your payment has been rejected.</p>
             
             <div class="details">
-                <p><strong>Task Details:</strong></p>
+                <p><strong>Payment Details:</strong></p>
                 <ul>
-                    <li>Task ID: {{taskId}}</li>
                     <li>Amount: Rs. {{amount}}</li>
-                    <li>Submission Date: {{date}}</li>
+                    <li>Date: {{date}}</li>
+                    <li>Reason: {{reason}}</li>
                 </ul>
             </div>
 
-            <div class="reason">
-                <p><strong>Reason for Rejection:</strong></p>
-                <p>{{rejectionReason}}</p>
-                
-                <p><strong>Action Required:</strong></p>
-                <p class="action-needed">{{actionRequired}}</p>
-            </div>
-
-            <p>You can submit a new payment by following these steps:</p>
-            <ol>
-                <li>Go to your BrandSync dashboard</li>
-                <li>Navigate to the task details</li>
-                <li>Click on "Submit Payment" and follow the instructions</li>
-            </ol>
+            <p>The full payment amount has been refunded to your BrandSync influencer account and is now available for withdrawal or future campaigns.</p>
             
-            <p>If you believe this is an error or need assistance, please contact our support team immediately.</p>
+            <p>If you believe this is an error or need assistance, please don't hesitate to contact our support team.</p>
+            
+            <p>Thank you for your understanding.</p>
         </div>
         <div class="footer">
             <p>© 2025 BrandSync. All rights reserved.</p>
-            <p>For immediate assistance, please email support@brandsync.lk</p>
+            <p>If you have any questions, please contact our support team.</p>
         </div>
     </div>
 </body>

@@ -24,6 +24,10 @@ const adminRoutes = [
   {
     name: "Ownership Verifications",
     path: "/dashboard/admin/verifications"
+  },
+  {
+    name: "Withdrawal Requests",
+    path: "/dashboard/admin/withdrawals"
   }
 ];
 
