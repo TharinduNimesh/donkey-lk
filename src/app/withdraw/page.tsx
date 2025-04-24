@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { Database } from "@/types/database.types";
 import {
   Card,
   CardContent,
@@ -42,7 +43,6 @@ import {
   Trash2,
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Database } from "@/types/database.types";
 
 interface Withdrawal {
   id: string;
@@ -83,91 +83,6 @@ export default function WithdrawPage() {
   const [selectedOption, setSelectedOption] = useState<WithdrawalOption | null>(null);
   const [withdrawalRequests, setWithdrawalRequests] = useState<WithdrawalRequest[]>([]);
 
-  useEffect(() => {
-    async function fetchUserData() {
-      setLoading(true);
-
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          router.push("/auth");
-          return;
-        }
-
-        // Fetch balance, withdrawal options and requests in parallel
-        const [balanceResponse, optionsResponse, requestsResponse] = await Promise.all([
-          supabase
-            .from("account_balance")
-            .select("balance")
-            .eq("user_id", user.id)
-            .single(),
-          supabase
-            .from("withdrawal_options")
-            .select("*")
-            .eq("user_id", user.id)
-            .order('created_at', { ascending: false }),
-          supabase
-            .from("withdrawal_requests")
-            .select(`
-              *,
-              withdrawal_options (
-                bank_name,
-                account_name,
-                account_number,
-                branch_name
-              ),
-              withdrawal_request_status (
-                status,
-                created_at
-              )
-            `)
-            .eq("user_id", user.id)
-            .order('created_at', { ascending: false })
-        ]);
-
-        if (balanceResponse.error && balanceResponse.error.code !== "PGRST116") {
-          throw balanceResponse.error;
-        }
-
-        if (optionsResponse.error) {
-          throw optionsResponse.error;
-        }
-
-        if (balanceResponse.data) {
-          setBalance(balanceResponse.data.balance || 0);
-        }
-
-        if (optionsResponse.data) {
-          setWithdrawalOptions(optionsResponse.data);
-          // If there are saved options, select the first one by default
-          if (optionsResponse.data.length > 0) {
-            const firstOption = optionsResponse.data[0];
-            setSelectedOption(firstOption);
-            setBankDetails({
-              accountName: firstOption.account_name,
-              accountNumber: firstOption.account_number,
-              bankName: firstOption.bank_name,
-              branch: firstOption.branch_name,
-            });
-            setBankInfoSaved(true);
-          }
-        }
-
-        if (requestsResponse.data) {
-          setWithdrawalRequests(requestsResponse.data);
-        }
-
-      } catch (error) {
-        console.error("Error fetching data:", error);
-        toast.error("Failed to load account data");
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchUserData();
-  }, [supabase, router]);
-
   const handleSubmitWithdrawal = async () => {
     if (!selectedOption) {
       toast.error("Please select a bank account");
@@ -192,33 +107,25 @@ export default function WithdrawPage() {
 
     setSubmitting(true);
     try {
-      const { data, error } = await supabase
-        .from("withdrawal_requests")
-        .insert([
-          {
-            amount: amount,
-            withdrawal_option_id: selectedOption.id
-          }
-        ])
-        .select(`
-          *,
-          withdrawal_options (
-            bank_name,
-            account_name,
-            account_number,
-            branch_name
-          ),
-          withdrawal_request_status (
-            status,
-            created_at
-          )
-        `)
-        .single();
+      const response = await fetch('/api/withdrawals', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount: amount,
+          withdrawalOptionId: selectedOption.id
+        }),
+      });
 
-      if (error) throw error;
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to submit withdrawal request');
+      }
 
       // Add the new request to the list
-      setWithdrawalRequests(prev => [data, ...prev]);
+      setWithdrawalRequests(prev => [result.data, ...prev]);
       
       // Update local balance
       setBalance(prev => prev - amount);
@@ -229,7 +136,7 @@ export default function WithdrawPage() {
 
     } catch (error) {
       console.error("Error submitting withdrawal:", error);
-      toast.error("Failed to submit withdrawal request");
+      toast.error(error instanceof Error ? error.message : "Failed to submit withdrawal request");
     } finally {
       setSubmitting(false);
     }
@@ -366,6 +273,80 @@ export default function WithdrawPage() {
   const handleSetMaxAmount = () => {
     setWithdrawAmount(balance.toString());
   };
+
+  useEffect(() => {
+    async function fetchUserData() {
+      setLoading(true);
+
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          router.push("/auth");
+          return;
+        }
+
+        // Fetch balance and withdrawal options in parallel
+        const [balanceResponse, optionsResponse] = await Promise.all([
+          supabase
+            .from("account_balance")
+            .select("balance")
+            .eq("user_id", user.id)
+            .single(),
+          supabase
+            .from("withdrawal_options")
+            .select("*")
+            .eq("user_id", user.id)
+            .order('created_at', { ascending: false })
+        ]);
+
+        // Fetch withdrawal requests from the API
+        const withdrawalResponse = await fetch('/api/withdrawals');
+        const withdrawalResult = await withdrawalResponse.json();
+
+        if (balanceResponse.error && balanceResponse.error.code !== "PGRST116") {
+          throw balanceResponse.error;
+        }
+
+        if (optionsResponse.error) {
+          throw optionsResponse.error;
+        }
+
+        if (!withdrawalResponse.ok) {
+          throw new Error(withdrawalResult.error || 'Failed to fetch withdrawal requests');
+        }
+
+        if (balanceResponse.data) {
+          setBalance(balanceResponse.data.balance || 0);
+        }
+
+        if (optionsResponse.data) {
+          setWithdrawalOptions(optionsResponse.data);
+          // If there are saved options, select the first one by default
+          if (optionsResponse.data.length > 0) {
+            const firstOption = optionsResponse.data[0];
+            setSelectedOption(firstOption);
+            setBankDetails({
+              accountName: firstOption.account_name,
+              accountNumber: firstOption.account_number,
+              bankName: firstOption.bank_name,
+              branch: firstOption.branch_name,
+            });
+            setBankInfoSaved(true);
+          }
+        }
+
+        setWithdrawalRequests(withdrawalResult.data || []);
+
+      } catch (error) {
+        console.error("Error fetching data:", error);
+        toast.error("Failed to load account data");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchUserData();
+  }, [supabase, router]);
 
   return (
     <div className="min-h-screen w-full bg-gradient-to-b from-pink-50/30 via-white to-white dark:from-gray-900 dark:via-gray-950 dark:to-gray-950">
