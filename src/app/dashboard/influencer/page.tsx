@@ -24,7 +24,9 @@ export default function InfluencerDashboardPage() {
   const supabase = createClientComponentClient<Database>();
   const [isLoading, setIsLoading] = useState(false);
   const [profiles, setProfiles] = useState<InfluencerProfile[]>([]);
-  const [accountBalance, setAccountBalance] = useState<AccountBalance | null>(null);
+  const [accountBalance, setAccountBalance] = useState<AccountBalance | null>(
+    null
+  );
   const [appliedTasks, setAppliedTasks] = useState<
     (TaskDetail & { application?: TaskApplication })[]
   >([]);
@@ -113,6 +115,7 @@ export default function InfluencerDashboardPage() {
   }, [supabase, router]);
 
   const handleLogout = async () => {
+    console.log("Logging out...");
     setIsLoading(true);
     const { error } = await signOut();
     if (!error) {
@@ -145,6 +148,10 @@ export default function InfluencerDashboardPage() {
     );
   };
 
+  const handleWithdrawal = () => {
+    router.push('/withdraw');
+  };
+
   return (
     <div className="min-h-screen w-full bg-gradient-to-b from-pink-50/30 to-white dark:from-gray-900 dark:to-gray-950">
       <div className="container mx-auto py-8 px-4">
@@ -152,18 +159,20 @@ export default function InfluencerDashboardPage() {
           <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-pink-600 font-['P22MackinacPro-Bold']">
             Influencer Dashboard
           </h1>
-          <Button 
-            variant="outline" 
-            onClick={handleLogout} 
+          <Button
+            variant="outline"
+            onClick={handleLogout}
             disabled={isLoading}
             className="border-pink-200 dark:border-pink-800 hover:bg-pink-50 dark:hover:bg-pink-900/20"
           >
             {isLoading ? (
               <>
-                <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"/>
+                <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
                 Logging out...
               </>
-            ) : "Logout"}
+            ) : (
+              "Logout"
+            )}
           </Button>
         </div>
 
@@ -174,37 +183,47 @@ export default function InfluencerDashboardPage() {
           transition={{ duration: 0.5 }}
         >
           <Card className="mb-8 overflow-hidden border border-pink-100 dark:border-pink-900/20">
-            <div className="absolute right-0 top-0 h-full w-1/2 bg-gradient-to-l from-pink-500/5 to-transparent"/>
+            <div className="absolute right-0 top-0 h-full w-1/2 bg-gradient-to-l from-pink-500/5 to-transparent" />
             <CardHeader>
-              <CardTitle className="font-['P22MackinacPro-Medium']">Account Overview</CardTitle>
+              <CardTitle className="font-['P22MackinacPro-Medium']">
+                Account Overview
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid gap-6 md:grid-cols-3">
                 <div className="space-y-2">
-                  <h3 className="text-sm font-medium text-muted-foreground">Current Balance</h3>
+                  <h3 className="text-sm font-medium text-muted-foreground">
+                    Current Balance
+                  </h3>
                   <div className="text-3xl font-bold text-pink-600 dark:text-pink-400 font-['P22MackinacPro-Bold']">
                     Rs. {(accountBalance?.balance || 0).toFixed(2)}
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <h3 className="text-sm font-medium text-muted-foreground">Total Earnings</h3>
+                  <h3 className="text-sm font-medium text-muted-foreground">
+                    Total Earnings
+                  </h3>
                   <div className="text-3xl font-bold text-green-600 dark:text-green-400 font-['P22MackinacPro-Bold']">
                     Rs. {(accountBalance?.total_earning || 0).toFixed(2)}
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <h3 className="text-sm font-medium text-muted-foreground">Last Withdrawal</h3>
+                  <h3 className="text-sm font-medium text-muted-foreground">
+                    Last Withdrawal
+                  </h3>
                   <div className="text-lg font-['P22MackinacPro-Medium']">
-                    {accountBalance?.last_withdrawal 
-                      ? new Date(accountBalance.last_withdrawal).toLocaleDateString()
-                      : 'No withdrawals yet'}
+                    {accountBalance?.last_withdrawal
+                      ? new Date(
+                          accountBalance.last_withdrawal
+                        ).toLocaleDateString()
+                      : "No withdrawals yet"}
                   </div>
                 </div>
               </div>
               <div className="mt-6">
-                <Button 
-                  className="bg-gradient-to-r from-pink-500 to-pink-600 hover:opacity-90 text-white"
-                  disabled={(accountBalance?.balance || 0) <= 0}
+                <Button
+                  onClick={handleWithdrawal}
+                  className="bg-gradient-to-r from-pink-500 to-pink-600 hover:opacity-90"
                 >
                   Request Withdrawal
                 </Button>
@@ -221,7 +240,9 @@ export default function InfluencerDashboardPage() {
         >
           <Card className="mb-8 border border-pink-100 dark:border-pink-900/20">
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="font-['P22MackinacPro-Medium']">Connected Social Media Accounts</CardTitle>
+              <CardTitle className="font-['P22MackinacPro-Medium']">
+                Connected Social Media Accounts
+              </CardTitle>
               <Button
                 onClick={() => router.push("/verify/youtube")}
                 className="bg-gradient-to-r from-pink-500 to-pink-600 hover:opacity-90 text-white"
@@ -257,13 +278,21 @@ export default function InfluencerDashboardPage() {
                           )}
                         </div>
                         <div>
-                          <h3 className="font-semibold font-['P22MackinacPro-Medium']">{profile.name}</h3>
+                          <h3 className="font-semibold font-['P22MackinacPro-Medium']">
+                            {profile.name}
+                          </h3>
                           <p className="text-sm text-muted-foreground">
                             {profile.followers} followers
                           </p>
                           <Badge
-                            variant={profile.is_verified ? "success" : "secondary"}
-                            className={profile.is_verified ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : ""}
+                            variant={
+                              profile.is_verified ? "success" : "secondary"
+                            }
+                            className={
+                              profile.is_verified
+                                ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                                : ""
+                            }
                           >
                             {profile.is_verified ? "Verified" : "Pending"}
                           </Badge>
@@ -286,7 +315,9 @@ export default function InfluencerDashboardPage() {
           >
             <Card className="mb-8 border border-pink-100 dark:border-pink-900/20">
               <CardHeader>
-                <CardTitle className="font-['P22MackinacPro-Medium']">Your Applications</CardTitle>
+                <CardTitle className="font-['P22MackinacPro-Medium']">
+                  Your Applications
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -298,12 +329,16 @@ export default function InfluencerDashboardPage() {
                     >
                       <Card
                         className="group hover:border-pink-400 dark:hover:border-pink-500 transition-all cursor-pointer bg-white dark:bg-gray-900"
-                        onClick={() => router.push(`/dashboard/task/${task.task_id}/apply`)}
+                        onClick={() =>
+                          router.push(`/dashboard/task/${task.task_id}/apply`)
+                        }
                       >
                         <CardContent className="p-6">
                           <div>
                             <div className="flex items-center justify-between mb-4">
-                              <h3 className="font-semibold text-lg font-['P22MackinacPro-Medium']">{task.title}</h3>
+                              <h3 className="font-semibold text-lg font-['P22MackinacPro-Medium']">
+                                {task.title}
+                              </h3>
                               <Badge
                                 variant="outline"
                                 className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
@@ -315,7 +350,9 @@ export default function InfluencerDashboardPage() {
                               {task.description}
                             </p>
                             <div className="space-y-2">
-                              <h4 className="text-sm font-medium">Your Commitments:</h4>
+                              <h4 className="text-sm font-medium">
+                                Your Commitments:
+                              </h4>
                               <div className="flex flex-wrap gap-2">
                                 {task.application?.application_promises.map(
                                   (promise, index) => (
@@ -329,7 +366,11 @@ export default function InfluencerDashboardPage() {
                                         {promise.promised_reach} views
                                       </span>
                                       <span className="text-green-600">
-                                        (Rs. {parseFloat(promise.est_profit).toFixed(2)})
+                                        (Rs.{" "}
+                                        {parseFloat(promise.est_profit).toFixed(
+                                          2
+                                        )}
+                                        )
                                       </span>
                                     </Badge>
                                   )
@@ -343,14 +384,18 @@ export default function InfluencerDashboardPage() {
                                   <span className="text-lg font-bold text-green-700 dark:text-green-300 font-['P22MackinacPro-Bold']">
                                     Rs.
                                     {task.application
-                                      ? calculateTotalEarnings(task.application).toFixed(2)
+                                      ? calculateTotalEarnings(
+                                          task.application
+                                        ).toFixed(2)
                                       : "0.00"}
                                   </span>
                                 </div>
                               </div>
                               <div className="mt-2 text-sm text-muted-foreground">
                                 Applied on:{" "}
-                                {new Date(task.application?.created_at || "").toLocaleDateString()}
+                                {new Date(
+                                  task.application?.created_at || ""
+                                ).toLocaleDateString()}
                               </div>
                             </div>
                           </div>
@@ -397,12 +442,14 @@ export default function InfluencerDashboardPage() {
               >
                 <Card
                   className="group relative overflow-hidden hover:shadow-2xl transition-all duration-300 hover:border-pink-400 dark:hover:border-pink-500 cursor-pointer bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm h-[420px] flex flex-col"
-                  onClick={() => router.push(`/dashboard/task/${task.task_id}/apply`)}
+                  onClick={() =>
+                    router.push(`/dashboard/task/${task.task_id}/apply`)
+                  }
                 >
                   {/* Decorative gradient elements */}
                   <div className="absolute inset-0 bg-gradient-to-br from-pink-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   <div className="absolute -right-20 -top-20 w-40 h-40 bg-pink-500/10 rounded-full blur-3xl group-hover:bg-pink-500/20 transition-all duration-300" />
-                  
+
                   <CardContent className="p-6 relative z-10 flex-1 flex flex-col">
                     <div className="space-y-4 flex-1 flex flex-col">
                       <div className="flex items-start justify-between">
@@ -410,7 +457,7 @@ export default function InfluencerDashboardPage() {
                           <h3 className="font-semibold text-lg font-['P22MackinacPro-Medium'] group-hover:text-pink-600 dark:group-hover:text-pink-400 transition-colors line-clamp-2">
                             {task.title}
                           </h3>
-                          <Badge 
+                          <Badge
                             variant="outline"
                             className="bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800"
                           >
@@ -418,8 +465,17 @@ export default function InfluencerDashboardPage() {
                           </Badge>
                         </div>
                         <div className="h-10 w-10 flex-shrink-0 rounded-full bg-gradient-to-br from-pink-500 to-pink-600 flex items-center justify-center text-white shadow-lg ml-4">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clipRule="evenodd" />
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-5 w-5"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z"
+                              clipRule="evenodd"
+                            />
                           </svg>
                         </div>
                       </div>
@@ -429,25 +485,35 @@ export default function InfluencerDashboardPage() {
                       </p>
 
                       <div className="space-y-3 flex-1">
-                        <p className="text-sm font-medium text-pink-600 dark:text-pink-400">Target Platforms</p>
+                        <p className="text-sm font-medium text-pink-600 dark:text-pink-400">
+                          Target Platforms
+                        </p>
                         <div className="flex flex-wrap gap-2">
                           {task.targets &&
-                            (task.targets as any[]).map((target: any, index: number) => (
-                              <Badge
-                                key={index}
-                                className="px-3 py-1 bg-pink-50 text-pink-600 border-pink-200 dark:bg-pink-900/30 dark:text-pink-400 dark:border-pink-800"
-                              >
-                                <span className="mr-1">{target.platform}:</span>
-                                <span className="font-semibold">{target.views.toLocaleString()} views</span>
-                              </Badge>
-                            ))}
+                            (task.targets as any[]).map(
+                              (target: any, index: number) => (
+                                <Badge
+                                  key={index}
+                                  className="px-3 py-1 bg-pink-50 text-pink-600 border-pink-200 dark:bg-pink-900/30 dark:text-pink-400 dark:border-pink-800"
+                                >
+                                  <span className="mr-1">
+                                    {target.platform}:
+                                  </span>
+                                  <span className="font-semibold">
+                                    {target.views.toLocaleString()} views
+                                  </span>
+                                </Badge>
+                              )
+                            )}
                         </div>
                       </div>
 
                       <div className="pt-4 flex items-center justify-between border-t border-gray-100 dark:border-gray-800 mt-auto">
                         <div className="flex items-center space-x-2">
                           <span className="flex h-2 w-2 rounded-full bg-green-500" />
-                          <span className="text-sm text-muted-foreground">Active Campaign</span>
+                          <span className="text-sm text-muted-foreground">
+                            Active Campaign
+                          </span>
                         </div>
                         <Button
                           onClick={(e) => {
