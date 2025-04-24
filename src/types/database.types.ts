@@ -145,6 +145,13 @@ export type Database = {
             foreignKeyName: "bank_transfer_slip_task_id_fkey"
             columns: ["task_id"]
             isOneToOne: false
+            referencedRelation: "task_details_view"
+            referencedColumns: ["task_id"]
+          },
+          {
+            foreignKeyName: "bank_transfer_slip_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
             referencedRelation: "tasks"
             referencedColumns: ["id"]
           },
@@ -502,6 +509,13 @@ export type Database = {
             foreignKeyName: "task_applications_task_id_fkey"
             columns: ["task_id"]
             isOneToOne: false
+            referencedRelation: "task_details_view"
+            referencedColumns: ["task_id"]
+          },
+          {
+            foreignKeyName: "task_applications_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
             referencedRelation: "tasks"
             referencedColumns: ["id"]
           },
@@ -557,6 +571,13 @@ export type Database = {
             foreignKeyName: "task_cost_task_id_fkey"
             columns: ["task_id"]
             isOneToOne: true
+            referencedRelation: "task_details_view"
+            referencedColumns: ["task_id"]
+          },
+          {
+            foreignKeyName: "task_cost_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: true
             referencedRelation: "tasks"
             referencedColumns: ["id"]
           },
@@ -593,6 +614,13 @@ export type Database = {
             columns: ["task_id"]
             isOneToOne: false
             referencedRelation: "task_details"
+            referencedColumns: ["task_id"]
+          },
+          {
+            foreignKeyName: "targets_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "task_details_view"
             referencedColumns: ["task_id"]
           },
           {
@@ -661,6 +689,33 @@ export type Database = {
           targets: Json | null
           task_id: number | null
           title: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profile"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_details_view: {
+        Row: {
+          completed_at: string | null
+          cost: Json | null
+          created_at: string | null
+          description: string | null
+          source: string | null
+          status: Database["public"]["Enums"]["TaskStatus"] | null
+          targets: Json | null
+          task_id: number | null
+          title: string | null
+          total_influencers: number | null
+          total_promised_views: number | null
+          total_target_views: number | null
           updated_at: string | null
           user_id: string | null
         }
