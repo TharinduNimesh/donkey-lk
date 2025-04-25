@@ -115,11 +115,11 @@ export async function POST(request: NextRequest) {
     }
 
     // UNCOMMENT -  Send SMS -- > Uncomment this line to send SMS
-    const success = true; // Placeholder for SMS sending logic
-    // const { success, error: smsError } = await sendSMS({
-    //   recipient: contact.detail,
-    //   message: `Your DonkeyLK verification code is: ${code}. This code will expire in ${VERIFICATION_EXPIRY_MINUTES} minutes.`
-    // });
+    // const success = true; // Placeholder for SMS sending logic
+    const { success, error: smsError } = await sendSMS({
+      recipient: contact.detail,
+      message: `Your DonkeyLK verification code is: ${code}. This code will expire in ${VERIFICATION_EXPIRY_MINUTES} minutes.`
+    });
 
     if (!success) {
       // If SMS fails, delete the verification code using admin client
