@@ -5,16 +5,35 @@ import { use } from "react";
 import { useRouter } from "next/navigation";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { Database } from "@/types/database.types";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { PaymentMethodSelect } from "@/components/ui/payment-method-select";
-import { format } from "date-fns";
 import { toast } from "sonner";
-import { parseViewCount, formatViewCount } from "@/lib/utils/views";
 import { uploadBankTransferSlip } from "@/lib/utils/storage";
-import { createTask } from "@/lib/utils/tasks";
+import { motion } from "framer-motion";
+import { Button } from "@/components/ui/button";
 
-type TaskDetail = Database['public']['Views']['task_details']['Row'];
+import { TaskDetailsHeader } from "@/components/dashboard/task-details/task-details-header";
+import { PlatformTargetsCard } from "@/components/dashboard/task-details/platform-targets-card";
+import { PaymentDetailsCard } from "@/components/dashboard/task-details/payment-details-card";
+import { ApplicationsListCard } from "@/components/dashboard/task-details/applications-list-card";
+import { TaskActionsFooter } from "@/components/dashboard/task-details/task-actions-footer";
+
+// Using the same type as in the buyer dashboard
+type TaskDetail = {
+  task_id: number | null;
+  title: string | null;
+  description: string | null;
+  status: Database['public']['Enums']['TaskStatus'] | null;
+  created_at: string | null;
+  completed_at: string | null;
+  updated_at: string | null;
+  user_id: string | null;
+  cost: any;
+  source: string | null;
+  total_influencers: number | null;
+  total_promised_views: number | null;
+  total_proof_views?: number | null;
+  total_target_views: number | null;
+  targets: any;
+};
 type BankTransferSlip = Database['public']['Tables']['bank_transfer_slip']['Row'] & {
   status?: {
     status: Database['public']['Enums']['BankTransferStatus'];
@@ -25,10 +44,21 @@ type BankTransferSlip = Database['public']['Tables']['bank_transfer_slip']['Row'
 type TaskApplication = Database['public']['Tables']['task_applications']['Row'];
 type ApplicationPromise = Database['public']['Tables']['application_promises']['Row'];
 type InfluencerProfile = Database['public']['Tables']['influencer_profile']['Row'];
+type ApplicationProof = Database['public']['Tables']['application_proofs']['Row'] & {
+  status?: {
+    id: number;
+    status: Database['public']['Enums']['ProofStatus'];
+    proof_id: number;
+    created_at: string;
+    reviewed_at: string | null;
+    reviewed_by: string | null;
+  } | null;
+};
 
 interface ApplicationWithDetails extends TaskApplication {
   promises: ApplicationPromise[];
   influencer: InfluencerProfile | null;
+  proofs: ApplicationProof[];
 }
 
 export default function TaskPage({ params }: { params: Promise<{ id: string }> }) {
@@ -47,17 +77,30 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
   const supabase = createClientComponentClient<Database>();
 
   useEffect(() => {
-    const fetchTaskAndData = async () => {
+    const fetchTaskDetails = async () => {
+      setIsLoading(true);
       try {
         // Fetch task details
         const { data: taskData, error: taskError } = await supabase
-          .from('task_details')
+          .from('task_details_view')
           .select('*')
           .eq('task_id', parseInt(id))
           .single();
 
         if (taskError) throw taskError;
-        setTask(taskData);
+        if (!taskData) throw new Error('Task not found');
+
+        // Ensure we have all the required properties for our TaskDetail type
+        const enhancedTaskData: TaskDetail = {
+          ...taskData,
+          // Add the properties needed for our enhanced UI
+          total_influencers: taskData.total_influencers !== undefined ? taskData.total_influencers : 0,
+          total_promised_views: taskData.total_promised_views !== undefined ? taskData.total_promised_views : 0,
+          total_proof_views: 0, // Default value if not available
+          total_target_views: taskData.total_target_views !== undefined ? taskData.total_target_views : 0
+        };
+        
+        setTask(enhancedTaskData);
 
         // Fetch all bank transfer slips with status if exists
         if (taskData?.task_id) {
@@ -90,29 +133,45 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
 
           if (applicationsError) throw applicationsError;
 
-          // Fetch influencer profiles for each application
-          const applicationsWithProfiles = await Promise.all(
+          // Fetch influencer profiles and proofs for each application
+          const applicationsWithDetails = await Promise.all(
             applicationsData.map(async (application) => {
               const platform = application.promises[0]?.platform;
               if (!platform || !application.user_id) {
-                return { ...application, influencer: null };
+                return { ...application, influencer: null, proofs: [] };
               }
 
+              // Fetch influencer profile
               const { data: profileData } = await supabase
                 .from('influencer_profile')
                 .select('*')
                 .eq('user_id', application.user_id)
                 .eq('platform', platform)
                 .single();
+              
+              // Fetch proofs with their status
+              const { data: proofsData, error: proofsError } = await supabase
+                .from('application_proofs')
+                .select(`
+                  *,
+                  status:proof_status(*)
+                `)
+                .eq('application_id', application.id);
+              
+              // Filter only approved proofs if task is active
+              const filteredProofs = taskData.status === 'ACTIVE' 
+                ? proofsData?.filter(proof => proof.status?.status === 'ACCEPTED') || []
+                : proofsData || [];
 
               return {
                 ...application,
-                influencer: profileData || null
+                influencer: profileData || null,
+                proofs: filteredProofs
               };
             })
           );
 
-          setApplications(applicationsWithProfiles);
+          setApplications(applicationsWithDetails);
         }
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -122,7 +181,7 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
       }
     };
 
-    fetchTaskAndData();
+    fetchTaskDetails();
   }, [id]);
 
   const handlePaymentMethodSelect = (method: 'bank-transfer' | 'card') => {
@@ -232,6 +291,29 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
     }
   };
 
+  const handleDeleteTask = async () => {
+    if (!task?.task_id) return;
+
+    setIsLoading(true);
+    try {
+      // Delete the task
+      const { error } = await supabase
+        .from('tasks')
+        .delete()
+        .eq('id', task.task_id);
+
+      if (error) throw error;
+      
+      toast.success("Task deleted successfully");
+      router.push('/dashboard/buyer');
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      toast.error("Failed to delete task");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleArchiveTask = async () => {
     if (!task?.task_id) return;
 
@@ -252,6 +334,31 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
     } catch (error) {
       console.error('Error archiving task:', error);
       toast.error("Failed to archive task");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleUnarchiveTask = async () => {
+    if (!task?.task_id) return;
+
+    setIsLoading(true);
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ 
+          status: 'ACTIVE',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', task.task_id);
+
+      if (error) throw error;
+      
+      toast.success("Task unarchived successfully");
+      router.push('/dashboard/buyer');
+    } catch (error) {
+      console.error('Error unarchiving task:', error);
+      toast.error("Failed to unarchive task");
     } finally {
       setIsLoading(false);
     }
@@ -284,11 +391,42 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
   };
 
   if (isLoading) {
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+    return (
+      <div className="min-h-screen w-full bg-white dark:bg-gray-950 font-['Roboto']">
+        <div className="container mx-auto py-8 px-4">
+          <div className="h-8 w-48 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse mb-8" />
+          <div className="space-y-8">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="w-full h-[300px] bg-gray-100 dark:bg-gray-800 rounded-xl animate-pulse" />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (!task) {
-    return <div className="flex items-center justify-center min-h-screen">Task not found</div>;
+    return (
+      <div className="min-h-screen w-full bg-white dark:bg-gray-950 font-['Roboto']">
+        <div className="container mx-auto py-16 px-4 flex items-center justify-center">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5 }}
+            className="max-w-md w-full text-center space-y-6 p-8 bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-gray-100 dark:border-gray-800"
+          >
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Task not found</h2>
+            <p className="text-muted-foreground">The task you're looking for doesn't exist or has been removed.</p>
+            <Button 
+              onClick={() => router.push('/dashboard/buyer')} 
+              className="mt-4 bg-gradient-to-r from-pink-500 to-pink-600 hover:opacity-90 text-white shadow-md hover:shadow-lg transition-all duration-300"
+            >
+              Back to Dashboard
+            </Button>
+          </motion.div>
+        </div>
+      </div>
+    );
   }
 
   const targets = task.targets as Array<{
@@ -310,254 +448,68 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
   }, "");
 
   return (
-    <div className="container max-w-4xl mx-auto py-8 px-4">
-      <div className="mb-8">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold">{task.title}</h1>
-          <span className={`
-            px-3 py-1 rounded-full text-sm font-medium
-            ${task.status === 'ACTIVE' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : ''}
-            ${task.status === 'DRAFT' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' : ''}
-            ${task.status === 'ARCHIVED' ? 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400' : ''}
-            ${task.status === 'COMPLETED' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : ''}
-          `}>
-            {task.status ? task.status.charAt(0) + task.status.slice(1).toLowerCase() : 'Unknown'}
-          </span>
-        </div>
-        <p className="text-muted-foreground mt-2">{task.description}</p>
-      </div>
-
-      <div className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Platform Targets</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {targets?.map((target, index) => (
-              <div key={index} className="p-4 border rounded-lg">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="font-semibold">{target.platform}</span>
-                </div>
-                <div className="grid grid-cols-2 gap-4 text-sm text-muted-foreground">
-                  <div>
-                    <span className="block text-foreground font-medium">Target Views</span>
-                    {formatViewCount(parseViewCount(target.views))}
-                  </div>
-                  <div>
-                    <span className="block text-foreground font-medium">Deadline</span>
-                    {target.due_date ? format(new Date(target.due_date), 'MMM d, yyyy') : 'No deadline set'}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Cost Details</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center p-4 border rounded-lg">
-                <span className="font-medium">Total Amount</span>
-                <span className="text-xl font-bold">Rs. {cost?.amount.toLocaleString()}</span>
-              </div>
-              
-              {cost?.is_paid ? (
-                <div className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 p-4 rounded-lg">
-                  <p className="font-medium">Payment Completed</p>
-                  <p className="text-sm mt-1">Payment Method: {cost.payment_method.replace('_', ' ')}</p>
-                </div>
-              ) : task?.status === 'DRAFT' ? (
-                <div className="space-y-4">
-                  {bankSlips.length > 0 ? (
-                    <div className="space-y-4">
-                      {bankSlips.map((slip) => (
-                        <div key={slip.id} className="border rounded-lg p-4 space-y-3">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <h4 className={`font-medium ${
-                                slip.status?.status === 'ACCEPTED' ? 'text-green-600 dark:text-green-400' :
-                                slip.status?.status === 'REJECTED' ? 'text-red-600 dark:text-red-400' :
-                                'text-yellow-600 dark:text-yellow-400'
-                              }`}>
-                                {slip.status?.status === 'ACCEPTED' ? 'Payment Accepted' :
-                                 slip.status?.status === 'REJECTED' ? 'Payment Rejected' :
-                                 'Payment Verification in Progress'}
-                              </h4>
-                              <p className="text-sm text-muted-foreground mt-1">
-                                Bank transfer slip uploaded on {format(new Date(slip.created_at), 'MMM d, yyyy')}
-                                {slip.status?.reviewed_at && (
-                                  <> • Reviewed on {format(new Date(slip.status.reviewed_at), 'MMM d, yyyy')}</>
-                                )}
-                              </p>
-                            </div>
-                            {slip.status?.status !== 'ACCEPTED' && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="text-red-600 border-red-200 hover:border-red-600"
-                                onClick={() => handleDeleteSpecificSlip(slip.id, slip.slip)}
-                                disabled={isLoading}
-                              >
-                                Delete Slip
-                              </Button>
-                            )}
-                          </div>
-                          {slip.status?.status === 'REJECTED' ? (
-                            <p className="text-sm text-red-600 dark:text-red-400">
-                              Your payment was rejected. Please upload a new bank transfer slip or try a different payment method.
-                            </p>
-                          ) : slip.status?.status === 'ACCEPTED' ? (
-                            <p className="text-sm text-green-600 dark:text-green-400">
-                              Your payment has been verified and your task is now active.
-                            </p>
-                          ) : (
-                            <p className="text-sm text-muted-foreground">
-                              Our team will verify your payment shortly. Once verified, your task will be activated automatically.
-                            </p>
-                          )}
-                        </div>
-                      ))}
-                      
-                      {/* Show payment form only if no pending or accepted slips */}
-                      {!bankSlips.some(slip => 
-                        slip.status?.status === 'PENDING' || 
-                        slip.status?.status === 'ACCEPTED'
-                      ) && (
-                        <div className="border rounded-lg p-4">
-                          <h3 className="font-semibold mb-4">Select Payment Method</h3>
-                          <PaymentMethodSelect
-                            selectedMethod={payment.method}
-                            onMethodSelect={handlePaymentMethodSelect}
-                            onSlipUpload={handleBankSlipUpload}
-                            bankSlip={payment.bankSlip}
-                          />
-                          
-                          <div className="mt-6 flex justify-end">
-                            <Button
-                              onClick={handleProceedToPayment}
-                              disabled={isLoading || !payment.method}
-                              className="bg-gradient-to-r from-purple-600 to-blue-600 hover:opacity-90"
-                            >
-                              {isLoading ? 'Processing...' : 'Complete Payment'}
-                            </Button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <>
-                      <div className="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 p-4 rounded-lg">
-                        <p className="font-medium">Payment Required</p>
-                        <p className="text-sm mt-1">Complete payment to activate your task</p>
-                      </div>
-                      
-                      <div className="border rounded-lg p-4">
-                        <h3 className="font-semibold mb-4">Select Payment Method</h3>
-                        <PaymentMethodSelect
-                          selectedMethod={payment.method}
-                          onMethodSelect={handlePaymentMethodSelect}
-                          onSlipUpload={handleBankSlipUpload}
-                          bankSlip={payment.bankSlip}
-                        />
-                        
-                        <div className="mt-6 flex justify-end">
-                          <Button
-                            onClick={handleProceedToPayment}
-                            disabled={isLoading || !payment.method}
-                            className="bg-gradient-to-r from-purple-600 to-blue-600 hover:opacity-90"
-                          >
-                            {isLoading ? 'Processing...' : 'Complete Payment'}
-                          </Button>
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
-              ) : null}
-            </div>
-          </CardContent>
-        </Card>
-
-        {task.status === 'ACTIVE' && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Task Applications</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {applications.length > 0 ? (
-                <div className="space-y-4">
-                  {applications.map((application) => (
-                    <div key={application.id} className="p-4 border rounded-lg">
-                      {application.influencer ? (
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h4 className="font-medium">{application.influencer.name}</h4>
-                            <div className="text-sm text-muted-foreground mt-1">
-                              <span className="capitalize">{application.influencer.platform.toLowerCase()}</span>
-                              <span className="mx-2">•</span>
-                              <span>{application.influencer.followers} followers</span>
-                              {application.promises[0] && (
-                                <>
-                                  <span className="mx-2">•</span>
-                                  <span>Promised reach: {application.promises[0].promised_reach}</span>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            Applied on {format(new Date(application.created_at), 'MMM d, yyyy')}
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="text-sm text-muted-foreground">
-                          Application data unavailable
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center text-muted-foreground p-8">
-                  No applications yet
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        <div className="flex justify-between">
-          <Button
-            variant="outline"
-            onClick={() => router.back()}
+    <div className="min-h-screen w-full bg-white dark:bg-gray-950 font-['Roboto']">
+      <div className="container max-w-5xl mx-auto py-8 px-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <TaskDetailsHeader task={task} />
+        </motion.div>
+        
+        <div className="space-y-8 mt-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.1 }}
           >
-            Back
-          </Button>
+            <PlatformTargetsCard targets={targets} />
+          </motion.div>
           
-          <div className="space-x-4">
-            {(task.status === 'DRAFT' || task.status === 'ACTIVE') && (
-              <Button
-                variant="outline"
-                className="text-red-600 border-red-600 hover:bg-red-50"
-                onClick={handleArchiveTask}
-                disabled={isLoading}
-              >
-                {isLoading ? 'Archiving...' : 'Archive Task'}
-              </Button>
-            )}
-            
-            {task.status === 'ACTIVE' && (
-              <Button
-                className="bg-gradient-to-r from-green-600 to-green-500 text-white hover:opacity-90"
-                onClick={handleCompleteTask}
-                disabled={isLoading}
-              >
-                {isLoading ? 'Completing...' : 'Mark as Completed'}
-              </Button>
-            )}
-          </div>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.3 }}
+          >
+            <PaymentDetailsCard
+              cost={cost}
+              taskStatus={task.status}
+              bankSlips={bankSlips}
+              payment={payment}
+              isLoading={isLoading}
+              onMethodSelect={handlePaymentMethodSelect}
+              onSlipUpload={handleBankSlipUpload}
+              onProceedToPayment={handleProceedToPayment}
+              onDeleteSlip={handleDeleteSpecificSlip}
+            />
+          </motion.div>
+
+          {task.status === 'ACTIVE' && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.4 }}
+            >
+              <ApplicationsListCard applications={applications} />
+            </motion.div>
+          )}
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.5 }}
+          >
+            <TaskActionsFooter
+              taskStatus={task.status}
+              isLoading={isLoading}
+              onBack={() => router.push('/dashboard/buyer')}
+              onArchive={handleArchiveTask}
+              onComplete={handleCompleteTask}
+              onDelete={handleDeleteTask}
+              onUnarchive={handleUnarchiveTask}
+            />
+          </motion.div>
         </div>
       </div>
     </div>
