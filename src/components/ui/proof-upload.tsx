@@ -66,8 +66,8 @@ export function ProofUpload({
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) { // 5MB limit
-      setError("Image size should be less than 5MB");
+    if (file.size > 1 * 1024 * 1024) { // 1MB limit
+      setError("Image size should be less than 1MB");
       return;
     }
 
@@ -75,8 +75,17 @@ export function ProofUpload({
       const reader = new FileReader();
       reader.onload = () => {
         if (typeof reader.result === 'string') {
-          onProofAdd('IMAGE', reader.result);
-          setError(null);
+          try {
+            onProofAdd('IMAGE', reader.result);
+            setError(null);
+          } catch (supabaseError: any) {
+            // Handle Supabase error for file size limit
+            if (supabaseError?.message?.toLowerCase().includes('file size')) {
+              setError('Image upload failed: Image exceeds 1MB limit.');
+            } else {
+              setError('Image upload failed.');
+            }
+          }
         }
       };
       reader.readAsDataURL(file);
@@ -128,6 +137,9 @@ export function ProofUpload({
             className="hidden"
             id={`image-upload-${platform}`}
           />
+          <div className="text-xs text-muted-foreground mb-2">
+            Image proof must be less than 1MB in size.
+          </div>
           <Button
             type="button"
             variant="outline"
@@ -135,7 +147,7 @@ export function ProofUpload({
             className="w-full border-dashed"
             disabled={hasProofType('IMAGE')}
           >
-            Upload Images
+            Upload Image
           </Button>
         </div>
       </div>

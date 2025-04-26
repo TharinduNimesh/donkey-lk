@@ -162,6 +162,14 @@ export async function fetchUserContactDetails() {
   }
 }
 
+export async function isUserAdmin(userId: string) {
+  const { data, error } = await supabase
+    .rpc('is_an_admin', { user_id_input: userId });
+
+  if (error) throw error;
+  return data;
+}
+
 export async function isUserBuyer(userId: string) {
   const { data, error } = await supabase
     .rpc('is_a_buyer', { user_id_input: userId });
