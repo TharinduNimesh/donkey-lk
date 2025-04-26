@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
     // const success = true; // Placeholder for SMS sending logic
     const { success, error: smsError } = await sendSMS({
       recipient: contact.detail,
-      message: `Your DonkeyLK verification code is: ${code}. This code will expire in ${VERIFICATION_EXPIRY_MINUTES} minutes.`
+      message: `Your BrandSync verification code is: ${code}. This code will expire in ${VERIFICATION_EXPIRY_MINUTES} minutes.`
     });
 
     if (!success) {

@@ -192,13 +192,13 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
       targets?.forEach((target) => {
         const selectedViewCount = selectedViews[target.platform] || "0";
         if (selectedViewCount !== "0") {
-          const { baseCost } = calculateCostClient(
+          const { estimatedProfit } = calculateCostClient(
             target.platform,
             selectedViewCount,
             target.due_date ? "flexible" : "flexible", // Using flexible as we're calculating from influencer side
             false // Don't include service fee for influencer earnings
           );
-          newEarnings[target.platform] = baseCost;
+          newEarnings[target.platform] = estimatedProfit;
         }
       });
       setEarnings(newEarnings);
@@ -321,62 +321,40 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
   };
 
   const handleSubmitApplication = async () => {
-    if (!task?.task_id) return;
-
-    // Validate that at least one platform has views selected
-    const hasSelectedViews = Object.values(selectedViews).some(views => parseViewCount(views) > 0);
-    if (!hasSelectedViews) {
-      toast.error("Please select the number of views you can deliver for at least one platform");
-      return;
-    }
-
     setIsLoading(true);
     try {
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast.error("Please sign in to apply");
-        router.push('/auth');
+      // Check if user has selected at least one platform
+      const hasSelectedPlatform = Object.values(selectedViews).some(
+        (views) => parseViewCount(views) > 0
+      );
+
+      if (!hasSelectedPlatform) {
+        toast.error("Please select at least one platform and view count");
         return;
       }
 
-      // Create task application
-      const { data: application, error: applicationError } = await supabase
-        .from('task_applications')
-        .insert({
-          task_id: task.task_id,
-          user_id: user.id,
-          is_cancelled: false
-        })
-        .select()
-        .single();
+      if (!task?.task_id) {
+        toast.error("Task information is missing");
+        return;
+      }
 
-      if (applicationError) throw applicationError;
+      // Submit application through API endpoint
+      const response = await fetch('/api/task-applications/submit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          taskId: task.task_id,
+          selectedViews
+        }),
+      });
 
-      // Create application promises for each platform where views were selected
-      const promises = Object.entries(selectedViews)
-        .filter(([_, views]) => parseViewCount(views) > 0)
-        .map(([platform, views]) => {
-          const { baseCost } = calculateCostClient(
-            platform as Database['public']['Enums']['Platforms'],
-            views,
-            'flexible', // Using flexible since we're calculating from influencer side
-            false // Don't include service fee for influencer earnings
-          );
+      const result = await response.json();
 
-          return {
-            application_id: application.id,
-            platform: platform as Database['public']['Enums']['Platforms'],
-            promised_reach: views,
-            est_profit: baseCost.toString() // Store estimated earnings
-          };
-        });
-
-      const { error: promisesError } = await supabase
-        .from('application_promises')
-        .insert(promises);
-
-      if (promisesError) throw promisesError;
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to submit application');
+      }
 
       toast.success("Application submitted successfully!");
       router.push('/dashboard/influencer'); // Redirect to influencer dashboard
