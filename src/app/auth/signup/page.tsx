@@ -2,12 +2,17 @@
 
 import { SignUpForm } from "@/components/auth/sign-up-form";
 
-import { useEffect } from "react";
+import { useEffect, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 
-export default function SignUpPage() {
+import { useSearchParams } from "next/navigation";
+
+function SignUpPageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const referralCode = searchParams.get("referral") || undefined;
+
   useEffect(() => {
     const checkUser = async () => {
       const supabase = createClientComponentClient();
@@ -22,8 +27,16 @@ export default function SignUpPage() {
   return (
     <div className="lg:order-first p-4 lg:p-8 h-full flex flex-col justify-center">
       <div className="mx-auto flex w-full flex-col justify-center sm:w-[450px]">
-        <SignUpForm />
+        <SignUpForm referralCode={referralCode} />
       </div>
     </div>
+  );
+}
+
+export default function SignUpPage() {
+  return (
+    <Suspense>
+      <SignUpPageInner />
+    </Suspense>
   );
 }

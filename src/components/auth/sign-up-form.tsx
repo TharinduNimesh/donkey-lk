@@ -31,7 +31,9 @@ const BottomGradient = () => {
   );
 };
 
-export function SignUpForm() {
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+
+export function SignUpForm({ referralCode }: { referralCode?: string }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -56,12 +58,25 @@ export function SignUpForm() {
       return;
     }
 
-    const { error } = await signUp(email, password);
+    const { data, error } = await signUp(email, password);
 
     if (error) {
       setError(error.message);
       setLoading(false);
       return;
+    }
+
+    // Insert referral if referralCode is present and user is created
+    if (referralCode && data && data.user) {
+      try {
+        const supabase = createClientComponentClient();
+        await supabase.from('user_referrals').insert({
+          user_id: data.user.id,
+          referral_code: referralCode
+        });
+      } catch (e) {
+        // Optionally handle/log referral insert error
+      }
     }
 
     router.push("/auth?message=Check your email to confirm your account");

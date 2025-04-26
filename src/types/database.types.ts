@@ -475,6 +475,24 @@ export type Database = {
           },
         ]
       }
+      referral_codes: {
+        Row: {
+          code: string
+          created_at: string
+          owner: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          owner: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          owner?: string
+        }
+        Relationships: []
+      }
       task_applications: {
         Row: {
           created_at: string
@@ -673,6 +691,35 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profile"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_referrals: {
+        Row: {
+          created_at: string
+          id: number
+          referral_code: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          referral_code: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          referral_code?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_referrals_referral_code_fkey"
+            columns: ["referral_code"]
+            isOneToOne: false
+            referencedRelation: "referral_codes"
+            referencedColumns: ["code"]
           },
         ]
       }
