@@ -96,16 +96,39 @@ export function Footer() {
                 >
                   <Mail className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
                   <span className="text-sm sm:text-base">
-                    hello@brandsync.com
+                    contact@brandsync.lk
                   </span>
                 </a>
                 <a
-                  href="tel:+94771234567"
+                  href="mailto:hello@brandsync.com"
                   className="flex items-center gap-3 text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  <PhoneCall className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
-                  <span className="text-sm sm:text-base">+94 77 123 4567</span>
+                  <Mail className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+                  <span className="text-sm sm:text-base">
+                    support@brandsync.lk
+                  </span>
                 </a>
+                <div className="flex items-center gap-3 text-muted-foreground">
+                  <a
+                    href="tel:+94775197144"
+                    className="flex items-center gap-3 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <PhoneCall className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+                    <span className="text-sm sm:text-base">
+                      +94 77 519 7144
+                    </span>
+                  </a>
+                  <span className="hidden sm:inline">•</span>
+                  <a
+                    href="tel:+94771234567"
+                    className="flex items-center gap-3 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <PhoneCall className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+                    <span className="text-sm sm:text-base">
+                      +94 77 123 4567
+                    </span>
+                  </a>
+                </div>
                 <div className="flex items-center gap-3 text-muted-foreground">
                   <MapPin className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
                   <span className="text-sm sm:text-base">
