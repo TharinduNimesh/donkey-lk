@@ -2,13 +2,13 @@
 
 import { SignUpForm } from "@/components/auth/sign-up-form";
 
-import { useEffect } from "react";
+import { useEffect, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 
 import { useSearchParams } from "next/navigation";
 
-export default function SignUpPage() {
+function SignUpPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const referralCode = searchParams.get("referral") || undefined;
@@ -30,5 +30,13 @@ export default function SignUpPage() {
         <SignUpForm referralCode={referralCode} />
       </div>
     </div>
+  );
+}
+
+export default function SignUpPage() {
+  return (
+    <Suspense>
+      <SignUpPageInner />
+    </Suspense>
   );
 }
