@@ -178,7 +178,8 @@ export default function InfluencerDashboardPage() {
           supabase
             .from("influencer_profile_verification_requests")
             .select("*")
-            .eq("user_id", user.id),
+            .eq("user_id", user.id)
+            .neq("platform", "YOUTUBE"),
           
           // Fetch available tasks with application status
           supabase

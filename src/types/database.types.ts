@@ -871,6 +871,13 @@ export type Database = {
           pending_payments: number
         }[]
       }
+      get_remaining_views: {
+        Args: {
+          p_task_id: number
+          p_platform: Database["public"]["Enums"]["Platforms"]
+        }
+        Returns: string
+      }
       is_a_buyer: {
         Args: { user_id_input: string }
         Returns: boolean
