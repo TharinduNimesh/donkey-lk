@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { signOut } from "@/lib/supabase";
+import { useCallback } from "react";
 
 const adminRoutes = [
   {
@@ -37,6 +39,12 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
+
+  const handleLogout = useCallback(async () => {
+    await signOut();
+    router.replace("/auth");
+  }, [router]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -61,9 +69,12 @@ export default function AdminLayout({
               ))}
             </div>
             <div>
-              <Link href="/auth" className="text-sm font-medium text-muted-foreground hover:text-pink-600 transition-colors">
-                Logout
-              </Link>
+              <button
+  onClick={handleLogout}
+  className="text-sm font-medium text-muted-foreground hover:text-pink-600 transition-colors"
+>
+  Logout
+</button>
             </div>
           </div>
         </div>
