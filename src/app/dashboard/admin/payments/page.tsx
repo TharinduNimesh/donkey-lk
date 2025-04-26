@@ -275,7 +275,7 @@ export default function AdminPaymentsPage() {
           template: 'payment-rejected',
           context: {
             ...emailContext,
-            rejectionReason: rejectionLabel,
+            reason: rejectionLabel,
             actionRequired: getActionRequired(
               rejectionReason,
               customReason || '',

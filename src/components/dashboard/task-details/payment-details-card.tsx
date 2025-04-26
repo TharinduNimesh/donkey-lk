@@ -5,7 +5,7 @@ import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PaymentMethodSelect } from "@/components/ui/payment-method-select";
 import { Database } from "@/types/database.types";
-import { AlertCircle, CheckCircle2, CreditCard, DollarSign, XCircle } from "lucide-react";
+import { AlertCircle, Building, CheckCircle2, CreditCard, DollarSign, XCircle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 
 type BankTransferSlip = Database['public']['Tables']['bank_transfer_slip']['Row'] & {
@@ -46,6 +46,8 @@ export function PaymentDetailsCard({
   onProceedToPayment,
   onDeleteSlip
 }: PaymentDetailsCardProps) {
+  // Check if PayHere is active from environment variable
+  const isPayHereActive = process.env.NEXT_PUBLIC_PAYHERE_ACTIVE === 'true';
   return (
     <Card className="border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
       <CardHeader className="pb-4 border-b border-gray-100 dark:border-gray-800">
@@ -192,7 +194,11 @@ export function PaymentDetailsCard({
                       <h3 className="font-semibold mb-4 text-gray-900 dark:text-gray-100">Select Payment Method</h3>
                       <PaymentMethodSelect
                         selectedMethod={payment.method}
-                        onMethodSelect={onMethodSelect}
+                        onMethodSelect={(method) => {
+                          // Only allow card payment if PayHere is active
+                          if (method === 'card' && !isPayHereActive) return;
+                          onMethodSelect(method);
+                        }}
                         onSlipUpload={onSlipUpload}
                         bankSlip={payment.bankSlip}
                       />
@@ -200,7 +206,7 @@ export function PaymentDetailsCard({
                       <div className="mt-6 flex justify-end">
                         <Button
                           onClick={onProceedToPayment}
-                          disabled={isLoading || !payment.method}
+                          disabled={isLoading || !payment.method || (payment.method === 'card' && !isPayHereActive)}
                           className="bg-gradient-to-r from-pink-500 to-pink-600 hover:opacity-90 text-white"
                         >
                           {isLoading ? 'Processing...' : 'Complete Payment'}
