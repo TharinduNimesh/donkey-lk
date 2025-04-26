@@ -41,6 +41,8 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
   const [task, setTask] = useState<TaskDetail | null>(null);
   const [verifiedProfiles, setVerifiedProfiles] = useState<InfluencerProfile[]>([]);
   const [selectedViews, setSelectedViews] = useState<Record<string, string>>({});
+  // Store remaining views per platform
+  const [remainingViews, setRemainingViews] = useState<Record<string, number>>({});
   const [selectedProofs, setSelectedProofs] = useState<Record<string, Array<{
     type: Database["public"]["Enums"]["ProofType"];
     content: string;
@@ -58,21 +60,41 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
 
   const supabase = createClientComponentClient<Database>();
 
-  const viewOptions = [
-    { value: '1000', label: '1K' },
-    { value: '5000', label: '5K' },
-    { value: '10000', label: '10K' },
-    { value: '20000', label: '20K' },
-    { value: '25000', label: '25K' },
-    { value: '50000', label: '50K' },
-  ];
-
-  const getAvailableViewOptions = (targetViews: string) => {
-    const targetViewCount = parseViewCount(targetViews);
-    return viewOptions.filter(option => parseInt(option.value) <= targetViewCount);
+  // Generate view options up to the max
+  const getAvailableViewOptions = (platform: string) => {
+    const max = remainingViews[platform] !== undefined
+      ? Math.min(remainingViews[platform], 25000)
+      : 0;
+    if (!max || max < 1000) return [];
+    // Generate breakpoints
+    const breakpoints = [1000, 5000, 10000, 20000, 25000];
+    const options = breakpoints
+      .filter(bp => bp <= max)
+      .map(bp => ({ value: String(bp), label: bp >= 1000 ? `${bp / 1000}K` : String(bp) }));
+    // If max is not a breakpoint and less than 25k, add it as last option
+    if (max < 25000 && !breakpoints.includes(max)) {
+      options.push({ value: String(max), label: formatViewCount(max) });
+    }
+    return options;
   };
 
   useEffect(() => {
+    const fetchRemainingViews = async (taskId: number, platforms: string[]) => {
+      const result: Record<string, number> = {};
+      for (const platform of platforms) {
+        const { data, error } = await supabase.rpc('get_remaining_views', {
+          p_task_id: taskId,
+          p_platform: platform as Database["public"]["Enums"]["Platforms"]
+        });
+        let count = 0;
+        if (data && !error) {
+          count = parseInt(data as string, 10);
+        }
+        result[platform] = isNaN(count) ? 0 : count;
+      }
+      setRemainingViews(result);
+    };
+
     const fetchData = async () => {
       try {
         // Get current user
@@ -113,6 +135,15 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
 
         if (taskError) throw taskError;
         setTask(taskData);
+
+        // Fetch remaining views for each platform
+        const targets = taskData.targets as Array<{
+          platform: Database['public']['Enums']['Platforms'];
+          views: string;
+        }>;
+        if (taskData.task_id && targets?.length) {
+          await fetchRemainingViews(taskData.task_id, targets.map(t => t.platform));
+        }
 
         // Check for existing application
         const applications = taskData.applications as TaskApplication[];
@@ -321,6 +352,19 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
   };
 
   const handleSubmitApplication = async () => {
+    if (isTaskFull) {
+      toast.error('This task is already full and cannot accept more applications.');
+      return;
+    }
+    // Validate selected views do not exceed remaining or 25k
+    for (const platform of Object.keys(selectedViews)) {
+      const selected = parseViewCount(selectedViews[platform]);
+      const max = remainingViews[platform] !== undefined ? Math.min(remainingViews[platform], 25000) : 0;
+      if (selected > max) {
+        toast.error(`You cannot promise more than ${formatViewCount(max)} views for ${platform}`);
+        return;
+      }
+    }
     setIsLoading(true);
     try {
       // Check if user has selected at least one platform
@@ -414,9 +458,21 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
 
   const isReadOnly = !!existingApplication;
 
+  // Calculate progress percentage
+  const progress = task && task.total_promised_views && task.total_target_views
+    ? Math.min(Math.round((task.total_promised_views / task.total_target_views) * 100), 100)
+    : 0;
+  const isTaskFull = progress === 100;
+
   return (
     <div className="min-h-screen w-full bg-white dark:bg-gray-950">
       <div className="container max-w-5xl mx-auto py-8 px-4">
+        {isTaskFull && (
+          <div className="mb-6 p-4 rounded-lg bg-red-100 border border-red-300 text-red-800 dark:bg-red-900/20 dark:text-red-200 dark:border-red-800 flex items-center gap-3">
+            <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+            <span>This task is already full and cannot accept more applications.</span>
+          </div>
+        )}
         {/* Header with back button */}
         <motion.div 
           initial={{ opacity: 0, y: -20 }}

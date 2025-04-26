@@ -71,8 +71,30 @@ export function InfluencerTaskCard({ task, application }: InfluencerTaskCardProp
   return (
     <Card 
       onClick={handleCardClick}
-      className="group relative overflow-hidden hover:shadow-xl transition-all duration-300 hover:border-pink-400/50 dark:hover:border-pink-500/50 bg-white dark:bg-gray-900 h-[400px] flex flex-col cursor-pointer"
+      className={`group relative overflow-hidden hover:shadow-xl transition-all duration-300 hover:border-pink-400/50 dark:hover:border-pink-500/50 bg-white dark:bg-gray-900 h-[400px] flex flex-col cursor-pointer ${progress === 100 ? 'task-full-card' : ''}`}
     >
+      {progress === 100 && (
+        <svg
+          className="absolute inset-0 w-full h-full z-0 opacity-40 pointer-events-none"
+          viewBox="0 0 400 400"
+          width="100%"
+          height="100%"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          preserveAspectRatio="none"
+        >
+          <rect width="100%" height="100%" fill="#fde4ec" />
+          <text x="200" y="210" textAnchor="middle" fontSize="48" fill="#ec4899" fontWeight="bold" opacity="0.20">
+            FULL
+          </text>
+          <defs>
+            <pattern id="stripes" patternUnits="userSpaceOnUse" width="20" height="20" patternTransform="rotate(45)">
+              <rect x="0" y="0" width="10" height="20" fill="#fbcfe8" fillOpacity="0.15" />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#stripes)" />
+        </svg>
+      )}
       <CardHeader className="relative z-10 pb-4">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1.5 flex-1">
@@ -82,9 +104,10 @@ export function InfluencerTaskCard({ task, application }: InfluencerTaskCardProp
           <Badge className={`
             shrink-0 pointer-events-none select-none
             ${application ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : ''}
-            ${!application && task.status === 'ACTIVE' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : ''}
+            ${!application && progress === 100 ? 'bg-pink-100 text-pink-600 dark:bg-pink-900/30 dark:text-pink-400 border-pink-300 dark:border-pink-500' : ''}
+            ${!application && task.status === 'ACTIVE' && progress !== 100 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : ''}
           `}>
-            {application ? 'Applied' : 'New'}
+            {application ? 'Applied' : progress === 100 ? 'Full' : 'New'}
           </Badge>
         </div>
       </CardHeader>
@@ -115,9 +138,11 @@ export function InfluencerTaskCard({ task, application }: InfluencerTaskCardProp
                 Rs. {calculateTotalEarnings().toFixed(2)}
               </span>
             ) : (
-              <span className="font-medium text-pink-600 dark:text-pink-400">
-                Earn from this task
-              </span>
+              progress !== 100 && (
+                <span className="font-medium text-pink-600 dark:text-pink-400">
+                  Earn from this task
+                </span>
+              )
             )}
           </div>
 
@@ -155,7 +180,11 @@ export function InfluencerTaskCard({ task, application }: InfluencerTaskCardProp
           <div 
             className="ml-auto text-pink-600 dark:text-pink-400 hover:text-pink-700 dark:hover:text-pink-300 text-sm font-medium flex items-center"
           >
-            {application ? 'View Application' : 'Apply Now'}
+            {application
+              ? 'View Application'
+              : progress === 100
+                ? 'Task Full'
+                : 'Apply Now'}
             <ArrowUpRight className="h-4 w-4 ml-1" />
           </div>
         </div>

@@ -108,7 +108,7 @@ export function PlatformRequirementsCard({
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="0">Select promised views</SelectItem>
-                        {getAvailableViewOptions(target.views).map((option) => (
+                        {getAvailableViewOptions(target.platform).map((option) => (
                           <SelectItem key={option.value} value={option.value}>
                             {option.label}
                           </SelectItem>
