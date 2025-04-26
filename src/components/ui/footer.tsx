@@ -8,7 +8,9 @@ import {
   Mail,
   PhoneCall,
   MapPin,
+  Link as LinkIcon,
 } from "lucide-react";
+import Link from "next/link";
 import Image from "next/image";
 
 export function Footer() {
@@ -198,19 +200,19 @@ export function Footer() {
                 © {currentYear} BrandSync. All rights reserved.
               </p>
               <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4 text-xs sm:text-sm text-muted-foreground order-1 sm:order-2">
-                <a
-                  href="#"
+                <Link
+                  href="/policies/privacy-policy"
                   className="hover:text-foreground transition-colors whitespace-nowrap"
                 >
                   Privacy Policy
-                </a>
+                </Link>
                 <span className="hidden sm:inline">•</span>
-                <a
-                  href="#"
+                <Link
+                  href="/policies/terms-of-service"
                   className="hover:text-foreground transition-colors whitespace-nowrap"
                 >
                   Terms of Service
-                </a>
+                </Link>
                 <span className="hidden sm:inline">•</span>
                 <span className="whitespace-nowrap">
                   Developed by{" "}

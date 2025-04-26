@@ -12,7 +12,7 @@ export function calculateCostClient(
   views: string | number,
   deadline: keyof typeof DEADLINE_MULTIPLIERS,
   includeServiceFee: boolean = true
-): { baseCost: number; serviceFee: number; totalCost: number } {
+): { baseCost: number; serviceFee: number; totalCost: number; estimatedProfit: number } {
   const viewCount = typeof views === 'string' ? parseViewCount(views) : views;
   const baseRate = PLATFORM_RATES[platform];
   const deadlineMultiplier = DEADLINE_MULTIPLIERS[deadline];
@@ -21,6 +21,9 @@ export function calculateCostClient(
   const baseCost = Math.round(viewsInThousands * baseRate * deadlineMultiplier);
   const serviceFee = includeServiceFee ? Math.round(baseCost * SERVICE_FEE_PERCENTAGE) : 0;
   const totalCost = baseCost + serviceFee;
+  
+  // Calculate estimated profit as 63% of the base cost (without service fee)
+  const estimatedProfit = Math.round(baseCost * 0.63);
 
-  return { baseCost, serviceFee, totalCost };
+  return { baseCost, serviceFee, totalCost, estimatedProfit };
 }

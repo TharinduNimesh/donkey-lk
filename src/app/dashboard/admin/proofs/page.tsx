@@ -6,14 +6,32 @@ import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Calendar } from "@/components/ui/calendar";
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Calendar as CalendarIcon } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 import { Database } from "@/types/database.types";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { getProofImageUrl } from "@/lib/utils/proofs";
 import { parseViewCount, formatViewCount } from "@/lib/utils/views";
+import { ProofVerificationModal, type ProofRejectionReason, proofRejectionReasons } from "@/components/dashboard/proof-verification-modal";
+import { sendMail } from "@/lib/utils/email";
+
+const ITEMS_PER_PAGE = 10;
+
+type SortOption = 'newest' | 'oldest';
+type StatusFilter = 'ALL' | Database["public"]["Enums"]["ProofStatus"];
+type PlatformFilter = 'ALL' | Database["public"]["Enums"]["Platforms"];
 
 type ApplicationProof = Database['public']['Tables']['application_proofs']['Row'] & {
-  proof_status: Database['public']['Tables']['proof_status']['Row'];
+  proof_status: Database['public']['Tables']['proof_status']['Row'] & {
+    reviewer: {
+      name: string;
+      email: string;
+    } | null;
+  };
   task_application: {
     id: number;
     task: {
@@ -63,6 +81,21 @@ export default function AdminProofsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [groupedProofs, setGroupedProofs] = useState<GroupedProofs[]>([]);
   const [proofUrls, setProofUrls] = useState<Record<string, string>>({});
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalProofs, setTotalProofs] = useState(0);
+  const [sortBy, setSortBy] = useState<SortOption>('newest');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
+  const [platformFilter, setPlatformFilter] = useState<PlatformFilter>('ALL');
+  const [dateFilter, setDateFilter] = useState<Date | null>(null);
+  const [verificationModal, setVerificationModal] = useState<{
+    isOpen: boolean;
+    action: 'accept' | 'reject';
+    proof: ApplicationProof | null;
+  }>({
+    isOpen: false,
+    action: 'accept',
+    proof: null
+  });
   const supabase = createClientComponentClient<Database>();
 
   useEffect(() => {
@@ -73,7 +106,6 @@ export default function AdminProofsPage() {
         return;
       }
 
-      // Verify admin role
       const { data: profile } = await supabase
         .from('profile')
         .select('role')
@@ -91,11 +123,16 @@ export default function AdminProofsPage() {
 
   const fetchProofs = async () => {
     try {
-      const { data: proofData, error } = await supabase
+      let query = supabase
         .from('application_proofs')
         .select(`
           *,
-          proof_status!inner (*),
+          proof_status!inner (*,
+            reviewer:profile!proof_status_reviewed_by_fkey (
+              name,
+              email
+            )
+          ),
           task_application:task_applications (
             id,
             task:task_details (
@@ -113,12 +150,38 @@ export default function AdminProofsPage() {
               est_profit
             )
           )
-        `)
-        .order('created_at', { ascending: false });
+        `, { count: 'exact' });
+
+      if (statusFilter !== 'ALL') {
+        query = query.eq('proof_status.status', statusFilter);
+      }
+
+      if (platformFilter !== 'ALL') {
+        query = query.eq('platform', platformFilter);
+      }
+
+      if (dateFilter) {
+        const startOfDay = new Date(dateFilter);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(dateFilter);
+        endOfDay.setHours(23, 59, 59, 999);
+        
+        query = query.gte('created_at', startOfDay.toISOString())
+          .lte('created_at', endOfDay.toISOString());
+      }
+
+      query = query.order('created_at', { ascending: sortBy === 'oldest' });
+
+      const start = (currentPage - 1) * ITEMS_PER_PAGE;
+      const end = start + ITEMS_PER_PAGE - 1;
+      query = query.range(start, end);
+
+      const { data: proofData, error, count } = await query;
 
       if (error) throw error;
 
-      // Group proofs by application and platform
+      setTotalProofs(count || 0);
+
       const grouped = (proofData as ApplicationProof[]).reduce((acc: GroupedProofs[], proof) => {
         const existingGroup = acc.find(g => g.applicationId === proof.application_id);
         
@@ -160,7 +223,6 @@ export default function AdminProofsPage() {
 
       setGroupedProofs(grouped);
 
-      // Fetch image URLs for image proofs
       const imageUrlPromises = proofData
         .filter(proof => proof.proof_type === 'IMAGE')
         .map(async proof => ({
@@ -183,7 +245,6 @@ export default function AdminProofsPage() {
     }
   };
 
-  // Subscribe to proof_status changes
   useEffect(() => {
     const channel = supabase
       .channel('proof-status-changes')
@@ -195,22 +256,49 @@ export default function AdminProofsPage() {
           table: 'proof_status'
         },
         () => {
-          // Refresh data when proof status changes
           fetchProofs();
         }
       )
       .subscribe();
 
-    // Initial fetch
     fetchProofs();
 
-    // Cleanup subscription
     return () => {
       supabase.removeChannel(channel);
     };
   }, [supabase]);
 
-  const handleProofStatusUpdate = async (proofId: number, status: Database["public"]["Enums"]["ProofStatus"]) => {
+  useEffect(() => {
+    fetchProofs();
+  }, [currentPage, sortBy, statusFilter, platformFilter, dateFilter]);
+
+  const getActionRequired = (reason: ProofRejectionReason, customReason: string) => {
+    switch (reason) {
+      case 'INVALID_PROOFS':
+        return 'Please ensure your proof submission includes clear, valid screenshots or links that demonstrate the task completion.';
+      case 'VIEWS_NOT_REACHED':
+        return 'Please wait until your content reaches the promised view count before submitting proof.';
+      case 'FAKE_OWNERSHIP':
+        return 'Please submit proof from a verified account that you own. You may need to complete the platform verification process first.';
+      case 'DUPLICATE_SUBMISSION':
+        return 'Please submit unique proof for each task. The same content cannot be used for multiple tasks.';
+      case 'CONTENT_REMOVED':
+        return 'Please ensure the promoted content is still accessible and submit new proof.';
+      case 'METRICS_MISMATCH':
+        return 'Please submit proof that accurately reflects the current engagement metrics from your platform analytics.';
+      case 'OTHER':
+        return customReason;
+      default:
+        return 'Please review the rejection reason and submit new proof that addresses these concerns.';
+    }
+  };
+
+  const handleProofStatusUpdate = async (
+    proofId: number, 
+    status: Database["public"]["Enums"]["ProofStatus"],
+    rejectionReason?: ProofRejectionReason,
+    customReason?: string
+  ) => {
     try {
       const reviewedAt = new Date().toISOString();
       const { data: { user } } = await supabase.auth.getUser();
@@ -227,24 +315,67 @@ export default function AdminProofsPage() {
 
       if (error) throw error;
 
-      // Update local state directly
+      const proof = verificationModal.proof;
+      if (!proof) return;
+
+      const promiseDetails = proof.task_application.application_promises
+        .find(p => p.platform === proof.platform);
+
+      if (!promiseDetails) return;
+
+      const emailContext: Record<string, string> = {
+        name: proof.task_application.user.name,
+        taskTitle: proof.task_application.task.title,
+        taskId: proof.application_id.toString(),
+        platform: proof.platform,
+        date: format(new Date(), 'MMMM d, yyyy'),
+        promisedViews: formatViewCount(parseViewCount(promiseDetails.promised_reach)),
+        earnings: parseFloat(promiseDetails.est_profit).toFixed(2)
+      };
+
+      if (status === 'ACCEPTED') {
+        await sendMail({
+          to: proof.task_application.user.email,
+          subject: 'Proof Accepted - BrandSync',
+          template: 'proof-accepted',
+          context: emailContext,
+          from: 'verify@brandsync.lk'
+        });
+      } else if (rejectionReason) {
+        const rejectionLabel = proofRejectionReasons.find(
+          (r) => r.value === rejectionReason
+        )?.label || 'Proof Rejected';
+
+        await sendMail({
+          to: proof.task_application.user.email,
+          subject: 'Proof Rejected - BrandSync',
+          template: 'proof-rejected',
+          context: {
+            ...emailContext,
+            rejectionReason: rejectionLabel,
+            actionRequired: getActionRequired(rejectionReason, customReason || '')
+          },
+          from: 'verify@brandsync.lk'
+        });
+      }
+
       setGroupedProofs(prevGroups => {
         return prevGroups.map(group => ({
           ...group,
           promises: group.promises.map(promise => ({
             ...promise,
-            proofs: promise.proofs.map(proof => 
-              proof.id === proofId
+            proofs: promise.proofs.map(p => 
+              p.id === proofId
                 ? {
-                    ...proof,
+                    ...p,
                     proof_status: {
-                      ...proof.proof_status,
+                      ...p.proof_status,
                       status: status,
                       reviewed_at: reviewedAt,
-                      reviewed_by: reviewerId ?? null
+                      reviewed_by: reviewerId
                     }
                   } as ApplicationProof
-                : proof
+                : p
             )
           }))
         }));
@@ -254,7 +385,17 @@ export default function AdminProofsPage() {
     } catch (error) {
       console.error('Error updating proof status:', error);
       toast.error('Failed to update proof status');
+    } finally {
+      setVerificationModal(prev => ({ ...prev, isOpen: false }));
     }
+  };
+
+  const handleProofAction = (proof: ApplicationProof, action: 'accept' | 'reject') => {
+    setVerificationModal({
+      isOpen: true,
+      action,
+      proof
+    });
   };
 
   const getStatusBadgeVariant = (status?: Database["public"]["Enums"]["ProofStatus"]) => {
@@ -269,10 +410,145 @@ export default function AdminProofsPage() {
     }
   };
 
+  const totalPages = Math.ceil(totalProofs / ITEMS_PER_PAGE);
+
+  const PaginationControls = () => (
+    <div className="flex items-center justify-end space-x-2 py-4">
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => setCurrentPage(1)}
+        disabled={currentPage === 1}
+      >
+        <ChevronsLeft className="h-4 w-4" />
+      </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => setCurrentPage(currentPage - 1)}
+        disabled={currentPage === 1}
+      >
+        <ChevronLeft className="h-4 w-4" />
+      </Button>
+      <div className="text-sm">
+        Page {currentPage} of {totalPages}
+      </div>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => setCurrentPage(currentPage + 1)}
+        disabled={currentPage === totalPages}
+      >
+        <ChevronRight className="h-4 w-4" />
+      </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => setCurrentPage(totalPages)}
+        disabled={currentPage === totalPages}
+      >
+        <ChevronsRight className="h-4 w-4" />
+      </Button>
+    </div>
+  );
+
   return (
     <div className="container mx-auto py-8 px-4">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">Application Proofs</h1>
+        <div className="flex items-center gap-4">
+          <Select
+            value={sortBy}
+            onValueChange={(value: SortOption) => {
+              setSortBy(value);
+              setCurrentPage(1);
+            }}
+          >
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="Sort by" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="newest">Newest First</SelectItem>
+              <SelectItem value="oldest">Oldest First</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={statusFilter}
+            onValueChange={(value: StatusFilter) => {
+              setStatusFilter(value);
+              setCurrentPage(1);
+            }}
+          >
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="Filter by status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All Status</SelectItem>
+              <SelectItem value="UNDER_REVIEW">Under Review</SelectItem>
+              <SelectItem value="ACCEPTED">Accepted</SelectItem>
+              <SelectItem value="REJECTED">Rejected</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={platformFilter}
+            onValueChange={(value: PlatformFilter) => {
+              setPlatformFilter(value);
+              setCurrentPage(1);
+            }}
+          >
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="Filter by platform" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All Platforms</SelectItem>
+              <SelectItem value="YOUTUBE">YouTube</SelectItem>
+              <SelectItem value="FACEBOOK">Facebook</SelectItem>
+              <SelectItem value="TIKTOK">TikTok</SelectItem>
+              <SelectItem value="INSTAGRAM">Instagram</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "w-[160px] justify-start text-left font-normal",
+                  !dateFilter && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {dateFilter ? format(dateFilter, "PPP") : "Filter by date"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+              <Calendar
+                mode="single"
+                selected={dateFilter as Date}
+                onSelect={(date: Date | undefined) => {
+                  setDateFilter(date ?? null);
+                  setCurrentPage(1);
+                }}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
+
+          {dateFilter && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setDateFilter(null);
+                setCurrentPage(1);
+              }}
+            >
+              Clear Date
+            </Button>
+          )}
+        </div>
       </div>
       
       <div className="space-y-6">
@@ -330,6 +606,8 @@ export default function AdminProofsPage() {
                               <th className="text-left py-3 px-4">Content</th>
                               <th className="text-left py-3 px-4">Status</th>
                               <th className="text-left py-3 px-4">Submitted</th>
+                              <th className="text-left py-3 px-4">Reviewed By</th>
+                              <th className="text-left py-3 px-4">Reviewed At</th>
                               <th className="text-left py-3 px-4">Actions</th>
                             </tr>
                           </thead>
@@ -373,13 +651,21 @@ export default function AdminProofsPage() {
                                   {format(new Date(proof.created_at), 'MMM d, yyyy')}
                                 </td>
                                 <td className="py-3 px-4">
+                                  {proof.proof_status.reviewer?.name || '-'}
+                                </td>
+                                <td className="py-3 px-4">
+                                  {proof.proof_status.reviewed_at 
+                                    ? format(new Date(proof.proof_status.reviewed_at), 'MMM d, yyyy')
+                                    : '-'}
+                                </td>
+                                <td className="py-3 px-4">
                                   {proof.proof_status.status === 'UNDER_REVIEW' && (
                                     <div className="flex gap-2">
                                       <Button
                                         size="sm"
                                         variant="outline"
                                         className="text-green-600 border-green-200 hover:bg-green-50 hover:text-green-700"
-                                        onClick={() => handleProofStatusUpdate(proof.id, 'ACCEPTED')}
+                                        onClick={() => handleProofAction(proof, 'accept')}
                                       >
                                         Accept
                                       </Button>
@@ -387,7 +673,7 @@ export default function AdminProofsPage() {
                                         size="sm"
                                         variant="outline"
                                         className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
-                                        onClick={() => handleProofStatusUpdate(proof.id, 'REJECTED')}
+                                        onClick={() => handleProofAction(proof, 'reject')}
                                       >
                                         Reject
                                       </Button>
@@ -410,7 +696,33 @@ export default function AdminProofsPage() {
             </Card>
           ))
         )}
+        {groupedProofs.length > 0 && <PaginationControls />}
       </div>
+      {verificationModal.proof && (
+        <ProofVerificationModal
+          isOpen={verificationModal.isOpen}
+          onClose={() => setVerificationModal(prev => ({ ...prev, isOpen: false }))}
+          onConfirm={async (isAccepted, reason, customReason) => {
+            if (verificationModal.proof) {
+              await handleProofStatusUpdate(
+                verificationModal.proof.id,
+                isAccepted ? 'ACCEPTED' : 'REJECTED',
+                reason,
+                customReason
+              );
+            }
+          }}
+          action={verificationModal.action}
+          proofDetails={{
+            platform: verificationModal.proof.platform,
+            promisedViews: parseViewCount(
+              verificationModal.proof.task_application.application_promises.find(
+                p => p.platform === verificationModal.proof?.platform
+              )?.promised_reach || '0'
+            )
+          }}
+        />
+      )}
     </div>
   );
 }

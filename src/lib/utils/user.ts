@@ -113,10 +113,10 @@ export type ContactDetail = {
   id: number;
   type: Database["public"]["Enums"]["ContactTypes"];
   detail: string;
-  contactStatus?: {
+  contactStatus: {
     is_verified: boolean;
     verified_at: string | null;
-  };
+  } | null;
 };
 
 export async function fetchUserContactDetails() {
@@ -149,7 +149,7 @@ export async function fetchUserContactDetails() {
       contactStatus: contact.contact_status ? {
         is_verified: Boolean(contact.contact_status.is_verified),
         verified_at: contact.contact_status.verified_at
-      } : undefined
+      } : null
     }));
 
     return {
@@ -160,6 +160,14 @@ export async function fetchUserContactDetails() {
     console.error("Error fetching user contact details:", error);
     throw error;
   }
+}
+
+export async function isUserAdmin(userId: string) {
+  const { data, error } = await supabase
+    .rpc('is_an_admin', { user_id_input: userId });
+
+  if (error) throw error;
+  return data;
 }
 
 export async function isUserBuyer(userId: string) {

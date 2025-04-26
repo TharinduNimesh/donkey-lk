@@ -76,7 +76,7 @@ export function Header() {
                 </div>
               </NavbarButton>
             </Link>
-            <Link href="/auth" legacyBehavior>
+            <Link href="/auth/signup" legacyBehavior>
               <NavbarButton
                 as="a"
                 variant="dark"

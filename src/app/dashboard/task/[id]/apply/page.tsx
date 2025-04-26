@@ -1,28 +1,38 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { use } from "react";
+import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { Database } from "@/types/database.types";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { TaskApplicationCard } from "@/components/dashboard/task-application-card";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { parseViewCount, formatViewCount } from "@/lib/utils/views";
 import { isUserInfluencer, getUserVerifiedPlatforms } from "@/lib/utils/user";
 import { calculateCostClient } from "@/lib/utils/cost";
-import { formatDateToNow } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
 import { uploadProofImage } from "@/lib/utils/storage";
 import { getProofImageUrl, submitApplicationProofs, getApplicationProofs } from "@/lib/utils/proofs";
+import { motion } from "framer-motion";
+import { ArrowLeft, AlertCircle, Check, DollarSign, ArrowUpRight, Clock } from "lucide-react";
+import { formatDateToNow } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { ProofUpload } from "@/components/ui/proof-upload";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Database } from "@/types/database.types";
+import { 
+  TaskDetailsCard,
+  ExistingApplicationCard,
+  PlatformRequirementsCard,
+  ApplicationSummaryCard,
+  ProofSubmissionSection,
+  PlatformIcon
+} from "@/components/dashboard/task-application";
+import Link from "next/link";
 
-type TaskDetail = Database['public']['Views']['task_details']['Row'];
-type InfluencerProfile = Database['public']['Tables']['influencer_profile']['Row'];
-type TaskApplication = Database['public']['Tables']['task_applications']['Row'] & {
-  application_promises: Database['public']['Tables']['application_promises']['Row'][];
+type TaskDetail = Database["public"]["Views"]["task_details_view"]["Row"];
+type InfluencerProfile = Database["public"]["Tables"]["influencer_profile"]["Row"];
+type TaskApplication = Database["public"]["Tables"]["task_applications"]["Row"] & {
+  application_promises: Database["public"]["Tables"]["application_promises"]["Row"][];
 };
 
 export default function TaskApplicationPage({ params }: { params: Promise<{ id: string }> }) {
@@ -31,6 +41,8 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
   const [task, setTask] = useState<TaskDetail | null>(null);
   const [verifiedProfiles, setVerifiedProfiles] = useState<InfluencerProfile[]>([]);
   const [selectedViews, setSelectedViews] = useState<Record<string, string>>({});
+  // Store remaining views per platform
+  const [remainingViews, setRemainingViews] = useState<Record<string, number>>({});
   const [selectedProofs, setSelectedProofs] = useState<Record<string, Array<{
     type: Database["public"]["Enums"]["ProofType"];
     content: string;
@@ -48,7 +60,41 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
 
   const supabase = createClientComponentClient<Database>();
 
+  // Generate view options up to the max
+  const getAvailableViewOptions = (platform: string) => {
+    const max = remainingViews[platform] !== undefined
+      ? Math.min(remainingViews[platform], 25000)
+      : 0;
+    if (!max || max < 1000) return [];
+    // Generate breakpoints
+    const breakpoints = [1000, 5000, 10000, 20000, 25000];
+    const options = breakpoints
+      .filter(bp => bp <= max)
+      .map(bp => ({ value: String(bp), label: bp >= 1000 ? `${bp / 1000}K` : String(bp) }));
+    // If max is not a breakpoint and less than 25k, add it as last option
+    if (max < 25000 && !breakpoints.includes(max)) {
+      options.push({ value: String(max), label: formatViewCount(max) });
+    }
+    return options;
+  };
+
   useEffect(() => {
+    const fetchRemainingViews = async (taskId: number, platforms: string[]) => {
+      const result: Record<string, number> = {};
+      for (const platform of platforms) {
+        const { data, error } = await supabase.rpc('get_remaining_views', {
+          p_task_id: taskId,
+          p_platform: platform as Database["public"]["Enums"]["Platforms"]
+        });
+        let count = 0;
+        if (data && !error) {
+          count = parseInt(data as string, 10);
+        }
+        result[platform] = isNaN(count) ? 0 : count;
+      }
+      setRemainingViews(result);
+    };
+
     const fetchData = async () => {
       try {
         // Get current user
@@ -68,7 +114,7 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
 
         // Fetch task details with application status
         const { data: taskData, error: taskError } = await supabase
-          .from('task_details')
+          .from('task_details_view')
           .select(`
             *,
             applications:task_applications(
@@ -89,6 +135,15 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
 
         if (taskError) throw taskError;
         setTask(taskData);
+
+        // Fetch remaining views for each platform
+        const targets = taskData.targets as Array<{
+          platform: Database['public']['Enums']['Platforms'];
+          views: string;
+        }>;
+        if (taskData.task_id && targets?.length) {
+          await fetchRemainingViews(taskData.task_id, targets.map(t => t.platform));
+        }
 
         // Check for existing application
         const applications = taskData.applications as TaskApplication[];
@@ -168,13 +223,13 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
       targets?.forEach((target) => {
         const selectedViewCount = selectedViews[target.platform] || "0";
         if (selectedViewCount !== "0") {
-          const { baseCost } = calculateCostClient(
+          const { estimatedProfit } = calculateCostClient(
             target.platform,
             selectedViewCount,
             target.due_date ? "flexible" : "flexible", // Using flexible as we're calculating from influencer side
             false // Don't include service fee for influencer earnings
           );
-          newEarnings[target.platform] = baseCost;
+          newEarnings[target.platform] = estimatedProfit;
         }
       });
       setEarnings(newEarnings);
@@ -297,62 +352,53 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
   };
 
   const handleSubmitApplication = async () => {
-    if (!task?.task_id) return;
-
-    // Validate that at least one platform has views selected
-    const hasSelectedViews = Object.values(selectedViews).some(views => parseViewCount(views) > 0);
-    if (!hasSelectedViews) {
-      toast.error("Please select the number of views you can deliver for at least one platform");
+    if (isTaskFull) {
+      toast.error('This task is already full and cannot accept more applications.');
       return;
     }
-
+    // Validate selected views do not exceed remaining or 25k
+    for (const platform of Object.keys(selectedViews)) {
+      const selected = parseViewCount(selectedViews[platform]);
+      const max = remainingViews[platform] !== undefined ? Math.min(remainingViews[platform], 25000) : 0;
+      if (selected > max) {
+        toast.error(`You cannot promise more than ${formatViewCount(max)} views for ${platform}`);
+        return;
+      }
+    }
     setIsLoading(true);
     try {
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast.error("Please sign in to apply");
-        router.push('/auth');
+      // Check if user has selected at least one platform
+      const hasSelectedPlatform = Object.values(selectedViews).some(
+        (views) => parseViewCount(views) > 0
+      );
+
+      if (!hasSelectedPlatform) {
+        toast.error("Please select at least one platform and view count");
         return;
       }
 
-      // Create task application
-      const { data: application, error: applicationError } = await supabase
-        .from('task_applications')
-        .insert({
-          task_id: task.task_id,
-          user_id: user.id,
-          is_cancelled: false
-        })
-        .select()
-        .single();
+      if (!task?.task_id) {
+        toast.error("Task information is missing");
+        return;
+      }
 
-      if (applicationError) throw applicationError;
+      // Submit application through API endpoint
+      const response = await fetch('/api/task-applications/submit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          taskId: task.task_id,
+          selectedViews
+        }),
+      });
 
-      // Create application promises for each platform where views were selected
-      const promises = Object.entries(selectedViews)
-        .filter(([_, views]) => parseViewCount(views) > 0)
-        .map(([platform, views]) => {
-          const { baseCost } = calculateCostClient(
-            platform as Database['public']['Enums']['Platforms'],
-            views,
-            'flexible', // Using flexible since we're calculating from influencer side
-            false // Don't include service fee for influencer earnings
-          );
+      const result = await response.json();
 
-          return {
-            application_id: application.id,
-            platform: platform as Database['public']['Enums']['Platforms'],
-            promised_reach: views,
-            est_profit: baseCost.toString() // Store estimated earnings
-          };
-        });
-
-      const { error: promisesError } = await supabase
-        .from('application_promises')
-        .insert(promises);
-
-      if (promisesError) throw promisesError;
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to submit application');
+      }
 
       toast.success("Application submitted successfully!");
       router.push('/dashboard/influencer'); // Redirect to influencer dashboard
@@ -365,11 +411,43 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
   };
 
   if (isLoading) {
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+    return (
+      <div className="min-h-screen w-full bg-white dark:bg-gray-950 flex items-center justify-center">
+        <div className="text-center space-y-6">
+          <div className="relative w-20 h-20 mx-auto">
+            <div className="absolute inset-0 rounded-full animate-ping bg-pink-400/20" />
+            <div className="relative animate-spin w-full h-full rounded-full border-4 border-pink-500 border-t-transparent" />
+          </div>
+          <div className="space-y-2">
+            <h3 className="text-xl font-medium text-gray-900 dark:text-gray-100">Loading Task Details</h3>
+            <p className="text-muted-foreground">Please wait while we fetch the task information...</p>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (!task) {
-    return <div className="flex items-center justify-center min-h-screen">Task not found</div>;
+    return (
+      <div className="min-h-screen w-full bg-white dark:bg-gray-950 flex items-center justify-center">
+        <div className="max-w-md w-full p-8 rounded-xl bg-white dark:bg-gray-900 shadow-lg border border-gray-100 dark:border-gray-800 text-center space-y-6">
+          <div className="w-16 h-16 mx-auto rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center">
+            <AlertCircle className="w-8 h-8 text-red-500" />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Task Not Found</h2>
+            <p className="text-muted-foreground">The requested task could not be found or may have been removed.</p>
+          </div>
+          <Button 
+            onClick={() => router.back()}
+            className="bg-pink-600 hover:bg-pink-700 text-white shadow-sm hover:shadow-md transition-all duration-300"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Go Back
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   const targets = task.targets as Array<{
@@ -378,199 +456,121 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
     due_date: string;
   }>;
 
-  // Disable view selection and submission if already applied
   const isReadOnly = !!existingApplication;
 
+  // Calculate progress percentage
+  const progress = task && task.total_promised_views && task.total_target_views
+    ? Math.min(Math.round((task.total_promised_views / task.total_target_views) * 100), 100)
+    : 0;
+  const isTaskFull = progress === 100;
+
   return (
-    <div className="container max-w-4xl mx-auto py-8 px-4">
-      <div className="mb-8">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold">Apply for Task</h1>
-          <span className={`
-            px-3 py-1 rounded-full text-sm font-medium
-            ${task.status === 'ACTIVE' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : ''}
-            ${task.status === 'DRAFT' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' : ''}
-          `}>
-            {task.status}
-          </span>
-        </div>
-        <p className="text-muted-foreground mt-2">{task.description}</p>
-      </div>
-
-      {existingApplication ? (
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="text-blue-600 dark:text-blue-400">Your Existing Application</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between text-sm text-muted-foreground">
-                <span>Applied {formatDateToNow(existingApplication.created_at)}</span>
-                <Badge variant="outline" className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
-                  Active Application
-                </Badge>
-              </div>
-              
-              <div className="grid gap-4">
-                {existingApplication.application_promises.map((promise, index) => (
-                  <div key={index} className="p-4 border rounded-lg space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium">{promise.platform}</span>
-                      <span className="text-lg">{promise.promised_reach} views</span>
-                    </div>
-                    <div className="flex justify-between items-center text-sm text-green-600 dark:text-green-400">
-                      <span>Estimated Earnings</span>
-                      <span className="font-semibold">Rs. {parseFloat(promise.est_profit).toFixed(2)}</span>
-                    </div>
-                  </div>
-                ))}
-
-                <div className="mt-4 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900 rounded-lg">
-                  <div className="flex justify-between items-center">
-                    <span className="font-medium text-green-700 dark:text-green-300">Total Potential Earnings</span>
-                    <span className="text-lg font-bold text-green-700 dark:text-green-300">
-                      Rs. {calculateTotalEarnings(existingApplication)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      ) : (
-        <>
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Task Overview</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="grid gap-4">
-                    <div className="p-4 border rounded-lg">
-                      <h3 className="font-semibold mb-2">Task Details</h3>
-                      <p className="text-sm text-muted-foreground">{task.description}</p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <div className="space-y-4">
-              <h2 className="text-xl font-semibold">Platform Requirements</h2>
-              <div className="grid gap-4 md:grid-cols-2">
-                {targets?.map((target) => (
-                  <TaskApplicationCard
-                    key={target.platform}
-                    platform={target.platform}
-                    targetViews={target.views}
-                    dueDate={target.due_date}
-                    verifiedProfiles={verifiedProfiles}
-                    onViewsChange={(views) => handleViewsChange(target.platform, views)}
-                    selectedViews={selectedViews[target.platform] || "0"}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Your Application Summary</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {targets?.map((target) => (
-                    <div key={target.platform} className="p-4 border rounded-lg space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="font-medium">{target.platform}</span>
-                        <span className="text-lg">
-                          {formatViewCount(calculateTotalViews(target.platform))} / {formatViewCount(parseViewCount(target.views))} views
-                        </span>
-                      </div>
-                      {earnings[target.platform] > 0 && (
-                        <div className="flex justify-between items-center text-sm text-green-600 dark:text-green-400">
-                          <span>Potential Earnings</span>
-                          <span className="font-semibold">Rs. {earnings[target.platform]}</span>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                  {Object.values(earnings).some(e => e > 0) && (
-                    <div className="mt-4 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900 rounded-lg">
-                      <div className="flex justify-between items-center">
-                        <span className="font-medium text-green-700 dark:text-green-300">Total Potential Earnings</span>
-                        <span className="text-lg font-bold text-green-700 dark:text-green-300">
-                          Rs. {Object.values(earnings).reduce((sum, current) => sum + current, 0).toFixed(2)}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+    <div className="min-h-screen w-full bg-white dark:bg-gray-950">
+      <div className="container max-w-5xl mx-auto py-8 px-4">
+        {isTaskFull && (
+          <div className="mb-6 p-4 rounded-lg bg-red-100 border border-red-300 text-red-800 dark:bg-red-900/20 dark:text-red-200 dark:border-red-800 flex items-center gap-3">
+            <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+            <span>This task is already full and cannot accept more applications.</span>
           </div>
-        </>
-      )}
-
-      {existingApplication && (
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Submit Proofs</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-6">
-              {/* Only show platforms that have promises */}
-              {existingApplication.application_promises.map((promise) => (
-                <div key={promise.platform} className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-semibold">{promise.platform} Proofs</h3>
-                    <div className="text-sm text-muted-foreground">
-                      Promised: {formatViewCount(parseViewCount(promise.promised_reach))} views
-                    </div>
-                  </div>
-                  
-                  <ProofUpload
-                    platform={promise.platform}
-                    existingProofs={existingProofs[promise.platform] || []}
-                    selectedProofs={selectedProofs[promise.platform] || []}
-                    proofUrls={proofUrls}
-                    onProofAdd={(type, content) => handleProofAdd(promise.platform, type, content)}
-                    onProofRemove={(index) => handleProofRemove(promise.platform, index)}
-                  />
-                </div>
-              ))}
-
-              <div className="flex justify-end">
-                <Button
-                  onClick={handleProofSubmit}
-                  disabled={isLoading || Object.keys(selectedProofs).length === 0}
-                  className="bg-gradient-to-r from-pink-500 to-pink-600 hover:opacity-90"
-                >
-                  {isLoading ? 'Submitting...' : 'Submit Proofs'}
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      <div className="flex justify-between">
-        <Button
-          variant="outline"
-          onClick={() => router.back()}
-        >
-          Back
-        </Button>
-        
-        {!existingApplication && (
-          <Button
-            onClick={handleSubmitApplication}
-            disabled={isLoading || !Object.values(selectedViews).some(views => parseViewCount(views) > 0)}
-            className="bg-gradient-to-r from-pink-500 to-pink-600 hover:opacity-90"
-          >
-            {isLoading ? 'Submitting...' : 'Submit Application'}
-          </Button>
         )}
+        {/* Header with back button */}
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="flex items-center mb-6"
+        >
+          <Button
+            variant="ghost"
+            onClick={() => router.back()}
+            className="mr-4 p-2 h-10 w-10 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+              Task Application
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Apply to this task or manage your existing application
+            </p>
+          </div>
+        </motion.div>
+
+        {/* Task details card */}
+        <TaskDetailsCard task={task} />
+
+        {existingApplication ? (
+          <ExistingApplicationCard application={existingApplication} />
+        ) : (
+          <>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="space-y-8"
+            >
+              <PlatformRequirementsCard 
+                targets={targets} 
+                verifiedProfiles={verifiedProfiles} 
+                selectedViews={selectedViews} 
+                earnings={earnings}
+                onViewsChange={handleViewsChange} 
+                getAvailableViewOptions={getAvailableViewOptions}
+              />
+
+              <ApplicationSummaryCard 
+                targets={targets}
+                selectedViews={selectedViews}
+                earnings={earnings}
+                calculateTotalViews={calculateTotalViews}
+              />
+            </motion.div>
+          </>
+        )}
+
+        {existingApplication && (
+          <ProofSubmissionSection
+            application={existingApplication}
+            existingProofs={existingProofs}
+            selectedProofs={selectedProofs}
+            proofUrls={proofUrls}
+            onProofAdd={handleProofAdd}
+            onProofRemove={handleProofRemove}
+            onProofSubmit={handleProofSubmit}
+            isLoading={isLoading}
+          />
+        )}
+
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.3, delay: 0.4 }}
+          className="flex justify-between"
+        >
+          <Button
+            variant="outline"
+            onClick={() => router.back()}
+            className="border-pink-200 dark:border-pink-800 hover:bg-pink-50 dark:hover:bg-pink-900/20"
+          >
+            Back
+          </Button>
+          
+          {!existingApplication && (
+            <Button
+              onClick={handleSubmitApplication}
+              disabled={isLoading || !Object.values(selectedViews).some(views => parseViewCount(views) > 0)}
+              className="bg-gradient-to-r from-pink-500 to-pink-600 hover:opacity-90 text-white"
+            >
+              {isLoading ? (
+                <>
+                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"/>
+                  Submitting...
+                </>
+              ) : 'Submit Application'}
+            </Button>
+          )}
+        </motion.div>
       </div>
     </div>
   );

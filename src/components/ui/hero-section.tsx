@@ -6,6 +6,7 @@ import { AnimatedTooltip } from "@/components/ui/animated-tooltip";
 import { motion } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 import { FancyText } from "./fancy-text";
+import Link from "next/link";
 
 const featuredPeople = [
   {
@@ -78,16 +79,17 @@ export function HeroSection() {
           transition={{ duration: 0.8, delay: 0.2 }}
           className="flex flex-col sm:flex-row gap-4 justify-center items-center"
         >
-          <button className="group relative inline-flex items-center justify-center px-8 py-3 font-medium transition-all duration-300 transform hover:-translate-y-0.5 rounded-full">
-            <span className="relative z-10 text-white">Get Started</span>
-            <div className="absolute inset-0 bg-pink-600 rounded-full">
-              <div className="absolute inset-0 flex justify-center [container-type:inline-size]">
-                <div className="w-[100cqw] aspect-square absolute blur-2xl -z-10 animate-spin-slower rounded-full bg-pink-500/20"></div>
+          <Link href="/auth/signup">
+            <button className="group relative inline-flex items-center justify-center px-8 py-3 font-medium transition-all duration-300 transform hover:-translate-y-0.5 rounded-full">
+              <span className="relative z-10 text-white">Get Started</span>
+              <div className="absolute inset-0 bg-pink-600 rounded-full">
+                <div className="absolute inset-0 flex justify-center [container-type:inline-size]">
+                  <div className="w-[100cqw] aspect-square absolute blur-2xl -z-10 animate-spin-slower rounded-full bg-pink-500/20"></div>
+                </div>
               </div>
-            </div>
-            <span className="absolute -inset-0.5 -z-10 rounded-full bg-gradient-to-br from-[#ff80b5] to-[#9089fc] opacity-30 group-hover:opacity-50 transition duration-300"></span>
-          </button>
-
+              <span className="absolute -inset-0.5 -z-10 rounded-full bg-gradient-to-br from-[#ff80b5] to-[#9089fc] opacity-30 group-hover:opacity-50 transition duration-300"></span>
+            </button>
+          </Link>
           <button className="group relative inline-flex items-center justify-center px-8 py-3 font-medium transition-all duration-300 transform hover:-translate-y-0.5 rounded-full">
             <span className="relative z-10 bg-clip-text text-transparent bg-gradient-to-r from-pink-600 to-pink-400">Learn More</span>
             <div className="absolute inset-0 border border-pink-200 dark:border-pink-800 rounded-full">
@@ -111,9 +113,9 @@ export function HeroSection() {
         </motion.div>
       </div>
 
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0 }}
-        animate={{ 
+        animate={{
           opacity: 1,
           y: [0, 8, 0]
         }}
@@ -128,8 +130,8 @@ export function HeroSection() {
         <div className="relative">
           <div className="absolute -inset-2 rounded-full bg-gradient-to-r from-pink-500/20 to-purple-500/20 blur-lg group-hover:from-pink-500/30 group-hover:to-purple-500/30 transition-all duration-300" />
           <div className="relative rounded-full bg-white/10 backdrop-blur-sm border border-white/20 p-2 transition-all duration-300 group-hover:border-pink-500/50">
-            <ChevronDown 
-              size={24} 
+            <ChevronDown
+              size={24}
               className="text-white/70 group-hover:text-pink-400 transition-colors duration-300"
             />
           </div>

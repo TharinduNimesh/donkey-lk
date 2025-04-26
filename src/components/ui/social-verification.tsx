@@ -24,10 +24,10 @@ interface ContactDetail {
   id: number;
   type: "EMAIL" | "MOBILE" | "WHATSAPP";
   detail: string;
-  contactStatus?: {
+  contactStatus: {
     is_verified: boolean;
     verified_at: string | null;
-  };
+  } | null;
 }
 
 interface SocialVerificationProps {

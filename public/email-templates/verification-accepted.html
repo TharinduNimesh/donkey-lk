@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #FF4D8D; color: white; padding: 20px; text-align: center; }
+        .content { padding: 20px; }
+        .details { background: #f9f9f9; padding: 15px; margin: 20px 0; border-radius: 5px; }
+        .success { background: #e8f5e9; padding: 15px; margin: 20px 0; border-radius: 5px; }
+        .footer { text-align: center; padding: 20px; font-size: 12px; color: #666; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Account Verification Approved</h1>
+        </div>
+        <div class="content">
+            <p>Dear {{name}},</p>
+            <p>Great news! Your {{platform}} account verification request has been approved. Your account is now verified on BrandSync.</p>
+            
+            <div class="details">
+                <p><strong>Verified Account Details:</strong></p>
+                <ul>
+                    <li>Platform: {{platform}}</li>
+                    <li>Profile Name: {{profileName}}</li>
+                    <li>Follower Count: {{followerCount}}</li>
+                </ul>
+            </div>
+
+            <div class="success">
+                <p><strong>What's Next?</strong></p>
+                <ul>
+                    <li>Your profile will now display a verified badge</li>
+                    <li>You can start accepting and working on tasks</li>
+                    <li>Your content will receive higher visibility in search results</li>
+                </ul>
+            </div>
+
+            <p>Thank you for choosing BrandSync. We look forward to helping you grow your influence and earnings!</p>
+        </div>
+        <div class="footer">
+            <p>© 2025 BrandSync. All rights reserved.</p>
+            <p>For immediate assistance, please email support@brandsync.lk</p>
+        </div>
+    </div>
+</body>
+</html>
