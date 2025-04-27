@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Stepper } from "@/components/ui/stepper";
 import { Card } from "@/components/ui/card";
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import {
   PersonalInfoForm,
   UserTypeForm,
@@ -14,6 +15,28 @@ import {
 import { useSetupStore } from "@/lib/store";
 
 function SetupContent() {
+  // --- Referral code storage after sign-in ---
+  useEffect(() => {
+    const storeReferralForUser = async () => {
+      const referralCode = localStorage.getItem("referral_code");
+      if (!referralCode) return;
+      // Get the actual current user from Supabase auth
+      const supabase = createClientComponentClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || !user.id) return;
+      try {
+        await supabase.from('user_referrals').insert({
+          user_id: user.id,
+          referral_code: referralCode
+        });
+        localStorage.removeItem("referral_code");
+      } catch (e) {
+        // Optionally handle/log referral insert error
+      }
+    };
+    storeReferralForUser();
+  }, []); // Only run once after mount
+
   const router = useRouter();
   const searchParams = useSearchParams();
   const { userType, setUserType } = useSetupStore();

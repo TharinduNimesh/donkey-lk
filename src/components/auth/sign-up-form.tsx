@@ -39,7 +39,17 @@ export function SignUpForm({ referralCode }: { referralCode?: string }) {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    // Remove old setup-storage (legacy)
     localStorage.removeItem("setup-storage");
+    // Referral code handling
+    const url = new URL(window.location.href);
+    const referral = url.searchParams.get("referral") || url.searchParams.get("ref") || undefined;
+    if (referral) {
+      // Optionally validate referral here
+      localStorage.setItem("referral_code", referral);
+    } else {
+      localStorage.removeItem("referral_code");
+    }
   }, []);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -66,18 +76,8 @@ export function SignUpForm({ referralCode }: { referralCode?: string }) {
       return;
     }
 
-    // Insert referral if referralCode is present and user is created
-    if (referralCode && data && data.user) {
-      try {
-        const supabase = createClientComponentClient();
-        await supabase.from('user_referrals').insert({
-          user_id: data.user.id,
-          referral_code: referralCode
-        });
-      } catch (e) {
-        // Optionally handle/log referral insert error
-      }
-    }
+    // Referral code is now handled in Setup page after sign in.
+    // No longer storing referral after sign up here.
 
     router.push("/auth?message=Check your email to confirm your account");
     router.refresh();
