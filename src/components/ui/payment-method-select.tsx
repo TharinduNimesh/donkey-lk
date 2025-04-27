@@ -52,10 +52,10 @@ export function PaymentMethodSelect({
                   <div>
                     <h4 className="font-medium text-blue-800 dark:text-blue-300">Bank Transfer Details</h4>
                     <div className="mt-2 space-y-1 text-sm">
-                      <p><span className="font-medium">Bank:</span> Commercial Bank</p>
-                      <p><span className="font-medium">Account Name:</span> BrandSync (Pvt) Ltd</p>
-                      <p><span className="font-medium">Account Number:</span> 1234567890</p>
-                      <p><span className="font-medium">Branch:</span> Colombo</p>
+                      <p><span className="font-medium">Bank:</span> Sampath Bank</p>
+                      <p><span className="font-medium">Account Name:</span> K S M Fernando</p>
+                      <p><span className="font-medium">Account Number:</span> 116557149139</p>
+                      <p><span className="font-medium">Branch:</span> Kochchikade</p>
                       <p><span className="font-medium">Reference:</span> Your email address</p>
                     </div>
                   </div>
