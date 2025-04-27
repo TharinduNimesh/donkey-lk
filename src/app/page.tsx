@@ -16,7 +16,7 @@ export default function Home() {
         <WelcomeModal />
         <Header />
         <HeroSection />
-        <section className="py-20">
+        <section className="py-20" id="features">
           <FeaturesSection />
         </section>
         <section className="py-20">
