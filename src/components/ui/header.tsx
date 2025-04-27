@@ -17,15 +17,15 @@ import { Button } from "./button";
 const navItems = [
   {
     name: "For Creators",
-    link: "#creators",
+    link: "/auth",
   },
   {
     name: "For Brands",
-    link: "#brands",
+    link: "/auth",
   },
   {
     name: "About Us",
-    link: "#about",
+    link: "#features",
   },
 ];
 
