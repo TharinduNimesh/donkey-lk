@@ -16,7 +16,7 @@ import { useSetupStore } from "@/lib/store";
 function SetupContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { userType } = useSetupStore();
+  const { userType, setUserType } = useSetupStore();
 
   // Get step from URL or default to 0
   const urlStep = searchParams.get("step");
@@ -42,8 +42,15 @@ function SetupContent() {
   // Handle direct URL access and browser back/forward
   useEffect(() => {
     const step = searchParams.get("step");
+    const role = searchParams.get("role");
     if (step !== null) {
       const stepNumber = parseInt(step);
+      // If on user type form and role present, set userType and skip
+      if (stepNumber === 2 && role && (role === "brand" || role === "influencer")) {
+        setUserType(role);
+        updateStep(3);
+        return;
+      }
       if (
         stepNumber >= 0 &&
         stepNumber < steps.length &&
@@ -61,6 +68,12 @@ function SetupContent() {
   };
 
   const handleBack = () => {
+    const role = searchParams.get("role");
+    // If on final/review step and role was set from welcome, skip user type form
+    if (currentStep === 3 && role && (role === "brand" || role === "influencer")) {
+      updateStep(1); // Go to personal info
+      return;
+    }
     if (currentStep > 0) {
       updateStep(currentStep - 1);
     }
@@ -71,7 +84,7 @@ function SetupContent() {
       <div className="max-w-4xl mx-auto space-y-8">
         <Stepper steps={steps} currentStep={currentStep} />
         <Card className="p-6 border border-pink-100/50 dark:border-pink-900/50 shadow-sm">
-          {currentStep === 0 && <WelcomeScreen onNext={handleNext} />}
+          {currentStep === 0 && <WelcomeScreen onNext={handleNext} onRoleSelect={(role) => { setUserType(role); updateStep(2); }} />}
           {currentStep === 1 && <PersonalInfoForm onNext={handleNext} />}
           {currentStep === 2 && (
             <UserTypeForm onNext={handleNext} onBack={handleBack} />

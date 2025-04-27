@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import { toast } from "sonner";
 import { useSetupStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
@@ -393,17 +393,21 @@ function YouTubeVerificationContent() {
                   <h3 className="font-semibold text-lg text-pink-600 dark:text-pink-400">
                     Channel URL
                   </h3>
-                  <div className="flex gap-4">
-                    <Input
+                  <div className="flex w-full gap-2">
+                    <div className="flex-1">
+                    <SearchInput
                       placeholder="https://youtube.com/c/yourchannel"
                       value={channelUrl}
                       onChange={(e) => setChannelUrl(e.target.value)}
-                      className="w-full"
+                      className="w-full text-base py-4 px-6 md:text-lg md:py-5 md:px-8"
+                      type="text"
                     />
+                    </div>
                     <Button
                       onClick={() => handleChannelLoad()}
                       disabled={loading || !channelUrl}
-                      className="bg-pink-600 hover:bg-pink-700"
+                      className="bg-pink-600 hover:bg-pink-700 flex-shrink-0"
+                      size="lg"
                     >
                       {loading ? (
                         <>
