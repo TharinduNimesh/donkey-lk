@@ -6,12 +6,25 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 
+import { useRouter, useSearchParams } from "next/navigation";
+
 interface WelcomeScreenProps {
   onNext: () => void;
+  onRoleSelect?: (role: "brand" | "influencer") => void;
 }
 
-export function WelcomeScreen({ onNext }: WelcomeScreenProps) {
+export function WelcomeScreen({ onNext, onRoleSelect }: WelcomeScreenProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const handleRoleClick = (role: "brand" | "influencer") => {
+    if (onRoleSelect) onRoleSelect(role);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("step", "1");
+    params.set("role", role);
+    router.push(`/setup?${params.toString()}`);
+  };
 
   const handleGetStarted = () => {
     setIsLoading(true);
@@ -56,30 +69,41 @@ export function WelcomeScreen({ onNext }: WelcomeScreenProps) {
           </div>
           
           <div className="grid grid-cols-2 gap-6 w-full max-w-lg pt-4">
-            <div className="text-center p-4 rounded-xl bg-pink-50 dark:bg-pink-900/20 border border-pink-200/30 dark:border-pink-800/30">
-              <div className="bg-pink-100 dark:bg-pink-800/30 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
-                <svg className="w-6 h-6 text-pink-600 dark:text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
-              </div>
-              <h4 className="font-medium">For Brands</h4>
-              <p className="text-xs text-muted-foreground mt-1">
-                Connect with influencers to grow your reach
-              </p>
-            </div>
-            
-            <div className="text-center p-4 rounded-xl bg-purple-50 dark:bg-purple-900/20 border border-purple-200/30 dark:border-purple-800/30">
-              <div className="bg-purple-100 dark:bg-purple-800/30 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
-                <svg className="w-6 h-6 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z" />
-                </svg>
-              </div>
-              <h4 className="font-medium">For Influencers</h4>
-              <p className="text-xs text-muted-foreground mt-1">
-                Monetize your content with brand collaborations
-              </p>
-            </div>
-          </div>
+  <div
+    className="text-center p-4 rounded-xl bg-pink-50 dark:bg-pink-900/20 border border-pink-200/30 dark:border-pink-800/30 cursor-pointer hover:shadow-lg transition"
+    onClick={() => handleRoleClick("brand")}
+    tabIndex={0}
+    role="button"
+    aria-label="Select Brand Role"
+  >
+    <div className="bg-pink-100 dark:bg-pink-800/30 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
+      <svg className="w-6 h-6 text-pink-600 dark:text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+      </svg>
+    </div>
+    <h4 className="font-medium">For Brands</h4>
+    <p className="text-xs text-muted-foreground mt-1">
+      Connect with influencers to grow your reach
+    </p>
+  </div>
+  <div
+    className="text-center p-4 rounded-xl bg-purple-50 dark:bg-purple-900/20 border border-purple-200/30 dark:border-purple-800/30 cursor-pointer hover:shadow-lg transition"
+    onClick={() => handleRoleClick("influencer")}
+    tabIndex={0}
+    role="button"
+    aria-label="Select Influencer Role"
+  >
+    <div className="bg-purple-100 dark:bg-purple-800/30 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
+      <svg className="w-6 h-6 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z" />
+      </svg>
+    </div>
+    <h4 className="font-medium">For Influencers</h4>
+    <p className="text-xs text-muted-foreground mt-1">
+      Monetize your content with brand collaborations
+    </p>
+  </div>
+</div>
 
           <motion.div 
             className="w-full max-w-md"
