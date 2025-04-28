@@ -127,6 +127,19 @@ type ConnectedPlatform = {
 export default function InfluencerDashboardPage() {
   const router = useRouter();
   const supabase = createClientComponentClient<Database>();
+
+  // Redirect to task apply page if 'target' exists in localStorage
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const target = localStorage.getItem("target");
+      if (target) {
+        localStorage.removeItem("target");
+        router.replace(`/dashboard/task/${target}/apply?source=home`);
+        return;
+      }
+    }
+  }, [router]);
+
   const [isLoading, setIsLoading] = useState(true);
   const [connectedPlatforms, setConnectedPlatforms] = useState<ConnectedPlatform[]>([]);
   const [accountBalance, setAccountBalance] = useState<AccountBalance | null>(null);

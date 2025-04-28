@@ -16,6 +16,14 @@ export default function SignInPage() {
         router.replace("/dashboard");
       }
     };
+    // Store 'target' query param in localStorage if present
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      const target = url.searchParams.get("target");
+      if (target) {
+        localStorage.setItem("target", target);
+      }
+    }
     checkUser();
   }, [router]);
 

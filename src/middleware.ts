@@ -22,7 +22,7 @@ export async function middleware(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       // Not authenticated, redirect to login
-      return NextResponse.redirect(new URL("/login", req.url));
+      return NextResponse.redirect(new URL("/auth", req.url));
     }
     const userId = user.id;
     // Check roles
