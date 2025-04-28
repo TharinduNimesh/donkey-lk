@@ -76,8 +76,12 @@ export function TaskPreviewModal({ task }: TaskPreviewModalProps) {
         <ModalContent className="p-0 overflow-hidden shadow-xl">
           {/* Header with pink gradient */}
           <div className="bg-gradient-to-br from-pink-500 to-pink-600 p-8 text-white relative overflow-hidden">
-            <h2 className="text-2xl font-bold mb-1 font-display">{task.title}</h2>
-            <p className="opacity-90 text-base mb-2 font-medium">{task.description}</p>
+            <h2 className="text-2xl font-bold mb-1 font-display">
+              {task.title}
+            </h2>
+            <p className="opacity-90 text-base mb-2 font-medium">
+              {task.description}
+            </p>
           </div>
           {/* Enhanced Content */}
           <div className="p-8 space-y-6">
@@ -96,10 +100,15 @@ export function TaskPreviewModal({ task }: TaskPreviewModalProps) {
             </div>
             {/* Platform Targets Grid */}
             <div>
-              <h4 className="font-semibold mb-3 text-pink-600">Platforms & Views</h4>
+              <h4 className="font-semibold mb-3 text-pink-600">
+                Platforms & Views
+              </h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {formattedTargets?.map((t, i) => (
-                  <div key={i} className="flex items-center gap-4 bg-pink-50 dark:bg-pink-950/20 rounded-lg p-4 border border-pink-100 dark:border-pink-900">
+                  <div
+                    key={i}
+                    className="flex items-center gap-4 bg-pink-50 dark:bg-pink-950/20 rounded-lg p-4 border border-pink-100 dark:border-pink-900"
+                  >
                     <div className="shrink-0">
                       <Image
                         src={`/platforms/${t.platform.toLowerCase()}.png`}
@@ -110,11 +119,15 @@ export function TaskPreviewModal({ task }: TaskPreviewModalProps) {
                       />
                     </div>
                     <div className="flex-1">
-                      <div className="font-semibold text-pink-700 dark:text-pink-300 text-base">{t.platform}</div>
+                      <div className="font-semibold text-pink-700 dark:text-pink-300 text-base">
+                        {t.platform}
+                      </div>
                       <div className="text-sm text-gray-700 dark:text-gray-200">
                         {t.formattedViews} views
                         {t.due_date && (
-                          <span className="ml-2 text-xs text-muted-foreground">| Due {format(new Date(t.due_date), "MMM d, yyyy")}</span>
+                          <span className="ml-2 text-xs text-muted-foreground">
+                            | Due {format(new Date(t.due_date), "MMM d, yyyy")}
+                          </span>
                         )}
                       </div>
                     </div>
@@ -129,12 +142,18 @@ export function TaskPreviewModal({ task }: TaskPreviewModalProps) {
                 {task.total_influencers || 0} Influencers
               </div>
               <div className="flex items-center gap-2 text-pink-600 dark:text-pink-400 font-medium">
-                <span className="font-bold">Rs. {(cost?.amount || 0).toLocaleString()}</span>
-                <span className="text-xs text-muted-foreground">Total Budget</span>
+                <span className="font-bold">
+                  Rs. {((cost?.amount * 63) / 100 || 0).toLocaleString()}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  Total Budget
+                </span>
               </div>
               {earliestDeadline && (
                 <div className="flex items-center gap-2 text-pink-600 dark:text-pink-400 font-medium">
-                  <span className="text-xs">Due {format(new Date(earliestDeadline), "MMM d, yyyy")}</span>
+                  <span className="text-xs">
+                    Due {format(new Date(earliestDeadline), "MMM d, yyyy")}
+                  </span>
                 </div>
               )}
             </div>
