@@ -10,6 +10,8 @@ import { format } from "date-fns";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { Database } from "@/types/database.types";
 import { useRouter } from "next/navigation";
+import { TaskPreviewModal } from "@/components/dashboard/task-preview-modal";
+import { ModalProvider, useModal } from "@/components/ui/animated-modal";
 
 type TaskDetail = Database["public"]["Views"]["task_details_view"]["Row"];
 
@@ -23,20 +25,20 @@ export function TasksSection() {
     async function fetchTasks() {
       try {
         const { data, error } = await supabase
-          .from('task_details_view')
-          .select('*')
-          .eq('status', 'ACTIVE') // Only fetch ACTIVE tasks
-          .order('created_at', { ascending: false })
+          .from("task_details_view")
+          .select("*")
+          .eq("status", "ACTIVE") // Only fetch ACTIVE tasks
+          .order("created_at", { ascending: false })
           .limit(10);
 
         if (error) {
-          console.error('Error fetching tasks:', error);
+          console.error("Error fetching tasks:", error);
           return;
         }
 
         setTasks(data || []);
       } catch (error) {
-        console.error('Error fetching tasks:', error);
+        console.error("Error fetching tasks:", error);
       } finally {
         setLoading(false);
       }
@@ -46,7 +48,7 @@ export function TasksSection() {
   }, [supabase]);
 
   const handleViewAllTasks = () => {
-    router.push('/dashboard');
+    router.push("/dashboard");
   };
 
   return (
@@ -73,8 +75,9 @@ export function TasksSection() {
             <FancyText>Creators</FancyText>
           </h2>
           <p className="text-muted-foreground max-w-2xl mx-auto">
-            Browse our latest opportunities and start earning by sharing authentic content with your audience.
-            Join thousands of creators already monetizing their influence.
+            Browse our latest opportunities and start earning by sharing
+            authentic content with your audience. Join thousands of creators
+            already monetizing their influence.
           </p>
         </div>
 
@@ -83,11 +86,16 @@ export function TasksSection() {
           {loading ? (
             // Loading placeholders
             Array.from({ length: 6 }).map((_, index) => (
-              <div key={index} className="h-[380px] rounded-2xl bg-gray-100 dark:bg-gray-800 animate-pulse"></div>
+              <div
+                key={index}
+                className="h-[380px] rounded-2xl bg-gray-100 dark:bg-gray-800 animate-pulse"
+              ></div>
             ))
           ) : tasks.length > 0 ? (
             tasks.map((task, index) => (
-              <TaskCard key={task.task_id} task={task} index={index} />
+              <ModalProvider key={task.task_id}>
+                <TaskCard task={task} index={index} />
+              </ModalProvider>
             ))
           ) : (
             <div className="h-[380px] rounded-2xl bg-gray-100 dark:bg-gray-800 animate-pulse"></div>
@@ -102,7 +110,7 @@ export function TasksSection() {
             transition={{ duration: 0.8 }}
             className="inline-block"
           >
-            <button 
+            <button
               onClick={handleViewAllTasks}
               className="group relative inline-flex items-center justify-center px-8 py-3 font-medium transition-all duration-300 transform hover:-translate-y-0.5 rounded-full"
             >
@@ -145,14 +153,14 @@ function TaskCard({ task, index }: TaskCardProps) {
   // Format targets for display
   const formattedTargets = React.useMemo(() => {
     if (!task.targets) return [];
-    
+
     // Handle targets whether they're from Supabase JSON or sample data
-    const targetsArray = Array.isArray(task.targets) 
-      ? task.targets 
-      : typeof task.targets === 'object' 
-        ? Object.values(task.targets) 
-        : [];
-    
+    const targetsArray = Array.isArray(task.targets)
+      ? task.targets
+      : typeof task.targets === "object"
+      ? Object.values(task.targets)
+      : [];
+
     return targetsArray.map((target: any) => ({
       ...target,
       formattedViews: formatViewCount(parseViewCount(target.views)),
@@ -177,7 +185,7 @@ function TaskCard({ task, index }: TaskCardProps) {
   // Get earliest deadline
   const earliestDeadline = React.useMemo(() => {
     if (!formattedTargets.length) return "";
-    
+
     return formattedTargets.reduce((earliest: string, target: any) => {
       if (!target.due_date) return earliest;
       return earliest
@@ -187,12 +195,14 @@ function TaskCard({ task, index }: TaskCardProps) {
         : target.due_date;
     }, "");
   }, [formattedTargets]);
-  
-  // Handle task click
-  const handleTaskClick = () => {
-    if (task.task_id) {
-      router.push(`/dashboard/task/${task.task_id}`);
-    }
+
+  const [modalTask, setModalTask] = React.useState<TaskDetail | null>(null);
+  const { setOpen } = useModal();
+
+  const handleTaskClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setModalTask(task);
+    setOpen(true);
   };
 
   return (
@@ -202,7 +212,7 @@ function TaskCard({ task, index }: TaskCardProps) {
       transition={{ duration: 0.6, delay }}
       className="h-full"
     >
-      <div 
+      <div
         onClick={handleTaskClick}
         className="relative h-full rounded-2xl border border-border/40 dark:border-border/20 p-2 backdrop-blur-sm overflow-hidden group hover:border-pink-400/50 dark:hover:border-pink-500/50 transition-all duration-300 cursor-pointer"
       >
@@ -248,7 +258,8 @@ function TaskCard({ task, index }: TaskCardProps) {
                 <span>{task.total_influencers || 0} Influencers</span>
               </span>
               <span className="font-medium text-pink-600 dark:text-pink-400">
-                Rs. {Math.round((task.cost?.amount || 0) * 0.63).toLocaleString()}
+                Rs.{" "}
+                {Math.round((task.cost?.amount || 0) * 0.63).toLocaleString()}
               </span>
             </div>
 
@@ -276,6 +287,7 @@ function TaskCard({ task, index }: TaskCardProps) {
           </div>
         </div>
       </div>
+      <TaskPreviewModal task={modalTask} />
     </motion.div>
   );
 }
