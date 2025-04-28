@@ -38,6 +38,18 @@ type TaskApplication = Database["public"]["Tables"]["task_applications"]["Row"] 
 export default function TaskApplicationPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
+
+  // Remove 'target' from localStorage if source=home in query
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      const source = url.searchParams.get("source");
+      if (source === "home") {
+        localStorage.removeItem("target");
+      }
+    }
+  }, []);
+
   const [task, setTask] = useState<TaskDetail | null>(null);
   const [verifiedProfiles, setVerifiedProfiles] = useState<InfluencerProfile[]>([]);
   const [selectedViews, setSelectedViews] = useState<Record<string, string>>({});
@@ -482,7 +494,7 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
         >
           <Button
             variant="ghost"
-            onClick={() => router.back()}
+            onClick={() => router.push("/dashboard/influencer")}
             className="mr-4 p-2 h-10 w-10 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
           >
             <ArrowLeft className="h-5 w-5" />
@@ -550,7 +562,7 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
         >
           <Button
             variant="outline"
-            onClick={() => router.back()}
+            onClick={() => router.push("/dashboard/influencer")}
             className="border-pink-200 dark:border-pink-800 hover:bg-pink-50 dark:hover:bg-pink-900/20"
           >
             Back
