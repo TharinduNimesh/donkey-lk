@@ -925,6 +925,10 @@ export type Database = {
         }
         Returns: string
       }
+      has_incomplete_applications: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       is_a_buyer: {
         Args: { user_id_input: string }
         Returns: boolean

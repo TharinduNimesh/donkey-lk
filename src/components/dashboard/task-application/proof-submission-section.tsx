@@ -81,6 +81,7 @@ export function ProofSubmissionSection({
                   proofUrls={proofUrls}
                   onProofAdd={(type, content) => onProofAdd(promise.platform, type, content)}
                   onProofRemove={(index) => onProofRemove(promise.platform, index)}
+                  maxSize={5 * 1024 * 1024}
                 />
               </motion.div>
             ))}
