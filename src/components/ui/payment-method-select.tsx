@@ -66,6 +66,7 @@ export function PaymentMethodSelect({
                 onFileSelect={(file) => onSlipUpload?.(file as File)}
                 selectedFile={bankSlip}
                 accept="image/*,.pdf"
+                maxSize={5 * 1024 * 1024}
               />
               <p className="text-xs text-muted-foreground mt-2">
                 Accepted formats: JPG, PNG, PDF up to 5MB

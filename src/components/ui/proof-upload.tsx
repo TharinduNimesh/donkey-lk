@@ -22,6 +22,7 @@ interface ProofUploadProps {
   proofUrls: Record<string, string>;
   onProofAdd: (type: Database["public"]["Enums"]["ProofType"], content: string) => void;
   onProofRemove: (index: number) => void;
+  maxSize?: number; // in bytes
 }
 
 export function ProofUpload({
@@ -30,7 +31,8 @@ export function ProofUpload({
   selectedProofs,
   proofUrls,
   onProofAdd,
-  onProofRemove
+  onProofRemove,
+  maxSize = 5 * 1024 * 1024 // Default 5MB
 }: ProofUploadProps) {
   const [url, setUrl] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
@@ -66,8 +68,8 @@ export function ProofUpload({
       return;
     }
 
-    if (file.size > 1 * 1024 * 1024) { // 1MB limit
-      setError("Image size should be less than 1MB");
+    if (file.size > maxSize) {
+      setError(`Image size should be less than ${Math.floor(maxSize / (1024 * 1024))}MB`);
       return;
     }
 
@@ -138,7 +140,7 @@ export function ProofUpload({
             id={`image-upload-${platform}`}
           />
           <div className="text-xs text-muted-foreground mb-2">
-            Image proof must be less than 1MB in size.
+            Image proof must be less than {Math.floor(maxSize / (1024 * 1024))}MB in size.
           </div>
           <Button
             type="button"
