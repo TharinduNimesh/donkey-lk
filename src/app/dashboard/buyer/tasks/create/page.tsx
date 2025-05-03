@@ -553,10 +553,11 @@ export default function CreateTaskPage() {
                           onFileSelect={(file) => setForm(prev => ({ ...prev, contentFile: file }))}
                           selectedFile={form.contentFile}
                           className="w-full"
+                          maxSize={250 * 1024 * 1024}
                         />
                         <div className="mt-4 text-sm text-muted-foreground text-center">
                           <p>Upload the content you want to promote (video file, image, etc.)</p>
-                          <p>Max file size: 100MB</p>
+                          <p>Max file size: 250MB</p>
                         </div>
                       </div>
                       

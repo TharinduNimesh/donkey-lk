@@ -18,6 +18,7 @@ import { ProofUpload } from "@/components/ui/proof-upload";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Database } from "@/types/database.types";
 import { 
   TaskDetailsCard,
@@ -69,22 +70,24 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
     reviewedAt?: string | null;
   }>>>({});
   const [proofUrls, setProofUrls] = useState<Record<string, string>>({});
+  const [hasIncompleteTask, setHasIncompleteTask] = useState(false);
 
   const supabase = createClientComponentClient<Database>();
 
   // Generate view options up to the max
   const getAvailableViewOptions = (platform: string) => {
+    // Limit max selectable views to 5000
     const max = remainingViews[platform] !== undefined
-      ? Math.min(remainingViews[platform], 25000)
+      ? Math.min(remainingViews[platform], 5000)
       : 0;
     if (!max || max < 1000) return [];
-    // Generate breakpoints
-    const breakpoints = [1000, 5000, 10000, 20000, 25000];
+    // Generate breakpoints including 2K and 3K
+    const breakpoints = [1000, 2000, 3000, 5000];
     const options = breakpoints
       .filter(bp => bp <= max)
       .map(bp => ({ value: String(bp), label: bp >= 1000 ? `${bp / 1000}K` : String(bp) }));
-    // If max is not a breakpoint and less than 25k, add it as last option
-    if (max < 25000 && !breakpoints.includes(max)) {
+    // If max is not a breakpoint and less than 5k, add it as last option
+    if (max < 5000 && !breakpoints.includes(max)) {
       options.push({ value: String(max), label: formatViewCount(max) });
     }
     return options;
@@ -114,6 +117,14 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
         if (!user) {
           router.push('/auth');
           return;
+        }
+
+        // Check for incomplete applications
+        const { data: incomplete, error: incompleteError } = await supabase.rpc('has_incomplete_applications');
+        if (!incompleteError && incomplete === true) {
+          setHasIncompleteTask(true);
+        } else {
+          setHasIncompleteTask(false);
         }
 
         // Verify user is an influencer
@@ -479,6 +490,19 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
   return (
     <div className="min-h-screen w-full bg-white dark:bg-gray-950">
       <div className="container max-w-5xl mx-auto py-8 px-4">
+        {(!existingApplication && hasIncompleteTask) && (
+          <div className="mb-6">
+            <Alert variant="destructive" className="bg-pink-50 dark:bg-pink-900/20 border-pink-200 dark:border-pink-900 flex items-center">
+              <AlertCircle className="h-6 w-6 text-pink-600 dark:text-pink-400" />
+              <div>
+                <AlertTitle className="text-pink-700 dark:text-pink-300">Complete Your Current Task</AlertTitle>
+                <AlertDescription>
+                  You must complete your already applied task before applying for new tasks. As your profile grows, you can handle more tasks at once.
+                </AlertDescription>
+              </div>
+            </Alert>
+          </div>
+        )}
         {isTaskFull && (
           <div className="mb-6 p-4 rounded-lg bg-red-100 border border-red-300 text-red-800 dark:bg-red-900/20 dark:text-red-200 dark:border-red-800 flex items-center gap-3">
             <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
@@ -531,6 +555,28 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
                 getAvailableViewOptions={getAvailableViewOptions}
               />
 
+              {existingApplication ? null : (
+                <motion.div 
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: 0.2 }}
+                  className="p-4 rounded-lg bg-blue-50 border border-blue-200 dark:bg-blue-900/20 dark:border-blue-800"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="shrink-0">
+                      <svg className="w-5 h-5 text-blue-500 mt-0.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-sm text-blue-800 dark:text-blue-200">
+                        <span className="font-medium">Growth Opportunity Note:</span> While we initially limit the promised reach to 5,000 views per platform, this threshold increases as you build your track record. Successfully completing tasks unlocks opportunities to handle larger view counts, enabling you to maximize your earning potential on our platform.
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
               <ApplicationSummaryCard 
                 targets={targets}
                 selectedViews={selectedViews}
@@ -558,7 +604,7 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.3, delay: 0.4 }}
-          className="flex justify-between"
+          className="flex justify-between mt-5"
         >
           <Button
             variant="outline"
@@ -571,7 +617,7 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
           {!existingApplication && (
             <Button
               onClick={handleSubmitApplication}
-              disabled={isLoading || !Object.values(selectedViews).some(views => parseViewCount(views) > 0)}
+              disabled={isLoading || !Object.values(selectedViews).some(views => parseViewCount(views) > 0) || hasIncompleteTask}
               className="bg-gradient-to-r from-pink-500 to-pink-600 hover:opacity-90 text-white"
             >
               {isLoading ? (

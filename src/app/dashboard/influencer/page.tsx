@@ -21,6 +21,8 @@ import {
 } from "@/components/ui/select";
 import { ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 
 const ITEMS_PER_PAGE = 6;
 
@@ -154,6 +156,7 @@ export default function InfluencerDashboardPage() {
   const [sortBy, setSortBy] = useState<string>("created_at_desc");
   const [currentPage, setCurrentPage] = useState(1);
   const [filteredTasks, setFilteredTasks] = useState<(TaskDetail & { application?: TaskApplication })[]>([]);
+  const [hasIncompleteTask, setHasIncompleteTask] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -165,6 +168,14 @@ export default function InfluencerDashboardPage() {
         if (!user) {
           router.push("/auth");
           return;
+        }
+
+        // Check for incomplete applications
+        const { data: incomplete, error: incompleteError } = await supabase.rpc('has_incomplete_applications');
+        if (!incompleteError && incomplete === true) {
+          setHasIncompleteTask(true);
+        } else {
+          setHasIncompleteTask(false);
         }
 
         // Use Promise.all to fetch all data in parallel
@@ -625,42 +636,20 @@ export default function InfluencerDashboardPage() {
               <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">Available Tasks</h2>
               <p className="text-muted-foreground mt-1">Find opportunities that match your profile</p>
             </div>
-            
-            <div className="flex flex-col sm:flex-row gap-3">
-              <SearchInput
-                placeholder="Search tasks..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full sm:w-[200px]"
-              />
-              
-              <Select value={platformFilter} onValueChange={setPlatformFilter}>
-                <SelectTrigger className="w-full sm:w-[140px]">
-                  <SelectValue placeholder="Filter by platform" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">All Platforms</SelectItem>
-                  <SelectItem value="INSTAGRAM">Instagram</SelectItem>
-                  <SelectItem value="FACEBOOK">Facebook</SelectItem>
-                  <SelectItem value="TIKTOK">TikTok</SelectItem>
-                  <SelectItem value="YOUTUBE">YouTube</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className="w-full sm:w-[140px]">
-                  <SelectValue placeholder="Sort by" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="created_at_desc">Newest First</SelectItem>
-                  <SelectItem value="created_at_asc">Oldest First</SelectItem>
-                  <SelectItem value="title_asc">Title A-Z</SelectItem>
-                  <SelectItem value="title_desc">Title Z-A</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           </div>
-
+          {hasIncompleteTask && (
+            <div className="mb-6">
+              <Alert variant="destructive" className="bg-pink-50 dark:bg-pink-900/20 border-pink-200 dark:border-pink-900 flex items-center">
+                <AlertCircle className="h-6 w-6 text-pink-600 dark:text-pink-400" />
+                <div>
+                  <AlertTitle className="text-pink-700 dark:text-pink-300">Complete Your Current Task</AlertTitle>
+                  <AlertDescription>
+                    You must complete your already applied task before applying for new tasks. As your profile grows, you can handle more tasks at once.
+                  </AlertDescription>
+                </div>
+              </Alert>
+            </div>
+          )}
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {currentTasks.map((task, index) => (
               <motion.div
