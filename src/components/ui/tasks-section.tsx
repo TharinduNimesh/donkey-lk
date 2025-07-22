@@ -214,7 +214,7 @@ function TaskCard({ task, index }: TaskCardProps) {
     >
       <div
         onClick={handleTaskClick}
-        className="relative h-full rounded-2xl border border-border/40 dark:border-border/20 p-2 backdrop-blur-sm overflow-hidden group hover:border-pink-400/50 dark:hover:border-pink-500/50 transition-all duration-300 cursor-pointer"
+        className="relative h-full rounded-2xl border border-gray-400 dark:border-border/20 p-2 backdrop-blur-sm overflow-hidden group hover:border-pink-400/50 dark:hover:border-pink-500/50 transition-all duration-300 cursor-pointer"
       >
         <GlowingEffect
           spread={40}
