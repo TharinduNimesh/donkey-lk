@@ -8,6 +8,7 @@ import { ProcessSection } from "@/components/ui/process-section";
 import { TasksSection } from "@/components/ui/tasks-section";
 import { WelcomeModal } from "@/components/welcome-modal";
 import { ModalProvider } from "@/components/ui/animated-modal";
+import { Analytics } from "@vercel/analytics/next"
 
 export default function Home() {
   return (
@@ -26,6 +27,7 @@ export default function Home() {
           <TasksSection />
         </section>
         <Footer />
+        <Analytics />
       </main>
     </ModalProvider>
   );
