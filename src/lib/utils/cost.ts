@@ -23,7 +23,7 @@ export function calculateCostClient(
   const totalCost = baseCost + serviceFee;
   
   // Calculate estimated profit as 63% of the base cost (without service fee)
-  const estimatedProfit = Math.round(baseCost * 0.63);
+  const estimatedProfit = Math.round(baseCost * 0.37);
 
   return { baseCost, serviceFee, totalCost, estimatedProfit };
 }
