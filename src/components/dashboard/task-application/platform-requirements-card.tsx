@@ -33,6 +33,17 @@ export function PlatformRequirementsCard({
   onViewsChange,
   getAvailableViewOptions
 }: PlatformRequirementsCardProps) {
+  // Static FX rate from env: 1 USD = NEXT_PUBLIC_LKR_PER_USD LKR
+  const LKR_PER_USD = Number(process.env.NEXT_PUBLIC_LKR_PER_USD ?? "295");
+  const LKR_TO_USD = 1 / (LKR_PER_USD || 295);
+
+  const formatUSD = (lkrAmount: number) =>
+    new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      maximumFractionDigits: 2,
+    }).format(lkrAmount * LKR_TO_USD);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -133,7 +144,7 @@ export function PlatformRequirementsCard({
                           Potential Earnings
                         </span>
                         <span className="font-medium text-green-700 dark:text-green-300">
-                          Rs. {earnings[target.platform].toFixed(2)}
+                          {formatUSD(earnings[target.platform])}
                         </span>
                       </div>
                     </div>

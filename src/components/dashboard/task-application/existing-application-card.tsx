@@ -17,6 +17,16 @@ interface ExistingApplicationCardProps {
 }
 
 export function ExistingApplicationCard({ application }: ExistingApplicationCardProps) {
+  // Currency: 1 USD = NEXT_PUBLIC_LKR_PER_USD LKR
+  const LKR_PER_USD = Number(process.env.NEXT_PUBLIC_LKR_PER_USD ?? "295");
+  const LKR_TO_USD = 1 / (LKR_PER_USD || 295);
+  const formatUSD = (lkrAmount: number) =>
+    new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      maximumFractionDigits: 2,
+    }).format(lkrAmount * LKR_TO_USD);
+
   const calculateTotalEarnings = (application: TaskApplication) => {
     return application.application_promises.reduce(
       (total, promise) => total + parseFloat(promise.est_profit), 0
@@ -68,7 +78,7 @@ export function ExistingApplicationCard({ application }: ExistingApplicationCard
                         <div className="flex justify-between items-center">
                           <span className="text-sm text-muted-foreground">Estimated Earnings</span>
                           <span className="font-medium text-green-600 dark:text-green-400">
-                            Rs. {parseFloat(promise.est_profit).toFixed(2)}
+                            {formatUSD(parseFloat(promise.est_profit))}
                           </span>
                         </div>
                       </div>
@@ -88,7 +98,7 @@ export function ExistingApplicationCard({ application }: ExistingApplicationCard
                     <span className="font-medium text-green-700 dark:text-green-300">Total Potential Earnings</span>
                   </div>
                   <span className="text-lg font-bold text-green-700 dark:text-green-300">
-                    Rs. {calculateTotalEarnings(application).toFixed(2)}
+                    {formatUSD(calculateTotalEarnings(application))}
                   </span>
                 </div>
               </CardContent>
