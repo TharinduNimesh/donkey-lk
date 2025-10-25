@@ -139,16 +139,6 @@ function TaskCard({ task, index }: TaskCardProps) {
   // Animation delay based on index
   const delay = 0.1 + index * 0.1;
 
-  // Currency: 1 USD = NEXT_PUBLIC_LKR_PER_USD LKR
-  const LKR_PER_USD = Number(process.env.NEXT_PUBLIC_LKR_PER_USD ?? "295");
-  const LKR_TO_USD = 1 / (LKR_PER_USD || 295);
-  const formatUSD = (lkrAmount: number) =>
-    new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      maximumFractionDigits: 2,
-    }).format(lkrAmount * LKR_TO_USD);
-
   // Calculate progress percentage
   const progress =
     task.total_target_views && task.total_promised_views
@@ -268,9 +258,16 @@ function TaskCard({ task, index }: TaskCardProps) {
                 <span>{task.total_influencers || 0} Influencers</span>
               </span>
               <span className="flex items-center gap-2">
-                <span className="font-medium text-pink-600 dark:text-pink-400">
-                  {formatUSD(Number(task.cost?.amount || 0))}
-                </span>
+                {(() => {
+                  const lkrPerUsd = Number(process.env.NEXT_PUBLIC_LKR_PER_USD) || 295;
+                  const payoutLkr = (task.cost?.amount || 0) * 0.63;
+                  const payoutUsd = payoutLkr / lkrPerUsd;
+                  return (
+                    <span className="font-medium text-pink-600 dark:text-pink-400">
+                      $ {payoutUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  );
+                })()}
               </span>
             </div>
 

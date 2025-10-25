@@ -142,12 +142,23 @@ export function TaskPreviewModal({ task }: TaskPreviewModalProps) {
                 {task.total_influencers || 0} Influencers
               </div>
               <div className="flex items-center gap-2 text-pink-600 dark:text-pink-400 font-medium">
-                <span className="font-bold">
-                  Rs. {((cost?.amount * 63) / 100 || 0).toLocaleString()}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  Total Budget
-                </span>
+                {(() => {
+                  const lkrPerUsd = Number(process.env.NEXT_PUBLIC_LKR_PER_USD) || 295;
+                  const payoutLkr = ((cost?.amount || 0) * 63) / 100;
+                  const payoutUsd = payoutLkr / lkrPerUsd;
+                  return (
+                    <>
+                      <span className="font-bold">
+                        LKR {Math.round(payoutLkr).toLocaleString()}
+                      </span>
+                      <span className="text-muted-foreground">•</span>
+                      <span className="font-bold">
+                        $ {payoutUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                      <span className="text-xs text-muted-foreground">Total Budget</span>
+                    </>
+                  );
+                })()}
               </div>
               {earliestDeadline && (
                 <div className="flex items-center gap-2 text-pink-600 dark:text-pink-400 font-medium">
