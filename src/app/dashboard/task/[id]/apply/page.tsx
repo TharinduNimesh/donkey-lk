@@ -74,20 +74,21 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
 
   const supabase = createClientComponentClient<Database>();
 
-  // Generate view options up to the max
+  // Generate view options up to the per-influencer cap (now 20k)
   const getAvailableViewOptions = (platform: string) => {
-    // Limit max selectable views to 5000
+    // Limit max selectable views to 20,000 per influencer
     const max = remainingViews[platform] !== undefined
-      ? Math.min(remainingViews[platform], 5000)
+      ? Math.min(remainingViews[platform], 20000)
       : 0;
     if (!max || max < 1000) return [];
-    // Generate breakpoints including 2K and 3K
-    const breakpoints = [1000, 2000, 3000, 5000];
+    // Generate breakpoints to offer useful increments up to 20k
+    const breakpoints = [1000, 2000, 3000, 5000, 10000, 20000];
     const options = breakpoints
       .filter(bp => bp <= max)
       .map(bp => ({ value: String(bp), label: bp >= 1000 ? `${bp / 1000}K` : String(bp) }));
-    // If max is not a breakpoint and less than 5k, add it as last option
-    if (max < 5000 && !breakpoints.includes(max)) {
+    // If max is not an exact breakpoint and less than the cap, add it as last option
+    const cap = 20000;
+    if (max < cap && !breakpoints.includes(max)) {
       options.push({ value: String(max), label: formatViewCount(max) });
     }
     return options;
@@ -379,10 +380,10 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
       toast.error('This task is already full and cannot accept more applications.');
       return;
     }
-    // Validate selected views do not exceed remaining or 25k
+    // Validate selected views do not exceed remaining or 20k
     for (const platform of Object.keys(selectedViews)) {
       const selected = parseViewCount(selectedViews[platform]);
-      const max = remainingViews[platform] !== undefined ? Math.min(remainingViews[platform], 25000) : 0;
+      const max = remainingViews[platform] !== undefined ? Math.min(remainingViews[platform], 20000) : 0;
       if (selected > max) {
         toast.error(`You cannot promise more than ${formatViewCount(max)} views for ${platform}`);
         return;
@@ -570,7 +571,7 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
                     </div>
                     <div>
                       <p className="text-sm text-blue-800 dark:text-blue-200">
-                        <span className="font-medium">Growth Opportunity Note:</span> While we initially limit the promised reach to 5,000 views per platform, this threshold increases as you build your track record. Successfully completing tasks unlocks opportunities to handle larger view counts, enabling you to maximize your earning potential on our platform.
+                        <span className="font-medium">Growth Opportunity Note:</span> While we initially limit the promised reach to 20,000 views per platform, this threshold increases as you build your track record. Successfully completing tasks unlocks opportunities to handle larger view counts, enabling you to maximize your earning potential on our platform.
                       </p>
                     </div>
                   </div>

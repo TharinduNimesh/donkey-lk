@@ -37,6 +37,7 @@ const envSchema = z.object({
     'flexible': 0.75,
   }),
   SERVICE_FEE_PERCENTAGE: z.number().default(0.1),
+  ESTIMATED_PROFIT_PERCENTAGE: z.number().default(0.37),
 });
 
 function getEnvVars() {
@@ -48,6 +49,8 @@ function getEnvVars() {
       JSON.parse(process.env.NEXT_PUBLIC_DEADLINE_MULTIPLIERS) : undefined,
     SERVICE_FEE_PERCENTAGE: process.env.NEXT_PUBLIC_SERVICE_FEE_PERCENTAGE ? 
       parseFloat(process.env.NEXT_PUBLIC_SERVICE_FEE_PERCENTAGE) : undefined,
+    ESTIMATED_PROFIT_PERCENTAGE: process.env.NEXT_PUBLIC_ESTIMATED_PROFIT_PERCENTAGE ?
+      parseFloat(process.env.NEXT_PUBLIC_ESTIMATED_PROFIT_PERCENTAGE) : undefined,
   };
 
   try {
