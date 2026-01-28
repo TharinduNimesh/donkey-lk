@@ -216,6 +216,18 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
         router.push('/dashboard/buyer');
       } else {
         console.log("Processing card payment");
+
+        // Persist selected payment method before initializing the gateway
+        const setMethodResp = await fetch('/api/payment/set-method', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ taskId: task.task_id, paymentMethod: 'PAYMENT_GATEWAY' })
+        });
+        if (!setMethodResp.ok) {
+          const err = await setMethodResp.json().catch(() => ({}));
+          throw new Error(err?.error || 'Failed to set payment method');
+        }
+
         // Initialize PayHere payment
         const response = await fetch('/api/payment/initialize', {
           method: 'POST',
@@ -224,7 +236,7 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
         });
 
         if (!response.ok) {
-          const errorData = await response.json();
+          const errorData = await response.json().catch(() => ({}));
           throw new Error(errorData.error || 'Failed to initialize payment');
         }
 

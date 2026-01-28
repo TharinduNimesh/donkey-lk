@@ -320,10 +320,62 @@ export default function CreateTaskPage() {
       }
 
       setLoaderStep(3); // Finalizing
-      // ...existing code for payment...
-      toast.success("Payment verification in progress");
-      router.push('/dashboard/buyer');
-      router.refresh();
+
+      // If buyer chose card, persist the payment method then initialize PayHere
+      if (form.payment.method === 'card') {
+        // Persist selected payment method on the server
+        const setMethodResp = await fetch('/api/payment/set-method', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ taskId: task.id, paymentMethod: 'PAYMENT_GATEWAY' })
+        });
+        if (!setMethodResp.ok) {
+          const err = await setMethodResp.json().catch(() => ({}));
+          throw new Error(err?.error || 'Failed to set payment method');
+        }
+
+        // Initialize PayHere
+        const initResp = await fetch('/api/payment/initialize', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ taskId: task.id })
+        });
+        if (!initResp.ok) {
+          const err = await initResp.json().catch(() => ({}));
+          throw new Error(err?.error || 'Failed to initialize payment');
+        }
+
+        const formData = await initResp.json();
+
+        // Create and submit PayHere form in a new tab
+        const paymentForm = document.createElement('form');
+        paymentForm.method = 'post';
+        paymentForm.action = formData.checkout_url;
+        paymentForm.target = '_blank';
+
+        Object.entries(formData).forEach(([key, value]) => {
+          if (value !== undefined && value !== null) {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = key;
+            input.value = String(value);
+            paymentForm.appendChild(input);
+          }
+        });
+
+        document.body.appendChild(paymentForm);
+        paymentForm.submit();
+        setTimeout(() => document.body.removeChild(paymentForm), 100);
+
+        toast.success('Redirecting to payment gateway');
+        router.push('/dashboard/buyer');
+        router.refresh();
+      } else {
+        // Bank transfer path already handled (bank slip uploaded earlier)
+        toast.success("Payment verification in progress");
+        router.push('/dashboard/buyer');
+        router.refresh();
+      }
     } catch (error) {
       console.error('Error processing payment:', error);
       toast.error(error instanceof Error ? error.message : "Failed to process payment");
