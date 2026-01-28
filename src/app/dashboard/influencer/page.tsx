@@ -157,6 +157,21 @@ export default function InfluencerDashboardPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [filteredTasks, setFilteredTasks] = useState<(TaskDetail & { application?: TaskApplication })[]>([]);
   const [hasIncompleteTask, setHasIncompleteTask] = useState(false);
+  // Static FX rate from env: 1 USD = NEXT_PUBLIC_LKR_PER_USD LKR
+  const LKR_PER_USD = Number(process.env.NEXT_PUBLIC_LKR_PER_USD ?? "295");
+  const LKR_TO_USD = 1 / (LKR_PER_USD || 295);
+
+  // Helper to format LKR amounts as USD using the static rate
+  const formatUSD = (lkrAmount: number) => {
+    const usd = lkrAmount * LKR_TO_USD;
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      maximumFractionDigits: 2,
+    }).format(usd);
+  };
+
+  const MIN_WITHDRAWAL_LKR = 1000;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -432,15 +447,15 @@ export default function InfluencerDashboardPage() {
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex justify-between items-center mb-8"
+          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8"
         >
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 text-center sm:text-left">
             Influencer Dashboard
           </h1>
-          <div className="flex gap-4">
+          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
             <Link href="/dashboard/influencer/platforms">
               <Button 
-                className="bg-pink-600 hover:bg-pink-700 text-white shadow-sm hover:shadow-md transition-all duration-300"
+                className="w-full sm:w-auto bg-pink-600 hover:bg-pink-700 text-white shadow-sm hover:shadow-md transition-all duration-300"
               >
                 Connect New Account
               </Button>
@@ -449,7 +464,7 @@ export default function InfluencerDashboardPage() {
               variant="outline" 
               onClick={handleLogout}
               disabled={isLoading}
-              className="border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-900"
+              className="w-full sm:w-auto border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-900"
             >
               {isLoading ? 'Logging out...' : 'Logout'}
             </Button>
@@ -471,7 +486,14 @@ export default function InfluencerDashboardPage() {
             <CardContent className="relative">
               <div className="flex flex-col">
                 <p className="text-4xl font-bold text-pink-700 dark:text-pink-300">
-                  Rs. {(accountBalance?.balance || 0).toFixed(2)}
+                  {formatUSD(accountBalance?.balance || 0)}
+                </p>
+                <p className="text-sm text-pink-700/80 dark:text-pink-300/80 mt-1">
+                  {new Intl.NumberFormat("en-LK", {
+                  style: "currency",
+                  currency: "LKR",
+                  maximumFractionDigits: 0,
+                  }).format(accountBalance?.balance || 0)}
                 </p>
                 <p className="text-sm text-pink-600/80 dark:text-pink-300/80 mt-1">
                   Available for withdrawal
@@ -489,7 +511,7 @@ export default function InfluencerDashboardPage() {
                       <div className="space-y-2">
                         <h4 className="font-medium text-sm">Minimum Withdrawal Amount</h4>
                         <p className="text-sm text-muted-foreground">
-                          You need a minimum balance of Rs. 1,000 to make a withdrawal. Your current balance is Rs. {(accountBalance?.balance || 0).toFixed(2)}.
+                          {`You need a minimum balance of ${formatUSD(MIN_WITHDRAWAL_LKR)} to make a withdrawal. Your current balance is ${formatUSD(accountBalance?.balance || 0)}.`}
                         </p>
                       </div>
                     </PopoverContent>
@@ -513,7 +535,7 @@ export default function InfluencerDashboardPage() {
             </CardHeader>
             <CardContent className="relative">
               <p className="text-4xl font-bold text-blue-700 dark:text-blue-300">
-                Rs. {(accountBalance?.total_earning || 0).toFixed(2)}
+                {formatUSD(accountBalance?.total_earning || 0)}
               </p>
               <p className="text-sm text-blue-600/80 dark:text-blue-300/80 mt-1">Lifetime earnings</p>
             </CardContent>

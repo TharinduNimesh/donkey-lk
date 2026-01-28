@@ -53,11 +53,13 @@ interface Withdrawal {
   user_id: string;
 }
 
-type WithdrawalOption = Database["public"]["Tables"]["withdrawal_options"]["Row"];
-type WithdrawalRequest = Database['public']['Tables']['withdrawal_requests']['Row'] & {
-  withdrawal_options: Database['public']['Tables']['withdrawal_options']['Row'];
-  withdrawal_request_status: Database['public']['Tables']['withdrawal_request_status']['Row'][];
-};
+type WithdrawalOption =
+  Database["public"]["Tables"]["withdrawal_options"]["Row"];
+type WithdrawalRequest =
+  Database["public"]["Tables"]["withdrawal_requests"]["Row"] & {
+    withdrawal_options: Database["public"]["Tables"]["withdrawal_options"]["Row"];
+    withdrawal_request_status: Database["public"]["Tables"]["withdrawal_request_status"]["Row"][];
+  };
 
 export default function WithdrawPage() {
   const router = useRouter();
@@ -79,9 +81,25 @@ export default function WithdrawPage() {
   const [bankInfoSaved, setBankInfoSaved] = useState(false);
   const [showBankDetailsDialog, setShowBankDetailsDialog] = useState(false);
   const [showAccountNumber, setShowAccountNumber] = useState(false);
-  const [withdrawalOptions, setWithdrawalOptions] = useState<WithdrawalOption[]>([]);
-  const [selectedOption, setSelectedOption] = useState<WithdrawalOption | null>(null);
-  const [withdrawalRequests, setWithdrawalRequests] = useState<WithdrawalRequest[]>([]);
+  const [withdrawalOptions, setWithdrawalOptions] = useState<
+    WithdrawalOption[]
+  >([]);
+  const [selectedOption, setSelectedOption] = useState<WithdrawalOption | null>(
+    null
+  );
+  const [withdrawalRequests, setWithdrawalRequests] = useState<
+    WithdrawalRequest[]
+  >([]);
+
+  // Static FX rate from env: 1 USD = NEXT_PUBLIC_LKR_PER_USD LKR
+  const LKR_PER_USD = Number(process.env.NEXT_PUBLIC_LKR_PER_USD ?? "295");
+  const LKR_TO_USD = 1 / (LKR_PER_USD || 295);
+  const formatUSD = (lkrAmount: number) =>
+    new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      maximumFractionDigits: 2,
+    }).format(lkrAmount * LKR_TO_USD);
 
   const handleSubmitWithdrawal = async () => {
     if (!selectedOption) {
@@ -107,36 +125,39 @@ export default function WithdrawPage() {
 
     setSubmitting(true);
     try {
-      const response = await fetch('/api/withdrawals', {
-        method: 'POST',
+      const response = await fetch("/api/withdrawals", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           amount: amount,
-          withdrawalOptionId: selectedOption.id
+          withdrawalOptionId: selectedOption.id,
         }),
       });
 
       const result = await response.json();
-      
+
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to submit withdrawal request');
+        throw new Error(result.error || "Failed to submit withdrawal request");
       }
 
       // Add the new request to the list
-      setWithdrawalRequests(prev => [result.data, ...prev]);
-      
+      setWithdrawalRequests((prev) => [result.data, ...prev]);
+
       // Update local balance
-      setBalance(prev => prev - amount);
-      
+      setBalance((prev) => prev - amount);
+
       toast.success("Withdrawal request submitted successfully");
       setWithdrawAmount("");
       setShowConfirmDialog(false);
-
     } catch (error) {
       console.error("Error submitting withdrawal:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to submit withdrawal request");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to submit withdrawal request"
+      );
     } finally {
       setSubmitting(false);
     }
@@ -154,7 +175,9 @@ export default function WithdrawPage() {
 
     setSubmittingOption(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) {
         throw new Error("No authenticated user");
       }
@@ -175,7 +198,7 @@ export default function WithdrawPage() {
 
       if (error) throw error;
 
-      setWithdrawalOptions(prev => [data, ...prev]);
+      setWithdrawalOptions((prev) => [data, ...prev]);
       setSelectedOption(data);
       setBankInfoSaved(true);
       toast.success("Bank details saved successfully");
@@ -199,7 +222,9 @@ export default function WithdrawPage() {
   };
 
   const handleDeleteBankAccount = async (optionId: number) => {
-    const confirmed = window.confirm("Are you sure you want to delete this bank account?");
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this bank account?"
+    );
     if (!confirmed) return;
 
     try {
@@ -210,9 +235,11 @@ export default function WithdrawPage() {
 
       if (error) throw error;
 
-      setWithdrawalOptions(prev => prev.filter(opt => opt.id !== optionId));
+      setWithdrawalOptions((prev) => prev.filter((opt) => opt.id !== optionId));
       if (selectedOption?.id === optionId) {
-        const remainingOptions = withdrawalOptions.filter(opt => opt.id !== optionId);
+        const remainingOptions = withdrawalOptions.filter(
+          (opt) => opt.id !== optionId
+        );
         if (remainingOptions.length > 0) {
           handleSelectBankAccount(remainingOptions[0]);
         } else {
@@ -279,7 +306,9 @@ export default function WithdrawPage() {
       setLoading(true);
 
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         if (!user) {
           router.push("/auth");
           return;
@@ -296,14 +325,17 @@ export default function WithdrawPage() {
             .from("withdrawal_options")
             .select("*")
             .eq("user_id", user.id)
-            .order('created_at', { ascending: false })
+            .order("created_at", { ascending: false }),
         ]);
 
         // Fetch withdrawal requests from the API
-        const withdrawalResponse = await fetch('/api/withdrawals');
+        const withdrawalResponse = await fetch("/api/withdrawals");
         const withdrawalResult = await withdrawalResponse.json();
 
-        if (balanceResponse.error && balanceResponse.error.code !== "PGRST116") {
+        if (
+          balanceResponse.error &&
+          balanceResponse.error.code !== "PGRST116"
+        ) {
           throw balanceResponse.error;
         }
 
@@ -312,7 +344,9 @@ export default function WithdrawPage() {
         }
 
         if (!withdrawalResponse.ok) {
-          throw new Error(withdrawalResult.error || 'Failed to fetch withdrawal requests');
+          throw new Error(
+            withdrawalResult.error || "Failed to fetch withdrawal requests"
+          );
         }
 
         if (balanceResponse.data) {
@@ -336,7 +370,6 @@ export default function WithdrawPage() {
         }
 
         setWithdrawalRequests(withdrawalResult.data || []);
-
       } catch (error) {
         console.error("Error fetching data:", error);
         toast.error("Failed to load account data");
@@ -359,10 +392,14 @@ export default function WithdrawPage() {
             transition={{ duration: 0.4 }}
             className="mb-8"
           >
-            <Alert variant="destructive" className="bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-900">
+            <Alert
+              variant="destructive"
+              className="bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-900"
+            >
               <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-500" />
               <AlertDescription className="text-yellow-700 dark:text-yellow-400">
-                Your balance is below the minimum withdrawal amount. You need at least LKR 1,000 to make a withdrawal.
+                Your balance is below the minimum withdrawal amount. You need at
+                least LKR 1,000 to make a withdrawal.
               </AlertDescription>
             </Alert>
           </motion.div>
@@ -455,8 +492,11 @@ export default function WithdrawPage() {
                         <div className="relative group hover:scale-[1.01] transition-transform duration-200">
                           <div className="absolute -inset-1 bg-gradient-to-r from-pink-500/20 to-purple-500/20 rounded-lg blur-lg opacity-60 group-hover:opacity-100 transition-opacity duration-300"></div>
                           <div className="relative bg-white dark:bg-gray-950 rounded-lg p-4 border border-pink-100 dark:border-pink-900/30">
-                            <div className="text-3xl font-bold text-pink-600 dark:text-pink-400 font-display">
-                              LKR {balance.toFixed(2)}
+                            <div className="text-3xl font-bold text-pink-600 dark:text-pink-400">
+                              {formatUSD(balance)}
+                            </div>
+                            <div className="text-sm text-muted-foreground mt-1">
+                              ≈ LKR {balance.toFixed(2)}
                             </div>
                             <div className="text-sm text-muted-foreground mt-2">
                               <div className="flex items-center">
@@ -494,7 +534,9 @@ export default function WithdrawPage() {
                                   id="withdrawAmount"
                                   type="number"
                                   value={withdrawAmount}
-                                  onChange={(e) => setWithdrawAmount(e.target.value)}
+                                  onChange={(e) =>
+                                    setWithdrawAmount(e.target.value)
+                                  }
                                   className="pl-[4.5rem] pr-20 bg-white dark:bg-gray-900 border-pink-100 dark:border-pink-900/30 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                   placeholder="0.00"
                                 />
@@ -514,7 +556,8 @@ export default function WithdrawPage() {
                               {!bankInfoSaved && (
                                 <p className="text-amber-600 dark:text-amber-400 text-xs mt-2 flex items-center">
                                   <span className="inline-block w-2 h-2 rounded-full bg-amber-500 mr-2"></span>
-                                  Please complete and save your bank details first
+                                  Please complete and save your bank details
+                                  first
                                 </p>
                               )}
                             </div>
@@ -547,18 +590,37 @@ export default function WithdrawPage() {
                                 <div className="bg-pink-50 dark:bg-pink-900/20 p-4 rounded-lg border border-pink-100 dark:border-pink-800/30">
                                   <div className="space-y-3">
                                     <div className="flex justify-between items-center text-sm">
-                                      <span className="text-gray-600 dark:text-gray-300">Withdrawal Amount:</span>
-                                      <span className="font-medium">LKR {parseFloat(withdrawAmount || "0").toFixed(2)}</span>
+                                      <span className="text-gray-600 dark:text-gray-300">
+                                        Withdrawal Amount:
+                                      </span>
+                                      <span className="font-medium">
+                                        LKR{" "}
+                                        {parseFloat(
+                                          withdrawAmount || "0"
+                                        ).toFixed(2)}
+                                      </span>
                                     </div>
                                     <div className="flex justify-between items-center text-sm text-red-600 dark:text-red-400">
                                       <span>Platform Fee (10%):</span>
-                                      <span>- LKR {(parseFloat(withdrawAmount || "0") * 0.1).toFixed(2)}</span>
+                                      <span>
+                                        - LKR{" "}
+                                        {(
+                                          parseFloat(withdrawAmount || "0") *
+                                          0.1
+                                        ).toFixed(2)}
+                                      </span>
                                     </div>
                                     <div className="pt-2 border-t border-pink-200 dark:border-pink-800">
                                       <div className="flex justify-between items-center font-medium">
-                                        <span className="text-gray-700 dark:text-gray-200">You will receive:</span>
+                                        <span className="text-gray-700 dark:text-gray-200">
+                                          You will receive:
+                                        </span>
                                         <span className="text-pink-600 dark:text-pink-400">
-                                          LKR {(parseFloat(withdrawAmount || "0") * 0.9).toFixed(2)}
+                                          LKR{" "}
+                                          {(
+                                            parseFloat(withdrawAmount || "0") *
+                                            0.9
+                                          ).toFixed(2)}
                                         </span>
                                       </div>
                                     </div>
@@ -576,7 +638,9 @@ export default function WithdrawPage() {
 
                                 <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-100 dark:border-blue-800/30">
                                   <p className="text-sm text-blue-700 dark:text-blue-300">
-                                    Withdrawal requests typically take 1-3 business days to process. You'll receive an email notification when the status changes.
+                                    Withdrawal requests typically take 1-3
+                                    business days to process. You'll receive an
+                                    email notification when the status changes.
                                   </p>
                                 </div>
                               </div>
@@ -621,8 +685,12 @@ export default function WithdrawPage() {
                       <CardHeader>
                         <div className="flex justify-between items-start">
                           <div>
-                            <CardTitle className="text-lg font-medium">Bank Details</CardTitle>
-                            <CardDescription>Add your bank information for withdrawals</CardDescription>
+                            <CardTitle className="text-lg font-medium">
+                              Bank Details
+                            </CardTitle>
+                            <CardDescription>
+                              Add your bank information for withdrawals
+                            </CardDescription>
                           </div>
                           <div className="bg-pink-100 dark:bg-pink-900/30 p-2 rounded-full">
                             <Banknote className="h-5 w-5 text-pink-500 dark:text-pink-400" />
@@ -632,7 +700,9 @@ export default function WithdrawPage() {
                       <CardContent className="pb-0">
                         {withdrawalOptions.length > 0 && (
                           <div className="mb-6">
-                            <Label className="text-sm font-medium mb-2">Saved Bank Accounts</Label>
+                            <Label className="text-sm font-medium mb-2">
+                              Saved Bank Accounts
+                            </Label>
                             <div className="space-y-2">
                               {withdrawalOptions.map((option) => (
                                 <div
@@ -644,10 +714,20 @@ export default function WithdrawPage() {
                                   } border`}
                                 >
                                   <div className="flex justify-between items-center">
-                                    <div className="flex-1" onClick={() => handleSelectBankAccount(option)}>
-                                      <p className="font-medium">{option.bank_name}</p>
+                                    <div
+                                      className="flex-1"
+                                      onClick={() =>
+                                        handleSelectBankAccount(option)
+                                      }
+                                    >
+                                      <p className="font-medium">
+                                        {option.bank_name}
+                                      </p>
                                       <p className="text-sm text-muted-foreground">
-                                        {option.account_name} • {maskAccountNumber(option.account_number)}
+                                        {option.account_name} •{" "}
+                                        {maskAccountNumber(
+                                          option.account_number
+                                        )}
                                       </p>
                                     </div>
                                     <div className="flex items-center gap-2">
@@ -657,7 +737,9 @@ export default function WithdrawPage() {
                                       <Button
                                         variant="ghost"
                                         size="sm"
-                                        onClick={() => handleDeleteBankAccount(option.id)}
+                                        onClick={() =>
+                                          handleDeleteBankAccount(option.id)
+                                        }
                                         className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
                                       >
                                         <Trash2 className="h-4 w-4" />
@@ -781,7 +863,8 @@ export default function WithdrawPage() {
                       {(!withdrawalOptions.length || !selectedOption) && (
                         <CardFooter className="pt-6 pb-6 flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between">
                           <p className="text-xs text-muted-foreground">
-                            <span className="text-pink-500">*</span> Required fields
+                            <span className="text-pink-500">*</span> Required
+                            fields
                           </p>
                           <Button
                             onClick={handleSaveBankDetails}
@@ -853,7 +936,9 @@ export default function WithdrawPage() {
                                   className="hover:bg-pink-50/30 dark:hover:bg-pink-900/5 transition-colors"
                                 >
                                   <td className="px-4 py-4 whitespace-nowrap text-sm">
-                                    {new Date(request.created_at).toLocaleDateString(undefined, {
+                                    {new Date(
+                                      request.created_at
+                                    ).toLocaleDateString(undefined, {
                                       year: "numeric",
                                       month: "short",
                                       day: "numeric",
@@ -868,14 +953,18 @@ export default function WithdrawPage() {
                                   <td className="px-4 py-4 whitespace-nowrap text-sm">
                                     <Badge
                                       className={
-                                        request.withdrawal_request_status?.[0]?.status === "ACCEPTED"
+                                        request.withdrawal_request_status?.[0]
+                                          ?.status === "ACCEPTED"
                                           ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                                          : request.withdrawal_request_status?.[0]?.status === "REJECTED"
+                                          : request
+                                              .withdrawal_request_status?.[0]
+                                              ?.status === "REJECTED"
                                           ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
                                           : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
                                       }
                                     >
-                                      {request.withdrawal_request_status?.[0]?.status || "PENDING"}
+                                      {request.withdrawal_request_status?.[0]
+                                        ?.status || "PENDING"}
                                     </Badge>
                                   </td>
                                 </tr>
@@ -894,9 +983,10 @@ export default function WithdrawPage() {
                                     <Button
                                       variant="link"
                                       onClick={() => {
-                                        const tabButton = document.querySelector(
-                                          '[value="withdraw"]'
-                                        ) as HTMLButtonElement;
+                                        const tabButton =
+                                          document.querySelector(
+                                            '[value="withdraw"]'
+                                          ) as HTMLButtonElement;
                                         tabButton?.click();
                                       }}
                                       className="text-pink-500"
@@ -1035,7 +1125,9 @@ export default function WithdrawPage() {
               </Button>
               <Button
                 onClick={() => {
-                  const tabButton = document.querySelector('[value="withdraw"]') as HTMLButtonElement;
+                  const tabButton = document.querySelector(
+                    '[value="withdraw"]'
+                  ) as HTMLButtonElement;
                   tabButton?.click();
                   setShowBankDetailsDialog(false);
                 }}

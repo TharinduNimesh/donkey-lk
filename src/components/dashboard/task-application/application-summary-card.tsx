@@ -22,6 +22,16 @@ export function ApplicationSummaryCard({
   earnings,
   calculateTotalViews
 }: ApplicationSummaryCardProps) {
+  // Currency: 1 USD = NEXT_PUBLIC_LKR_PER_USD LKR
+  const LKR_PER_USD = Number(process.env.NEXT_PUBLIC_LKR_PER_USD ?? "295");
+  const LKR_TO_USD = 1 / (LKR_PER_USD || 295);
+  const formatUSD = (lkrAmount: number) =>
+    new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      maximumFractionDigits: 2,
+    }).format(lkrAmount * LKR_TO_USD);
+
   return (
     <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden">
       <CardHeader className="pb-4 border-b border-gray-100 dark:border-gray-800">
@@ -63,7 +73,7 @@ export function ApplicationSummaryCard({
                         <div className="flex justify-between items-center">
                           <span className="text-sm text-muted-foreground">Potential Earnings</span>
                           <span className="font-medium text-green-600 dark:text-green-400">
-                            Rs. {earnings[target.platform].toFixed(2)}
+                            {formatUSD(earnings[target.platform])}
                           </span>
                         </div>
                       </div>
@@ -90,7 +100,7 @@ export function ApplicationSummaryCard({
                       <span className="font-medium text-green-700 dark:text-green-300">Total Potential Earnings</span>
                     </div>
                     <span className="text-lg font-bold text-green-700 dark:text-green-300">
-                      Rs. {Object.values(earnings).reduce((sum, current) => sum + current, 0).toFixed(2)}
+                      {formatUSD(Object.values(earnings).reduce((sum, current) => sum + current, 0))}
                     </span>
                   </div>
                 </CardContent>

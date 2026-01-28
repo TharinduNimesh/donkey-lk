@@ -24,6 +24,15 @@ interface InfluencerTaskCardProps {
 
 export function InfluencerTaskCard({ task, application }: InfluencerTaskCardProps) {
   const router = useRouter();
+  // Currency: 1 USD = NEXT_PUBLIC_LKR_PER_USD LKR
+  const LKR_PER_USD = Number(process.env.NEXT_PUBLIC_LKR_PER_USD ?? "295");
+  const LKR_TO_USD = 1 / (LKR_PER_USD || 295);
+  const formatUSD = (lkrAmount: number) =>
+    new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      maximumFractionDigits: 2,
+    }).format(lkrAmount * LKR_TO_USD);
   const targets = task.targets as Array<{
     platform: Database['public']['Enums']['Platforms'];
     views: string;
@@ -135,7 +144,7 @@ export function InfluencerTaskCard({ task, application }: InfluencerTaskCardProp
             </span>
             {application ? (
               <span className="font-medium text-green-600 dark:text-green-400">
-                Rs. {calculateTotalEarnings().toFixed(2)}
+                {formatUSD(calculateTotalEarnings())}
               </span>
             ) : (
               progress !== 100 && (

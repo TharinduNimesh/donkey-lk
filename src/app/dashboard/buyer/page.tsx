@@ -267,15 +267,15 @@ export default function BuyerDashboardPage() {
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex justify-between items-center mb-8"
+          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8"
         >
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 text-center sm:text-left">
             Brand Dashboard
           </h1>
-          <div className="flex gap-4">
+          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
             <Button 
               onClick={handleCreateTask}
-              className="bg-pink-600 hover:bg-pink-700 text-white shadow-sm hover:shadow-md transition-all duration-300"
+              className="w-full sm:w-auto bg-pink-600 hover:bg-pink-700 text-white shadow-sm hover:shadow-md transition-all duration-300"
             >
               Create New Task
             </Button>
@@ -283,7 +283,7 @@ export default function BuyerDashboardPage() {
               variant="outline" 
               onClick={handleLogout}
               disabled={isLoading}
-              className="border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-900"
+              className="w-full sm:w-auto border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-900"
             >
               {isLoading ? 'Logging out...' : 'Logout'}
             </Button>

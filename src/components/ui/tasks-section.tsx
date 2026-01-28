@@ -257,9 +257,17 @@ function TaskCard({ task, index }: TaskCardProps) {
                 <Users className="h-4 w-4" />
                 <span>{task.total_influencers || 0} Influencers</span>
               </span>
-              <span className="font-medium text-pink-600 dark:text-pink-400">
-                Rs.{" "}
-                {Math.round((task.cost?.amount || 0) * 0.63).toLocaleString()}
+              <span className="flex items-center gap-2">
+                {(() => {
+                  const lkrPerUsd = Number(process.env.NEXT_PUBLIC_LKR_PER_USD) || 295;
+                  const payoutLkr = (task.cost?.amount || 0) * 0.63;
+                  const payoutUsd = payoutLkr / lkrPerUsd;
+                  return (
+                    <span className="font-medium text-pink-600 dark:text-pink-400">
+                      $ {payoutUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  );
+                })()}
               </span>
             </div>
 

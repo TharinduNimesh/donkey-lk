@@ -6,6 +6,7 @@ import { env } from '../env';
 const PLATFORM_RATES = env.PLATFORM_RATES;
 const DEADLINE_MULTIPLIERS = env.DEADLINE_MULTIPLIERS;
 const SERVICE_FEE_PERCENTAGE = env.SERVICE_FEE_PERCENTAGE;
+const ESTIMATED_PROFIT_PERCENTAGE = env.ESTIMATED_PROFIT_PERCENTAGE;
 
 export function calculateCostClient(
   platform: keyof typeof PLATFORM_RATES,
@@ -22,8 +23,8 @@ export function calculateCostClient(
   const serviceFee = includeServiceFee ? Math.round(baseCost * SERVICE_FEE_PERCENTAGE) : 0;
   const totalCost = baseCost + serviceFee;
   
-  // Calculate estimated profit as 63% of the base cost (without service fee)
-  const estimatedProfit = Math.round(baseCost * 0.63);
+  // Calculate estimated profit as 37% of the base cost (without service fee)
+  const estimatedProfit = Math.round(baseCost * ESTIMATED_PROFIT_PERCENTAGE);
 
   return { baseCost, serviceFee, totalCost, estimatedProfit };
 }
