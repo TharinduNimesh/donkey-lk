@@ -6,7 +6,10 @@ export async function GET(request: Request) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get('code')
 
+  console.log('Received auth callback with code:', code)
+
   if (code) {
+
     const cookieStore = cookies()
     // Create supabase client with the correct cookie store configuration
     const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
