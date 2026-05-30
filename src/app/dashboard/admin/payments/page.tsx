@@ -139,6 +139,31 @@ export default function AdminPaymentsPage() {
         status: statuses?.find(status => status.transfer_id === slip.id)
       })) as PaymentWithDetails[];
 
+      // Fetch BrandSync bank transfer slips
+      const { data: bsSlips, error: bsError } = await supabase
+        .from('brandsync_bank_transfer_slips')
+        .select(`*, brandsync:brandsync_links(id, title, amount, user_id)`)
+        .order('created_at', { ascending: false });
+
+      if (bsError) throw bsError;
+
+      const brandSyncPayments = (bsSlips || []).map((s: any) => ({
+        id: s.id,
+        slip: s.slip_path,
+        created_at: s.created_at,
+        slipUrl: null,
+        status: { status: s.status, reviewed_at: null, reviewed_by: null },
+        task: {
+          title: s.brandsync?.title || 'BrandSync',
+          description: null,
+        },
+        brandsync: s.brandsync || null,
+        isBrandSync: true,
+      })) as any[];
+
+      // Combine both types
+      combinedData = combinedData.concat(brandSyncPayments) as PaymentWithDetails[];
+
       if (statusFilter !== "ALL") {
         combinedData = combinedData.filter(
           payment => payment.status?.status === statusFilter
@@ -151,8 +176,10 @@ export default function AdminPaymentsPage() {
 
       const paymentsWithDetails = await Promise.all(
         paginatedData.map(async (payment) => {
-          const userId = payment.task?.user_id;
+          const userId = payment.task?.user_id || (payment as any).brandsync?.user_id;
           if (!userId) return payment;
+
+          const slipPath = (payment as any).slip || payment.slip;
 
           const [buyerProfile, buyerTasks, slipUrl] = await Promise.all([
             supabase
@@ -170,7 +197,7 @@ export default function AdminPaymentsPage() {
                 )
               `)
               .eq('user_id', userId),
-            getStorageUrl('bank-transfer-slips', payment.slip)
+            getStorageUrl('bank-transfer-slips', slipPath)
           ]);
 
           const totalPaid = buyerTasks.data?.reduce((sum, task) => {
@@ -234,60 +261,74 @@ export default function AdminPaymentsPage() {
     customReason?: string
   ) => {
     const payment = confirmationModal.payment;
-    if (!payment || !payment.task?.cost) return;
-
+    if (!payment) return;
+    const isBrand = (payment as any).isBrandSync === true;
+    if (!isBrand && !payment.task?.cost) return;
     try {
       setProcessingPayment(payment.id);
 
-      const { error } = await supabase.rpc('update_bank_transfer_payment', {
-        transfer_id_param: payment.id,
-        task_cost_id_param: payment.task.cost.id,
-        is_accepted_param: isAccepted
-      });
-
-      if (error) throw error;
-
-      // Send email notification
-      const emailContext: Record<string, string> = {
-        name: payment.buyer?.name || 'User',
-        taskTitle: payment.task.title || '',
-        taskId: payment.task.task_id?.toString() || '',
-        amount: payment.task.cost.amount.toString(),
-        date: format(new Date(), 'MMMM d, yyyy'),
-      };
-
-      if (isAccepted) {
-        await sendMail({
-          to: payment.buyer?.email || '',
-          subject: 'Payment Accepted - BrandSync',
-          template: 'payment-accepted',
-          context: emailContext,
-          from: 'accounts@brandsync.lk'
+      if ((payment as any).isBrandSync) {
+        // Call admin endpoint for BrandSync slips
+        const resp = await fetch(`/api/admin/brandsync-payments/${payment.id}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: isAccepted ? 'accept' : 'reject', reason: customReason || undefined })
         });
-      } else if (rejectionReason) {
-        const rejectionLabel = rejectionReasonsList.find(
-          (r) => r.value === rejectionReason
-        )?.label || 'Payment Rejected';
 
-        await sendMail({
-          to: payment.buyer?.email || '',
-          subject: 'Payment Rejected - BrandSync',
-          template: 'payment-rejected',
-          context: {
-            ...emailContext,
-            reason: rejectionLabel,
-            actionRequired: getActionRequired(
-              rejectionReason,
-              customReason || '',
-              payment.task.cost.amount.toString()
-            )
-          },
-          from: 'accounts@brandsync.lk'
+        if (!resp.ok) throw new Error('Failed to update BrandSync payment');
+
+        toast.success(`Payment ${isAccepted ? 'accepted' : 'rejected'} successfully`);
+      } else {
+        const { error } = await supabase.rpc('update_bank_transfer_payment', {
+          transfer_id_param: payment.id,
+          task_cost_id_param: payment.task.cost.id,
+          is_accepted_param: isAccepted
         });
+
+        if (error) throw error;
+
+        // Send email notification
+        const emailContext: Record<string, string> = {
+          name: payment.buyer?.name || 'User',
+          taskTitle: payment.task.title || '',
+          taskId: payment.task.task_id?.toString() || '',
+          amount: payment.task.cost.amount.toString(),
+          date: format(new Date(), 'MMMM d, yyyy'),
+        };
+
+        if (isAccepted) {
+          await sendMail({
+            to: payment.buyer?.email || '',
+            subject: 'Payment Accepted - BrandSync',
+            template: 'payment-accepted',
+            context: emailContext,
+            from: 'accounts@brandsync.lk'
+          });
+        } else if (rejectionReason) {
+          const rejectionLabel = rejectionReasonsList.find(
+            (r) => r.value === rejectionReason
+          )?.label || 'Payment Rejected';
+
+          await sendMail({
+            to: payment.buyer?.email || '',
+            subject: 'Payment Rejected - BrandSync',
+            template: 'payment-rejected',
+            context: {
+              ...emailContext,
+              reason: rejectionLabel,
+              actionRequired: getActionRequired(
+                rejectionReason,
+                customReason || '',
+                payment.task.cost.amount.toString()
+              )
+            },
+            from: 'accounts@brandsync.lk'
+          });
+        }
+
+        toast.success(`Payment ${isAccepted ? 'accepted' : 'rejected'} successfully`);
       }
 
-      toast.success(`Payment ${isAccepted ? 'accepted' : 'rejected'} successfully`);
-      
       router.refresh();
       await fetchPayments();
     } catch (error) {
@@ -492,8 +533,8 @@ export default function AdminPaymentsPage() {
           onConfirm={handlePaymentUpdate}
           action={confirmationModal.action}
           paymentDetails={{
-            taskTitle: confirmationModal.payment.task?.title || '',
-            amount: confirmationModal.payment.task?.cost?.amount || 0,
+            taskTitle: (confirmationModal.payment as any).isBrandSync ? ((confirmationModal.payment as any).brandsync?.title || '') : (confirmationModal.payment.task?.title || ''),
+            amount: (confirmationModal.payment as any).isBrandSync ? ((confirmationModal.payment as any).brandsync?.amount || 0) : (confirmationModal.payment.task?.cost?.amount || 0),
           }}
         />
       )}

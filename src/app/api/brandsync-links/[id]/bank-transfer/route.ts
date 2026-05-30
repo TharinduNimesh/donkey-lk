@@ -1,0 +1,52 @@
+import { NextResponse } from 'next/server';
+import { supabaseAdmin } from '@/lib/supabase-admin';
+
+export async function POST(request: Request, { params }: { params: { id: string } }) {
+  try {
+    const formData = await request.formData();
+    const file = formData.get('slip');
+
+    if (!(file instanceof File)) {
+      return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
+    }
+
+    const brandsyncId = Number(params.id);
+    if (!brandsyncId) {
+      return NextResponse.json({ error: 'Invalid BrandSync ID' }, { status: 400 });
+    }
+
+    const extension = file.name.split('.').pop() || 'png';
+    const filePath = `${bradsyncSafePrefix()}${Date.now()}-${Math.random().toString(36).slice(2)}.${extension}`;
+
+    const { error: uploadError } = await supabaseAdmin.storage
+      .from('bank-transfer-slips')
+      .upload(filePath, file as any, { contentType: file.type });
+
+    if (uploadError) {
+      console.error('Bank transfer upload error', uploadError);
+      return NextResponse.json({ error: 'Failed to upload slip' }, { status: 500 });
+    }
+
+    const { data, error: insertError } = await supabaseAdmin
+      .from('brandsync_bank_transfer_slips')
+      .insert({ brandsync_id: brandsyncId, slip_path: filePath })
+      .select('id, brandsync_id, slip_path, status, created_at')
+      .single();
+
+    if (insertError) {
+      console.error('Failed to insert brandsync bank transfer slip', insertError);
+      // cleanup
+      await supabaseAdmin.storage.from('bank-transfer-slips').remove([filePath]);
+      return NextResponse.json({ error: 'Failed to save slip' }, { status: 500 });
+    }
+
+    return NextResponse.json({ slip: data }, { status: 201 });
+  } catch (error) {
+    console.error('brandsync bank transfer error', error);
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Internal server error' }, { status: 500 });
+  }
+}
+
+function bradsyncSafePrefix() {
+  return 'brandsync_slips/';
+}
