@@ -199,6 +199,56 @@ export type Database = {
           },
         ]
       }
+      brandsync_links: {
+        Row: {
+          created_at: string
+          id: number
+          platform: Database["public"]["Enums"]["Platforms"]
+          platform_url: string
+          thumbnail_path: string | null
+          shares: number
+          is_paid: boolean
+          amount: number
+          token: string
+          user_id: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          platform: Database["public"]["Enums"]["Platforms"]
+          platform_url: string
+          thumbnail_path?: string | null
+          shares?: number
+          is_paid?: boolean
+          amount?: number
+          token: string
+          user_id: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          platform?: Database["public"]["Enums"]["Platforms"]
+          platform_url?: string
+          thumbnail_path?: string | null
+          shares?: number
+          is_paid?: boolean
+          amount?: number
+          token?: string
+          user_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brandsync_links_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profile"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contact_details: {
         Row: {
           created_at: string

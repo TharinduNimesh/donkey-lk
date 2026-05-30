@@ -51,7 +51,8 @@ async function validateFormData(formData: FormData): Promise<PayhereNotification
   }
 
   // Validate order_id format (must be a number)
-  if (!/^\d+$/.test(notification.order_id!)) {
+  // Validate order_id format (must be a number or BRANDSYNC:<id>)
+  if (!/^\d+$/.test(notification.order_id!) && !/^BRANDSYNC:\d+$/.test(notification.order_id!)) {
     throw new Error('Invalid order_id format');
   }
 
@@ -165,28 +166,42 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const taskId = parseInt(notification.order_id);
+    // Determine if this is a task payment or a BrandSync payment
+    if (notification.order_id!.startsWith('BRANDSYNC:')) {
+      const bsId = parseInt(notification.order_id!.split(':')[1]);
+      if (notification.status_code === '2') {
+        // Mark BrandSync link as paid
+        const { error } = await supabaseAdmin
+          .from('brandsync_links')
+          .update({ is_paid: true })
+          .eq('id', bsId);
 
-    // Handle successful payment
-    if (notification.status_code === '2') {
-      // Verify task exists and is in DRAFT status
-      await verifyTaskStatus(taskId);
+        if (error) throw error;
+      }
+    } else {
+      const taskId = parseInt(notification.order_id);
 
-      // Update payment status and task status
-      const paymentDetails = {
-        is_paid: true,
-        payment_method: 'PAYMENT_GATEWAY' as const,
-        paid_at: new Date().toISOString(),
-        metadata: {
-          payment_id: notification.payment_id,
-          payment_method: notification.method,
-          card_holder_name: notification.card_holder_name,
-          card_no: notification.card_no,
-          card_expiry: notification.card_expiry
-        }
-      };
+      // Handle successful payment for task
+      if (notification.status_code === '2') {
+        // Verify task exists and is in DRAFT status
+        await verifyTaskStatus(taskId);
 
-      await updatePaymentStatus(taskId, paymentDetails);
+        // Update payment status and task status
+        const paymentDetails = {
+          is_paid: true,
+          payment_method: 'PAYMENT_GATEWAY' as const,
+          paid_at: new Date().toISOString(),
+          metadata: {
+            payment_id: notification.payment_id,
+            payment_method: notification.method,
+            card_holder_name: notification.card_holder_name,
+            card_no: notification.card_no,
+            card_expiry: notification.card_expiry
+          }
+        };
+
+        await updatePaymentStatus(taskId, paymentDetails);
+      }
     }
 
     return NextResponse.json({ status: 'ok' });

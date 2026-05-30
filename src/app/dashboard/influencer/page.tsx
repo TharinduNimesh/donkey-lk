@@ -22,7 +22,8 @@ import {
 import { ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Copy, ExternalLink } from "lucide-react";
+import { toast } from "sonner";
 
 const ITEMS_PER_PAGE = 6;
 
@@ -126,6 +127,15 @@ type ConnectedPlatform = {
   url: string;
 };
 
+type BrandSyncLinkEntry = {
+  id: number;
+  title: string;
+  platform: Database['public']['Enums']['Platforms'];
+  thumbnailUrl?: string | null;
+  brandSyncUrl: string;
+  createdAt: string;
+};
+
 export default function InfluencerDashboardPage() {
   const router = useRouter();
   const supabase = createClientComponentClient<Database>();
@@ -157,6 +167,8 @@ export default function InfluencerDashboardPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [filteredTasks, setFilteredTasks] = useState<(TaskDetail & { application?: TaskApplication })[]>([]);
   const [hasIncompleteTask, setHasIncompleteTask] = useState(false);
+  const [brandSyncLinks, setBrandSyncLinks] = useState<BrandSyncLinkEntry[]>([]);
+  const [isLoadingBrandSyncLinks, setIsLoadingBrandSyncLinks] = useState(true);
   // Static FX rate from env: 1 USD = NEXT_PUBLIC_LKR_PER_USD LKR
   const LKR_PER_USD = Number(process.env.NEXT_PUBLIC_LKR_PER_USD ?? "295");
   const LKR_TO_USD = 1 / (LKR_PER_USD || 295);
@@ -239,6 +251,20 @@ export default function InfluencerDashboardPage() {
             .eq("status", "ACTIVE")
         ]);
 
+        try {
+          const response = await fetch("/api/brandsync-links?scope=public");
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.error || "Failed to load BrandSync links");
+          }
+
+          setBrandSyncLinks(data.links || []);
+        } catch (brandSyncError) {
+          console.error("Error fetching BrandSync links:", brandSyncError);
+          setBrandSyncLinks([]);
+        }
+
         setAccountBalance(balanceResponse.data);
 
         // Combine verified and pending profiles
@@ -293,6 +319,7 @@ export default function InfluencerDashboardPage() {
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
+        setIsLoadingBrandSyncLinks(false);
         setIsLoading(false);
       }
     };
@@ -553,6 +580,94 @@ export default function InfluencerDashboardPage() {
               <p className="text-sm text-indigo-600/80 dark:text-indigo-300/80 mt-1">Active platforms</p>
             </CardContent>
           </Card>
+        </motion.div>
+
+        {/* BrandSync Links */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          className="mb-12"
+        >
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">BrandSync Links</h2>
+              <p className="text-muted-foreground mt-1">Latest buyer-created links you can open directly</p>
+            </div>
+          </div>
+
+          {isLoadingBrandSyncLinks ? (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {[...Array(3)].map((_, index) => (
+                <Card key={index} className="border border-gray-200 dark:border-gray-800 overflow-hidden">
+                  <CardContent className="p-4">
+                    <div className="h-40 rounded-lg bg-gray-100 dark:bg-gray-800 animate-pulse" />
+                    <div className="mt-4 h-4 w-3/4 rounded bg-gray-100 dark:bg-gray-800 animate-pulse" />
+                    <div className="mt-2 h-3 w-1/2 rounded bg-gray-100 dark:bg-gray-800 animate-pulse" />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : brandSyncLinks.length > 0 ? (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {brandSyncLinks.map((link) => (
+                <motion.div
+                  key={link.id}
+                  whileHover={{ scale: 1.01 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <Card className="h-full overflow-hidden border border-pink-100 dark:border-pink-900/20 bg-white dark:bg-gray-900 hover:shadow-lg transition-shadow">
+                    {link.thumbnailUrl ? (
+                      <img
+                        src={link.thumbnailUrl}
+                        alt={link.title}
+                        className="h-44 w-full object-cover"
+                      />
+                    ) : (
+                      <div className="h-44 w-full bg-gradient-to-br from-pink-100 to-pink-50 dark:from-pink-950/40 dark:to-gray-900" />
+                    )}
+                    <CardContent className="p-4 space-y-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <h3 className="font-semibold text-gray-900 dark:text-gray-100 truncate">{link.title}</h3>
+                          <p className="text-sm text-muted-foreground">{link.platform}</p>
+                        </div>
+                        <Badge variant="secondary" className="shrink-0">
+                          {link.platform}
+                        </Badge>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Button type="button" asChild className="flex-1 bg-pink-600 hover:bg-pink-700 text-white">
+                          <a href={link.brandSyncUrl} target="_blank" rel="noopener noreferrer">
+                            <ExternalLink className="mr-2 h-4 w-4" />
+                            Open Link
+                          </a>
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={async () => {
+                            await navigator.clipboard.writeText(link.brandSyncUrl);
+                            toast.success("BrandSync link copied");
+                          }}
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              ))}
+            </div>
+          ) : (
+            <Card className="border border-dashed border-pink-200 dark:border-pink-900/30 bg-pink-50/40 dark:bg-pink-950/10">
+              <CardContent className="py-10 text-center">
+                <p className="font-medium text-gray-900 dark:text-gray-100">No BrandSync links yet</p>
+                <p className="text-sm text-muted-foreground mt-1">Buyers will see new links here once they create them.</p>
+              </CardContent>
+            </Card>
+          )}
         </motion.div>
 
         {/* Connected Social Media Accounts */}

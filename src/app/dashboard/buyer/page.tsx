@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { toast } from 'sonner';
 import { signOut } from "@/lib/supabase";
 import { TaskCard } from "@/components/dashboard/task-card";
 import { Database } from "@/types/database.types";
@@ -24,6 +25,7 @@ import {
 } from "@/components/ui/select";
 import { Search, SlidersHorizontal } from "lucide-react";
 import { SearchInput } from "@/components/ui/search-input";
+import { BrandSyncLinkModal } from "@/components/dashboard/brandsync-link-modal";
 
 const ITEMS_PER_PAGE = 6;
 
@@ -78,6 +80,10 @@ export default function BuyerDashboardPage() {
   const [filteredTasks, setFilteredTasks] = useState<TaskDetail[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [showPlatformModal, setShowPlatformModal] = useState(false);
+  const [showBrandSyncModal, setShowBrandSyncModal] = useState(false);
+  const [brandSyncLinks, setBrandSyncLinks] = useState<Array<{ id: number; title: string; platform: string; brandSyncUrl: string; thumbnailUrl?: string | null; shares?: number; isPaid?: boolean; amount?: number;}>>([]);
+  const [isLoadingLinks, setIsLoadingLinks] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<Record<number, number>>({});
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [platformFilter, setPlatformFilter] = useState<string>("ALL");
@@ -107,6 +113,22 @@ export default function BuyerDashboardPage() {
     };
 
     fetchTasks();
+    // load user's BrandSync links (non-blocking)
+    const loadLinks = async () => {
+      setIsLoadingLinks(true);
+      try {
+        const res = await fetch('/api/brandsync-links', { credentials: 'include' });
+        if (!res.ok) return;
+        const data = await res.json();
+        setBrandSyncLinks(data.links ?? []);
+      } catch (err) {
+        console.error('Failed to load BrandSync links', err);
+      } finally {
+        setIsLoadingLinks(false);
+      }
+    };
+
+    loadLinks();
   }, [supabase, router]);
 
   useEffect(() => {
@@ -233,6 +255,71 @@ export default function BuyerDashboardPage() {
     </div>
   );
 
+  const handleUploadSlipForLink = async (e: React.ChangeEvent<HTMLInputElement>, linkId: number) => {
+    try {
+      const file = e.target?.files?.[0];
+      if (!file) {
+        toast.error('No file selected');
+        return;
+      }
+
+      const fd = new FormData();
+      fd.append('slip', file);
+
+
+      setUploadProgress(prev => ({ ...prev, [linkId]: 0 }));
+
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', `/api/brandsync-links/${linkId}/bank-transfer`);
+
+        xhr.upload.onprogress = (ev) => {
+          if (ev.lengthComputable) {
+            const percent = Math.round((ev.loaded / ev.total) * 100);
+            setUploadProgress(prev => ({ ...prev, [linkId]: percent }));
+          }
+        };
+
+        xhr.onload = () => {
+          try {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              resolve();
+            } else {
+              const text = xhr.responseText || `Upload failed: ${xhr.status}`;
+              let parsed: any = null;
+              try { parsed = JSON.parse(text); } catch {}
+              const msg = parsed?.error || parsed?.message || text;
+              reject(new Error(String(msg)));
+            }
+          } catch (e) {
+            reject(e instanceof Error ? e : new Error('Unknown upload error'));
+          }
+        };
+
+        xhr.onerror = () => reject(new Error('Upload network error'));
+
+        xhr.send(fd);
+      });
+
+      toast.success('Slip uploaded — admin will verify');
+      // refresh links
+      const updated = await fetch('/api/brandsync-links', { credentials: 'include' });
+      if (updated.ok) {
+        const json = await updated.json();
+        setBrandSyncLinks(json.links ?? []);
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to upload slip');
+    } finally {
+      setUploadProgress(prev => {
+        const copy = { ...prev };
+        delete copy[linkId];
+        return copy;
+      });
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen w-full bg-white dark:bg-gray-950">
@@ -279,6 +366,13 @@ export default function BuyerDashboardPage() {
             >
               Create New Task
             </Button>
+            <Button
+              variant="outline"
+              onClick={() => setShowBrandSyncModal(true)}
+              className="w-full sm:w-auto border-pink-200 text-pink-700 hover:bg-pink-50 dark:border-pink-800 dark:text-pink-300 dark:hover:bg-pink-950/40"
+            >
+              Add BrandSync Link
+            </Button>
             <Button 
               variant="outline" 
               onClick={handleLogout}
@@ -289,6 +383,11 @@ export default function BuyerDashboardPage() {
             </Button>
           </div>
         </motion.div>
+
+        <BrandSyncLinkModal
+          open={showBrandSyncModal}
+          onOpenChange={setShowBrandSyncModal}
+        />
         
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
@@ -408,6 +507,111 @@ export default function BuyerDashboardPage() {
             </DialogContent>
           </Dialog>
 
+        </motion.div>
+
+        {/* BrandSync Links Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">BrandSync Links</h2>
+            <div className="flex items-center gap-2">
+              <Button onClick={() => setShowBrandSyncModal(true)} className="bg-pink-600 hover:bg-pink-700 text-white">
+                Create Link
+              </Button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {brandSyncLinks.length === 0 ? (
+                <div className="col-span-full rounded-lg border border-dashed p-6 text-center">
+                  <p className="text-lg font-medium">No BrandSync links yet</p>
+                  <p className="text-sm text-muted-foreground mt-2">Create a link to share your external video while hiding the original URL.</p>
+                  <div className="mt-4">
+                    <Button onClick={() => setShowBrandSyncModal(true)} className="bg-pink-600 hover:bg-pink-700 text-white">Create your first link</Button>
+                  </div>
+                </div>
+              ) : (
+                brandSyncLinks.map(link => (
+                  <Card key={link.id} className="overflow-hidden">
+                    <CardHeader>
+                      <CardTitle>
+                        <div className="flex items-center justify-between w-full">
+                          <span className="truncate max-w-[60%]">{link.title}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-muted-foreground">{link.platform}</span>
+                          </div>
+                        </div>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center gap-3">
+                        {link.thumbnailUrl ? (
+                          <img src={link.thumbnailUrl} alt={link.title} className="h-16 w-24 rounded-md object-cover" />
+                        ) : (
+                          <div className="h-16 w-24 rounded-md bg-muted" />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm truncate">{link.title}</p>
+                          <p className="text-xs text-muted-foreground mt-1">Shares: {link.shares ?? 0} • Amount: LKR {Number(link.amount ?? 0).toLocaleString()}</p>
+                          {!link.isPaid && (
+                            <p className="text-xs text-yellow-700 mt-1">Status: Awaiting payment</p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex gap-2 mt-4">
+                        {link.isPaid ? (
+                          <Button asChild variant="outline">
+                            <a href={link.brandSyncUrl} target="_blank" rel="noreferrer">Open</a>
+                          </Button>
+                        ) : (
+                          <>
+                            <Button type="button" onClick={async () => {
+                              // initialize PayHere for existing brandsync
+                              try {
+                                const resp = await fetch(`/api/payment/initialize/brandsync/${link.id}`, { method: 'POST' });
+                                if (!resp.ok) { const e = await resp.json().catch(()=>({})); throw new Error(e?.error||'Failed to init payment'); }
+                                const formData = await resp.json();
+                                const paymentForm = document.createElement('form');
+                                paymentForm.method = 'post';
+                                paymentForm.action = formData.checkout_url;
+                                paymentForm.target = '_blank';
+                                Object.entries(formData).forEach(([key, value]) => {
+                                  if (value !== undefined && value !== null) {
+                                    const input = document.createElement('input');
+                                    input.type = 'hidden';
+                                    input.name = key;
+                                    input.value = String(value);
+                                    paymentForm.appendChild(input);
+                                  }
+                                });
+                                document.body.appendChild(paymentForm);
+                                paymentForm.submit();
+                                setTimeout(()=>document.body.removeChild(paymentForm),100);
+                              } catch (err) { console.error(err); toast.error('Failed to initialize payment'); }
+                            }} className="bg-green-600 text-white">Pay</Button>
+                            <label className="inline-flex items-center px-3 py-2 border rounded-md cursor-pointer">
+                                  <input type="file" accept="image/*,application/pdf" className="hidden" onChange={(e)=>handleUploadSlipForLink(e, link.id)} />
+                                  Upload Slip
+                                </label>
+                                {uploadProgress[link.id] != null && (
+                                  <div className="w-full mt-2">
+                                    <div className="h-2 bg-gray-200 rounded overflow-hidden">
+                                      <div className="h-2 bg-pink-600" style={{ width: `${uploadProgress[link.id]}%` }} />
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">Uploading: {uploadProgress[link.id]}%</p>
+                                  </div>
+                                )}
+                          </>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+          </div>
         </motion.div>
 
         <motion.div

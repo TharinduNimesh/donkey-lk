@@ -20,6 +20,7 @@ const deadlineMultipliersSchema = z.object({
 
 const envSchema = z.object({
   // FACEBOOK_ACCESS_TOKEN: z.string().min(1, 'Facebook access token is required'),
+  APP_URL: z.string().url().optional(),
   PLATFORM_RATES: platformRatesSchema.default({
     YOUTUBE: 5,
     FACEBOOK: 3,
@@ -43,6 +44,7 @@ const envSchema = z.object({
 function getEnvVars() {
   const env = {
     // FACEBOOK_ACCESS_TOKEN: process.env.NEXT_PUBLIC_FACEBOOK_ACCESS_TOKEN,
+    APP_URL: process.env.NEXT_PUBLIC_APP_URL,
     PLATFORM_RATES: process.env.NEXT_PUBLIC_PLATFORM_RATES ? 
       JSON.parse(process.env.NEXT_PUBLIC_PLATFORM_RATES) : undefined,
     DEADLINE_MULTIPLIERS: process.env.NEXT_PUBLIC_DEADLINE_MULTIPLIERS ?
