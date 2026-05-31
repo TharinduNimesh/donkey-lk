@@ -1,15 +1,15 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { motion } from "framer-motion";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { Database } from "@/types/database.types";
 import { SocialVerification } from "@/components/ui/social-verification";
-import { useState } from "react";
+import { InfluencerSidebar, InfluencerTopbar } from "@/components/dashboard/influencer-sidebar";
+import { Plus, Users } from "lucide-react";
 
 type InfluencerProfile = Database["public"]["Tables"]["influencer_profile"]["Row"];
 type ContactDetail = {
@@ -23,10 +23,13 @@ type ContactDetail = {
 };
 type UserProfile = Database["public"]["Tables"]["profile"]["Row"];
 
+const PINK = "#C8185A";
+
 export default function PlatformsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = createClientComponentClient<Database>();
+  
   const [profiles, setProfiles] = useState<InfluencerProfile[]>([]);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [contactDetails, setContactDetails] = useState<ContactDetail[]>([]);
@@ -34,64 +37,27 @@ export default function PlatformsPage() {
 
   useEffect(() => {
     const fetchData = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) {
-        router.push("/auth");
-        return;
-      }
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { router.push("/auth"); return; }
 
-      // Fetch user profile
-      const { data: profileData } = await supabase
-        .from("profile")
-        .select("*")
-        .eq("id", user.id)
-        .single();
+      const { data: profileData } = await supabase.from("profile").select("*").eq("id", user.id).single();
+      if (profileData) setUserProfile(profileData);
 
-      if (profileData) {
-        setUserProfile(profileData);
-      }
+      const { data: profilesData } = await supabase.from("influencer_profile").select("*").eq("user_id", user.id);
+      if (profilesData) setProfiles(profilesData);
 
-      // Fetch connected social media profiles
-      const { data: profilesData } = await supabase
-        .from("influencer_profile")
-        .select("*")
-        .eq("user_id", user.id);
-
-      if (profilesData) {
-        setProfiles(profilesData);
-      }
-
-      // Fetch contact details with verification status
-      const { data: contactData } = await supabase
-        .from("contact_details")
-        .select(`
-          id,
-          type,
-          detail,
-          contactStatus:contact_status(
-            is_verified,
-            verified_at
-          )
-        `)
-        .eq("user_id", user.id);
-
-      if (contactData) {
-        setContactDetails(contactData);
-      }
+      const { data: contactData } = await supabase.from("contact_details").select(`
+        id, type, detail, contactStatus:contact_status(is_verified, verified_at)
+      `).eq("user_id", user.id);
+      
+      if (contactData) setContactDetails(contactData);
     };
 
     fetchData();
   }, [supabase, router]);
 
   const getPlatformColor = (platform: Database["public"]["Enums"]["Platforms"]) => {
-    const colors = {
-      YOUTUBE: "bg-red-500",
-      FACEBOOK: "bg-blue-600",
-      INSTAGRAM: "bg-pink-500",
-      TIKTOK: "bg-black",
-    };
+    const colors = { YOUTUBE: "bg-red-500", FACEBOOK: "bg-blue-600", INSTAGRAM: "bg-pink-500", TIKTOK: "bg-black" };
     return colors[platform] || "bg-gray-500";
   };
 
@@ -109,182 +75,147 @@ export default function PlatformsPage() {
     const fetchProfiles = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user?.id) return;
-
-      const { data: profilesData } = await supabase
-        .from("influencer_profile")
-        .select("*")
-        .eq("user_id", user.id);
-
-      if (profilesData) {
-        setProfiles(profilesData);
-      }
+      const { data: profilesData } = await supabase.from("influencer_profile").select("*").eq("user_id", user.id);
+      if (profilesData) setProfiles(profilesData);
     };
     fetchProfiles();
   };
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-b from-pink-50/30 to-white dark:from-gray-900 dark:to-gray-950">
-      <div className="container mx-auto py-8 px-4">
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="flex items-center justify-between mb-8"
-        >
-          <div>
-            <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-pink-600 font-['P22MackinacPro-Bold']">
-              Connected Platforms
-            </h1>
-            <p className="text-muted-foreground mt-2">
-              Manage your social media platforms and connect new accounts
-            </p>
-          </div>
-          <Button
-            variant="outline"
-            onClick={() => router.back()}
-            className="text-muted-foreground hover:text-foreground"
-          >
-            Back to Dashboard
-          </Button>
-        </motion.div>
-
-        {!activePlatform ? (
-          <>
-            {/* Connected Platforms */}
-            {profiles.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.1 }}
-                className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8"
-              >
-                {profiles.map((profile) => (
-                  <motion.div
-                    key={profile.id}
-                    whileHover={{ scale: 1.02 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <Card className="p-6 border border-pink-100 dark:border-pink-900/20 hover:shadow-lg transition-all">
-                      <div className="flex items-center space-x-4">
-                        <div
-                          className={`w-12 h-12 rounded-full flex items-center justify-center text-white overflow-hidden ${
-                            !profile.profile_pic ? getPlatformColor(profile.platform) : ""
-                          }`}
-                        >
-                          {profile.profile_pic ? (
-                            <img
-                              src={profile.profile_pic}
-                              alt={profile.name}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            profile.platform.charAt(0)
-                          )}
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between">
-                            <h3 className="font-semibold font-['P22MackinacPro-Medium']">
-                              {profile.name}
-                            </h3>
-                            <Badge
-                              variant={profile.is_verified ? "success" : "secondary"}
-                              className={profile.is_verified 
-                                ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" 
-                                : ""}
-                            >
-                              {profile.is_verified ? "Verified" : "Pending"}
-                            </Badge>
-                          </div>
-                          <p className="text-sm text-muted-foreground">
-                            {profile.followers?.toLocaleString()} followers
-                          </p>
-                        </div>
-                      </div>
-                    </Card>
-                  </motion.div>
-                ))}
-              </motion.div>
-            )}
-
-            {/* Connect New Platform */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-            >
-              <Card className="border border-pink-100 dark:border-pink-900/20">
-                <div className="p-6">
-                  <h2 className="text-xl font-semibold mb-4 font-['P22MackinacPro-Medium']">
-                    Connect New Platform
-                  </h2>
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {["YOUTUBE", "FACEBOOK", "TIKTOK", "INSTAGRAM"].map((platform) => (
-                      <motion.div
-                        key={platform}
-                        whileHover={{ scale: 1.02 }}
-                        transition={{ duration: 0.2 }}
-                      >
-                        <Button
-                          variant="outline"
-                          className="w-full h-auto p-4 border-2 hover:border-pink-400 dark:hover:border-pink-500"
-                          onClick={() => handleConnect(platform as Database["public"]["Enums"]["Platforms"])}
-                        >
-                          <div className="flex items-center space-x-3">
-                            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white ${getPlatformColor(platform as Database["public"]["Enums"]["Platforms"])}`}>
-                              {platform.charAt(0)}
-                            </div>
-                            <div className="text-left">
-                              <div className="font-semibold">{platform}</div>
-                              <div className="text-sm text-muted-foreground">
-                                {profiles.filter(p => p.platform === platform).length > 0
-                                  ? `${profiles.filter(p => p.platform === platform).length} account(s) connected`
-                                  : "Connect account"}
-                              </div>
-                            </div>
-                          </div>
-                        </Button>
-                      </motion.div>
-                    ))}
+    <div className="flex h-screen bg-[#fafafa] font-sans overflow-hidden">
+      <InfluencerSidebar activePage="platforms" />
+      
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <InfluencerTopbar title="Connected Platforms" />
+        
+        <main className="flex-1 overflow-y-auto p-4 lg:p-6 space-y-6">
+          {!activePlatform ? (
+            <>
+              {/* Connected Platforms Header */}
+              <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+                <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+                  <div>
+                    <h2 className="text-base font-semibold text-gray-900">Your Connected Accounts</h2>
+                    <p className="text-xs text-gray-500 mt-0.5">Manage your linked social media profiles</p>
                   </div>
                 </div>
-              </Card>
-            </motion.div>
-          </>
-        ) : (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            <Card className="border border-pink-100 dark:border-pink-900/20">
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-semibold font-['P22MackinacPro-Medium']">
-                    Verify {activePlatform} Account
-                  </h2>
+                
+                {profiles.length > 0 ? (
+                  <div className="p-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {profiles.map((profile) => (
+                      <div key={profile.id} className="bg-white rounded-lg border border-gray-200 p-4 hover:border-pink-200 transition-colors shadow-sm relative overflow-hidden">
+                        <div className="flex items-center space-x-3">
+                          <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white text-lg font-bold overflow-hidden ${!profile.profile_pic ? getPlatformColor(profile.platform) : ""}`}>
+                            {profile.profile_pic ? (
+                              <img src={profile.profile_pic} alt={profile.name} className="w-full h-full object-cover" />
+                            ) : profile.platform.charAt(0)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between mb-0.5">
+                              <h3 className="font-semibold text-gray-900 truncate pr-2">{profile.name}</h3>
+                              <Badge variant={profile.is_verified ? "success" : "secondary"} className={`text-[10px] pointer-events-none ${profile.is_verified ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}>
+                                {profile.is_verified ? "Verified" : "Pending"}
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-gray-500">
+                              {profile.followers?.toLocaleString()} followers
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-8 text-center bg-white">
+                    <div className="w-12 h-12 rounded-full bg-pink-50 flex items-center justify-center mx-auto mb-3">
+                      <Users className="h-6 w-6 text-pink-600" />
+                    </div>
+                    <h3 className="text-sm font-semibold text-gray-900">No platforms connected</h3>
+                    <p className="text-xs text-gray-500 mt-1">Connect your first social media account below to start applying for tasks.</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Connect New Platform Grid */}
+              <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+                <div className="px-5 py-4 border-b border-gray-100 bg-gray-50/50">
+                  <h2 className="text-base font-semibold text-gray-900">Add New Platform</h2>
+                  <p className="text-xs text-gray-500 mt-0.5">Select a network to link to your BrandSync profile</p>
+                </div>
+                <div className="p-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  {["YOUTUBE", "FACEBOOK", "TIKTOK", "INSTAGRAM"].map((platform) => {
+                    const isConnected = profiles.some(p => p.platform === platform);
+                    const connectedCount = profiles.filter(p => p.platform === platform).length;
+                    
+                    return (
+                      <button
+                        key={platform}
+                        onClick={() => handleConnect(platform as Database["public"]["Enums"]["Platforms"])}
+                        className={`group relative p-4 rounded-xl text-left border transition-all ${
+                          isConnected 
+                            ? "border-gray-200 hover:border-gray-300 bg-white" 
+                            : "border-pink-100 hover:border-pink-300 bg-pink-50/30 hover:bg-pink-50/50"
+                        }`}
+                      >
+                        <div className="flex items-center space-x-3 mb-3">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white ${getPlatformColor(platform as Database["public"]["Enums"]["Platforms"])} shadow-sm`}>
+                            {platform.charAt(0)}
+                          </div>
+                          <div>
+                            <div className="font-semibold text-sm text-gray-900">{platform}</div>
+                            <div className="text-[10px] text-gray-500">
+                              {isConnected ? `${connectedCount} account(s)` : "Not connected"}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center justify-between text-xs font-semibold">
+                          <span className={isConnected ? "text-gray-500" : "text-pink-600"}>
+                            {isConnected ? "Connect another" : "Connect now"}
+                          </span>
+                          <Plus className={`h-4 w-4 ${isConnected ? "text-gray-400" : "text-pink-500"} group-hover:scale-110 transition-transform`} />
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          ) : (
+            /* Verification Flow */
+            <div className="max-w-2xl mx-auto">
+              <div className="bg-white rounded-xl border border-gray-100 overflow-hidden shadow-sm">
+                <div className="px-5 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
+                  <div>
+                    <h2 className="text-base font-semibold text-gray-900">Verify {activePlatform} Account</h2>
+                    <p className="text-xs text-gray-500 mt-0.5">Follow the steps below to authenticate your profile</p>
+                  </div>
                   <Button
-                    variant="ghost"
+                    variant="outline"
+                    size="sm"
                     onClick={() => {
                       const params = new URLSearchParams(searchParams.toString());
                       params.delete("platform");
                       router.push(`/dashboard/influencer/platforms?${params.toString()}`);
                     }}
-                    className="text-muted-foreground hover:text-foreground"
+                    className="h-8 text-xs bg-white text-gray-600"
                   >
-                    Back to platforms
+                    Cancel
                   </Button>
                 </div>
-                <SocialVerification
-                  verifiedEmail={userProfile?.email}
-                  contactDetails={contactDetails}
-                  platform={activePlatform}
-                  onVerify={handleVerificationComplete}
-                  onSubmitUrl={handleVerificationComplete}
-                />
+                <div className="p-6 bg-white">
+                  <SocialVerification
+                    verifiedEmail={userProfile?.email}
+                    contactDetails={contactDetails}
+                    platform={activePlatform}
+                    onVerify={handleVerificationComplete}
+                    onSubmitUrl={handleVerificationComplete}
+                  />
+                </div>
               </div>
-            </Card>
-          </motion.div>
-        )}
+            </div>
+          )}
+        </main>
       </div>
     </div>
   );

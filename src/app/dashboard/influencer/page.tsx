@@ -2,8 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { signOut } from "@/lib/supabase";
 import { Database } from "@/types/database.types";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
@@ -11,46 +9,32 @@ import { Badge } from "@/components/ui/badge";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { InfluencerTaskCard } from "@/components/dashboard/influencer-task-card";
-import { SearchInput } from "@/components/ui/search-input";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight } from "lucide-react";
+  ChevronsLeft,
+  ChevronsRight,
+  ChevronLeft,
+  ChevronRight,
+  AlertCircle,
+  Copy,
+  ExternalLink,
+  Search,
+  Filter,
+  ArrowUpDown,
+  X,
+  Wallet,
+  DollarSign,
+  Users,
+  Plus
+} from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Copy, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
+import { InfluencerSidebar, InfluencerTopbar } from "@/components/dashboard/influencer-sidebar";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
+const PINK = "#C8185A";
 const ITEMS_PER_PAGE = 6;
-
-const BlobSVG = ({ color }: { color: string }) => (
-  <svg
-    viewBox="0 0 200 200"
-    className="absolute bottom-0 left-0 w-48 h-48 -mb-12 -ml-12 opacity-15"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <defs>
-      <filter id="glow">
-        <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
-        <feComposite in="SourceGraphic" in2="coloredBlur" operator="over"/>
-        <feMerge>
-          <feMergeNode in="coloredBlur"/>
-          <feMergeNode in="SourceGraphic"/>
-        </feMerge>
-      </filter>
-    </defs>
-    <path
-      fill={color}
-      filter="url(#glow)"
-      d="M52.8,-75.5C68.7,-67.4,81.9,-52.3,89.3,-34.4C96.7,-16.5,98.2,4.3,92.7,23.2C87.2,42.1,74.7,59,58.3,70.3C41.9,81.6,21,87.2,0.7,86.2C-19.5,85.2,-39,77.6,-56.1,66.1C-73.2,54.6,-87.9,39.2,-94.1,20.7C-100.4,2.2,-98.2,-19.4,-88.6,-36.3C-79,-53.2,-62,-65.4,-44.6,-72.7C-27.2,-80,-13.6,-82.4,2.9,-86.8C19.4,-91.2,38.8,-97.7,52.8,-75.5Z"
-      transform="translate(100 100)"
-    />
-  </svg>
-);
 
 const PaginationControls = ({ 
   currentPage, 
@@ -68,50 +52,25 @@ const PaginationControls = ({
   onLastPage: () => void;
 }) => (
   <div className="flex items-center justify-end space-x-2 py-4">
-    <Button
-      variant="outline"
-      size="sm"
-      onClick={onFirstPage}
-      disabled={currentPage === 1}
-      className="h-8 w-8 p-0 rounded-md border border-gray-200 dark:border-gray-800"
-    >
+    <Button variant="outline" size="sm" onClick={onFirstPage} disabled={currentPage === 1} className="h-8 w-8 p-0 rounded-md border border-gray-200">
       <ChevronsLeft className="h-4 w-4" />
     </Button>
-    <Button
-      variant="outline"
-      size="sm"
-      onClick={onPrevPage}
-      disabled={currentPage === 1}
-      className="h-8 w-8 p-0 rounded-md border border-gray-200 dark:border-gray-800"
-    >
+    <Button variant="outline" size="sm" onClick={onPrevPage} disabled={currentPage === 1} className="h-8 w-8 p-0 rounded-md border border-gray-200">
       <ChevronLeft className="h-4 w-4" />
     </Button>
-    <div className="text-sm font-medium px-4">
+    <div className="text-sm font-medium px-4 text-gray-500">
       Page {currentPage} of {totalPages}
     </div>
-    <Button
-      variant="outline"
-      size="sm"
-      onClick={onNextPage}
-      disabled={currentPage === totalPages}
-      className="h-8 w-8 p-0 rounded-md border border-gray-200 dark:border-gray-800"
-    >
+    <Button variant="outline" size="sm" onClick={onNextPage} disabled={currentPage === totalPages} className="h-8 w-8 p-0 rounded-md border border-gray-200">
       <ChevronRight className="h-4 w-4" />
     </Button>
-    <Button
-      variant="outline"
-      size="sm"
-      onClick={onLastPage}
-      disabled={currentPage === totalPages}
-      className="h-8 w-8 p-0 rounded-md border border-gray-200 dark:border-gray-800"
-    >
+    <Button variant="outline" size="sm" onClick={onLastPage} disabled={currentPage === totalPages} className="h-8 w-8 p-0 rounded-md border border-gray-200">
       <ChevronsRight className="h-4 w-4" />
     </Button>
   </div>
 );
 
 type TaskDetail = Database["public"]["Views"]["task_details_view"]["Row"];
-type InfluencerProfile = Database["public"]["Tables"]["influencer_profile"]["Row"];
 type TaskApplication = Database["public"]["Tables"]["task_applications"]["Row"] & {
   application_promises: Database["public"]["Tables"]["application_promises"]["Row"][];
 };
@@ -126,7 +85,6 @@ type ConnectedPlatform = {
   is_verified: boolean;
   url: string;
 };
-
 type BrandSyncLinkEntry = {
   id: number;
   title: string;
@@ -156,12 +114,8 @@ export default function InfluencerDashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [connectedPlatforms, setConnectedPlatforms] = useState<ConnectedPlatform[]>([]);
   const [accountBalance, setAccountBalance] = useState<AccountBalance | null>(null);
-  const [appliedTasks, setAppliedTasks] = useState<
-    (TaskDetail & { application?: TaskApplication })[]
-  >([]);
-  const [availableTasks, setAvailableTasks] = useState<
-    (TaskDetail & { application?: TaskApplication })[]
-  >([]);
+  const [appliedTasks, setAppliedTasks] = useState<(TaskDetail & { application?: TaskApplication })[]>([]);
+  const [availableTasks, setAvailableTasks] = useState<(TaskDetail & { application?: TaskApplication })[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [platformFilter, setPlatformFilter] = useState<string>("ALL");
   const [sortBy, setSortBy] = useState<string>("created_at_desc");
@@ -170,170 +124,88 @@ export default function InfluencerDashboardPage() {
   const [hasIncompleteTask, setHasIncompleteTask] = useState(false);
   const [brandSyncLinks, setBrandSyncLinks] = useState<BrandSyncLinkEntry[]>([]);
   const [isLoadingBrandSyncLinks, setIsLoadingBrandSyncLinks] = useState(true);
-  // Static FX rate from env: 1 USD = NEXT_PUBLIC_LKR_PER_USD LKR
+
   const LKR_PER_USD = Number(process.env.NEXT_PUBLIC_LKR_PER_USD ?? "295");
   const LKR_TO_USD = 1 / (LKR_PER_USD || 295);
+  const MIN_WITHDRAWAL_LKR = 1000;
 
-  // Helper to format LKR amounts as USD using the static rate
   const formatUSD = (lkrAmount: number) => {
     const usd = lkrAmount * LKR_TO_USD;
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      maximumFractionDigits: 2,
-    }).format(usd);
+    return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(usd);
   };
-
-  const MIN_WITHDRAWAL_LKR = 1000;
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setIsLoading(true);
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (!user) {
-          router.push("/auth");
-          return;
-        }
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) { router.push("/auth"); return; }
 
-        // Check for incomplete applications
         const { data: incomplete, error: incompleteError } = await supabase.rpc('has_incomplete_applications');
-        if (!incompleteError && incomplete === true) {
-          setHasIncompleteTask(true);
-        } else {
-          setHasIncompleteTask(false);
-        }
+        setHasIncompleteTask(!incompleteError && incomplete === true);
 
-        // Use Promise.all to fetch all data in parallel
         const [
           balanceResponse,
           verifiedProfilesResponse,
           pendingVerificationsResponse,
           tasksResponse
         ] = await Promise.all([
-          // Fetch account balance
-          supabase
-            .from("account_balance")
-            .select("*")
-            .eq("user_id", user.id)
-            .single(),
-          
-          // Fetch verified profiles
-          supabase
-            .from("influencer_profile")
-            .select("*")
-            .eq("user_id", user.id),
-          
-          // Fetch pending verifications
-          supabase
-            .from("influencer_profile_verification_requests")
-            .select("*")
-            .eq("user_id", user.id)
-            .neq("platform", "YOUTUBE"),
-          
-          // Fetch available tasks with application status
-          supabase
-            .from("task_details_view")
-            .select(`
-              *,
-              applications:task_applications(
-                id,
-                created_at,
-                is_cancelled,
-                application_promises(
-                  platform,
-                  promised_reach,
-                  est_profit
-                )
-              )
-            `)
-            .eq("status", "ACTIVE")
+          supabase.from("account_balance").select("*").eq("user_id", user.id).maybeSingle(),
+          supabase.from("influencer_profile").select("*").eq("user_id", user.id),
+          supabase.from("influencer_profile_verification_requests").select("*").eq("user_id", user.id).neq("platform", "YOUTUBE"),
+          supabase.from("task_details_view").select(`
+            *,
+            applications:task_applications(
+              id, created_at, is_cancelled,
+              application_promises(platform, promised_reach, est_profit)
+            )
+          `).eq("status", "ACTIVE")
         ]);
 
         try {
           const response = await fetch("/api/brandsync-links?scope=public");
           const data = await response.json();
-
-          if (!response.ok) {
-            throw new Error(data.error || "Failed to load BrandSync links");
-          }
+          if (!response.ok) throw new Error(data.error || "Failed to load BrandSync links");
 
           const links: BrandSyncLinkEntry[] = data.links || [];
-
-          // Fetch per-influencer unique tokens for each link in parallel
           const linksWithTokens = await Promise.all(
             links.map(async (link) => {
               try {
-                const tokenResp = await fetch(`/api/brandsync-links/${link.id}/influencer-token`, {
-                  credentials: 'include',
-                });
-                if (tokenResp.ok) {
-                  const tokenData = await tokenResp.json();
-                  return { ...link, uniqueUrl: tokenData.uniqueUrl as string };
-                }
-              } catch {
-                // swallow — fall back to brandSyncUrl
-              }
+                const tokenResp = await fetch(`/api/brandsync-links/${link.id}/influencer-token`, { credentials: 'include' });
+                if (tokenResp.ok) return { ...link, uniqueUrl: (await tokenResp.json()).uniqueUrl as string };
+              } catch {}
               return { ...link, uniqueUrl: link.brandSyncUrl };
             })
           );
-
           setBrandSyncLinks(linksWithTokens);
-        } catch (brandSyncError) {
-          console.error("Error fetching BrandSync links:", brandSyncError);
+        } catch (error) {
+          console.error("Error fetching BrandSync links:", error);
           setBrandSyncLinks([]);
         }
 
         setAccountBalance(balanceResponse.data);
 
-        // Combine verified and pending profiles
         const allPlatforms: ConnectedPlatform[] = [
           ...(verifiedProfilesResponse.data?.map(profile => ({
-            type: 'verified' as const,
-            id: profile.id,
-            platform: profile.platform,
-            name: profile.name,
-            followers: profile.followers,
-            profile_pic: profile.profile_pic,
-            is_verified: profile.is_verified,
-            url: profile.url
+            type: 'verified' as const, id: profile.id, platform: profile.platform, name: profile.name, followers: profile.followers, profile_pic: profile.profile_pic, is_verified: profile.is_verified, url: profile.url
           })) || []),
           ...(pendingVerificationsResponse.data?.map(request => ({
-            type: 'pending' as const,
-            id: request.id,
-            platform: request.platform,
-            is_verified: false,
-            url: request.profile_url
+            type: 'pending' as const, id: request.id, platform: request.platform, is_verified: false, url: request.profile_url
           })) || [])
         ];
-
         setConnectedPlatforms(allPlatforms);
 
         if (tasksResponse.data) {
-          // Split tasks into available and applied
           const available: typeof availableTasks = [];
           const applied: typeof appliedTasks = [];
 
           tasksResponse.data.forEach((task) => {
             const applications = task.applications as TaskApplication[];
-            const userApplication = applications?.find(
-              (app) => !app.is_cancelled
-            );
-
-            const taskWithApp = {
-              ...task,
-              application: userApplication,
-            };
-
-            if (userApplication) {
-              applied.push(taskWithApp);
-            } else {
-              available.push(taskWithApp);
-            }
+            const userApplication = applications?.find(app => !app.is_cancelled);
+            const taskWithApp = { ...task, application: userApplication };
+            if (userApplication) applied.push(taskWithApp);
+            else available.push(taskWithApp);
           });
-
           setAvailableTasks(available);
           setAppliedTasks(applied);
         }
@@ -344,505 +216,250 @@ export default function InfluencerDashboardPage() {
         setIsLoading(false);
       }
     };
-
     fetchData();
   }, [supabase, router]);
 
   useEffect(() => {
     let filtered = [...availableTasks];
-
-    // Apply search filter
     if (searchQuery) {
-      filtered = filtered.filter(
-        task =>
-          task.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          task.description?.toLowerCase().includes(searchQuery.toLowerCase())
+      filtered = filtered.filter(task =>
+        task.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        task.description?.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
-
-    // Apply platform filter
     if (platformFilter !== "ALL") {
       filtered = filtered.filter(task => {
-        const targets = task.targets as Array<{ platform: Database['public']['Enums']['Platforms'] }> | null;
-        return targets?.some(target => target.platform === platformFilter);
+        const targets = task.targets as Array<{ platform: string }> | null;
+        return targets?.some(t => t.platform === platformFilter);
       });
     }
-
-    // Apply sorting
     filtered.sort((a, b) => {
       switch (sortBy) {
-        case "created_at_desc":
-          return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
-        case "created_at_asc":
-          return new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime();
-        case "title_asc":
-          return (a.title || "").localeCompare(b.title || "");
-        case "title_desc":
-          return (b.title || "").localeCompare(a.title || "");
-        default:
-          return 0;
+        case "created_at_desc": return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+        case "created_at_asc": return new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime();
+        case "title_asc": return (a.title || "").localeCompare(b.title || "");
+        case "title_desc": return (b.title || "").localeCompare(a.title || "");
+        default: return 0;
       }
     });
-
     setFilteredTasks(filtered);
-    setCurrentPage(1); // Reset to first page when filters change
+    setCurrentPage(1);
   }, [availableTasks, searchQuery, platformFilter, sortBy]);
 
-  // Pagination calculations
   const totalPages = Math.ceil(filteredTasks.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const endIndex = startIndex + ITEMS_PER_PAGE;
   const currentTasks = filteredTasks.slice(startIndex, endIndex);
 
-  const handleLogout = async () => {
-    console.log("Logging out...");
-    setIsLoading(true);
-    const { error } = await signOut();
-    if (!error) {
-      router.push("/auth");
-      router.refresh();
-    }
-    setIsLoading(false);
-  };
-
-  const handleApplyToTask = (taskId: number) => {
-    router.push(`/dashboard/task/${taskId}/apply`);
-  };
-
-  const getPlatformColor = (
-    platform: Database["public"]["Enums"]["Platforms"]
-  ) => {
-    const colors = {
-      YOUTUBE: "bg-red-500",
-      FACEBOOK: "bg-blue-600",
-      INSTAGRAM: "bg-pink-500",
-      TIKTOK: "bg-black",
+  const getPlatformColor = (platform: string) => {
+    const colors: Record<string, string> = {
+      YOUTUBE: "bg-red-500", FACEBOOK: "bg-blue-600", INSTAGRAM: "bg-pink-500", TIKTOK: "bg-black",
     };
     return colors[platform] || "bg-gray-500";
   };
 
-  const calculateTotalEarnings = (application: TaskApplication) => {
-    return application.application_promises.reduce(
-      (total, promise) => total + parseFloat(promise.est_profit),
-      0
-    );
-  };
-
-  const handleWithdrawal = () => {
-    router.push("/withdraw");
-  };
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen w-full bg-white dark:bg-gray-950">
-        <div className="container mx-auto py-8 px-4">
-          {/* Header skeleton */}
-          <div className="h-8 w-48 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse mb-8" />
-          
-          {/* Stats cards skeleton */}
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-12">
-            {[...Array(3)].map((_, i) => (
-              <Card key={i} className="overflow-hidden border border-gray-100 dark:border-gray-800">
-                <CardHeader>
-                  <div className="h-6 w-32 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" />
-                </CardHeader>
-                <CardContent>
-                  <div className="h-8 w-24 bg-gray-100 dark:bg-gray-800 rounded animate-pulse mb-2" />
-                  <div className="h-4 w-40 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" />
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          {/* Connected platforms skeleton */}
-          <div className="mb-12">
-            <div className="h-8 w-48 bg-gray-100 dark:bg-gray-800 rounded animate-pulse mb-6" />
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {[...Array(3)].map((_, i) => (
-                <Card key={i} className="border border-gray-100 dark:border-gray-800">
-                  <CardContent className="p-4">
-                    <div className="flex items-center space-x-4">
-                      <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-800 animate-pulse" />
-                      <div className="space-y-2">
-                        <div className="h-5 w-24 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" />
-                        <div className="h-4 w-32 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" />
-                        <div className="h-5 w-16 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-
-          {/* Tasks section skeleton */}
-          <div className="mb-12">
-            <div className="h-8 w-48 bg-gray-100 dark:bg-gray-800 rounded animate-pulse mb-6" />
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {[...Array(6)].map((_, i) => (
-                <div key={i} className="h-[420px] bg-gray-100 dark:bg-gray-800 rounded-xl animate-pulse" />
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const handleWithdrawal = () => router.push("/withdraw");
 
   return (
-    <div className="min-h-screen w-full bg-white dark:bg-gray-950">
-      <div className="container mx-auto py-8 px-4">
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8"
-        >
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 text-center sm:text-left">
-            Influencer Dashboard
-          </h1>
-          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-            <Link href="/dashboard/influencer/platforms">
-              <Button 
-                className="w-full sm:w-auto bg-pink-600 hover:bg-pink-700 text-white shadow-sm hover:shadow-md transition-all duration-300"
-              >
-                Connect New Account
-              </Button>
-            </Link>
-            <Button 
-              variant="outline" 
-              onClick={handleLogout}
-              disabled={isLoading}
-              className="w-full sm:w-auto border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-900"
+    <div className="flex h-screen bg-[#fafafa] font-sans overflow-hidden">
+      <InfluencerSidebar activePage="dashboard" />
+      
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <InfluencerTopbar 
+          title="Dashboard" 
+          actions={
+            <Button
+              onClick={() => router.push("/dashboard/influencer/platforms")}
+              className="h-9 px-4 text-sm font-semibold text-white rounded-lg shadow-sm"
+              style={{ background: PINK }}
             >
-              {isLoading ? 'Logging out...' : 'Logout'}
+              <Plus className="h-4 w-4 sm:mr-1.5" />
+              <span className="hidden sm:inline">Connect Platform</span>
             </Button>
-          </div>
-        </motion.div>
-
-        {/* Stats Cards */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-12"
-        >
-          <Card className="border-0 bg-pink-50 dark:bg-pink-950/20 overflow-hidden relative">
-            <BlobSVG color="#ec4899" />
-            <CardHeader>
-              <CardTitle className="text-pink-900 dark:text-pink-100">Available Balance</CardTitle>
-            </CardHeader>
-            <CardContent className="relative">
-              <div className="flex flex-col">
-                <p className="text-4xl font-bold text-pink-700 dark:text-pink-300">
-                  {formatUSD(accountBalance?.balance || 0)}
-                </p>
-                <p className="text-sm text-pink-700/80 dark:text-pink-300/80 mt-1">
-                  {new Intl.NumberFormat("en-LK", {
-                  style: "currency",
-                  currency: "LKR",
-                  maximumFractionDigits: 0,
-                  }).format(accountBalance?.balance || 0)}
-                </p>
-                <p className="text-sm text-pink-600/80 dark:text-pink-300/80 mt-1">
-                  Available for withdrawal
-                </p>
-                {(accountBalance?.balance || 0) < 1000 ? (
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        className="mt-4 bg-pink-600 hover:bg-pink-700 text-white"
-                      >
-                        Withdraw Funds
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-80">
-                      <div className="space-y-2">
-                        <h4 className="font-medium text-sm">Minimum Withdrawal Amount</h4>
-                        <p className="text-sm text-muted-foreground">
-                          {`You need a minimum balance of ${formatUSD(MIN_WITHDRAWAL_LKR)} to make a withdrawal. Your current balance is ${formatUSD(accountBalance?.balance || 0)}.`}
-                        </p>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                ) : (
-                  <Button
-                    onClick={handleWithdrawal}
-                    className="mt-4 bg-pink-600 hover:bg-pink-700 text-white"
-                  >
-                    Withdraw Funds
-                  </Button>
-                )}
+          } 
+        />
+        
+        <main className="flex-1 overflow-y-auto p-4 lg:p-6 space-y-6">
+          {isLoading ? (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {[...Array(3)].map((_, i) => <div key={i} className="h-32 bg-white rounded-xl border border-gray-100 animate-pulse" />)}
               </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-0 bg-blue-50 dark:bg-blue-950/20 overflow-hidden relative">
-            <BlobSVG color="#0ea5e9" />
-            <CardHeader>
-              <CardTitle className="text-blue-900 dark:text-blue-100">Total Earnings</CardTitle>
-            </CardHeader>
-            <CardContent className="relative">
-              <p className="text-4xl font-bold text-blue-700 dark:text-blue-300">
-                {formatUSD(accountBalance?.total_earning || 0)}
-              </p>
-              <p className="text-sm text-blue-600/80 dark:text-blue-300/80 mt-1">Lifetime earnings</p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-0 bg-indigo-50 dark:bg-indigo-950/20 overflow-hidden relative">
-            <BlobSVG color="#6366f1" />
-            <CardHeader>
-              <CardTitle className="text-indigo-900 dark:text-indigo-100">Connected Accounts</CardTitle>
-            </CardHeader>
-            <CardContent className="relative">
-              <p className="text-4xl font-bold text-indigo-700 dark:text-indigo-300">
-                {connectedPlatforms.length}
-              </p>
-              <p className="text-sm text-indigo-600/80 dark:text-indigo-300/80 mt-1">Active platforms</p>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* BrandSync Links */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.15 }}
-          className="mb-12"
-        >
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">BrandSync Links</h2>
-              <p className="text-muted-foreground mt-1">Latest buyer-created links you can open directly</p>
-            </div>
-          </div>
-
-          {isLoadingBrandSyncLinks ? (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {[...Array(3)].map((_, index) => (
-                <Card key={index} className="border border-gray-200 dark:border-gray-800 overflow-hidden">
-                  <CardContent className="p-4">
-                    <div className="h-40 rounded-lg bg-gray-100 dark:bg-gray-800 animate-pulse" />
-                    <div className="mt-4 h-4 w-3/4 rounded bg-gray-100 dark:bg-gray-800 animate-pulse" />
-                    <div className="mt-2 h-3 w-1/2 rounded bg-gray-100 dark:bg-gray-800 animate-pulse" />
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : brandSyncLinks.length > 0 ? (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {brandSyncLinks.map((link) => (
-                <motion.div
-                  key={link.id}
-                  whileHover={{ scale: 1.01 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <Card className="h-full overflow-hidden border border-pink-100 dark:border-pink-900/20 bg-white dark:bg-gray-900 hover:shadow-lg transition-shadow">
-                    {link.thumbnailUrl ? (
-                      <img
-                        src={link.thumbnailUrl}
-                        alt={link.title}
-                        className="h-44 w-full object-cover"
-                      />
-                    ) : (
-                      <div className="h-44 w-full bg-gradient-to-br from-pink-100 to-pink-50 dark:from-pink-950/40 dark:to-gray-900" />
-                    )}
-                    <CardContent className="p-4 space-y-3">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <h3 className="font-semibold text-gray-900 dark:text-gray-100 truncate">{link.title}</h3>
-                          <p className="text-sm text-muted-foreground">{link.platform}</p>
-                        </div>
-                        <Badge variant="secondary" className="shrink-0">
-                          {link.platform}
-                        </Badge>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <Button type="button" asChild className="flex-1 bg-pink-600 hover:bg-pink-700 text-white">
-                          <a href={link.uniqueUrl || link.brandSyncUrl} target="_blank" rel="noopener noreferrer">
-                            <ExternalLink className="mr-2 h-4 w-4" />
-                            Open My Link
-                          </a>
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={async () => {
-                            await navigator.clipboard.writeText(link.uniqueUrl || link.brandSyncUrl);
-                            toast.success("Your unique link copied!");
-                          }}
-                          title="Copy your unique link"
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
+              <div className="h-64 bg-white rounded-xl border border-gray-100 animate-pulse" />
             </div>
           ) : (
-            <Card className="border border-dashed border-pink-200 dark:border-pink-900/30 bg-pink-50/40 dark:bg-pink-950/10">
-              <CardContent className="py-10 text-center">
-                <p className="font-medium text-gray-900 dark:text-gray-100">No BrandSync links yet</p>
-                <p className="text-sm text-muted-foreground mt-1">Buyers will see new links here once they create them.</p>
-              </CardContent>
-            </Card>
-          )}
-        </motion.div>
+            <>
+              {/* Stat Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {/* Available Balance */}
+                <div className="bg-white rounded-xl border border-gray-100 p-5 relative overflow-hidden">
+                  <div className="absolute top-4 right-4 w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: '#fff0f6' }}>
+                    <Wallet className="h-4 w-4" style={{ color: PINK }} />
+                  </div>
+                  <p className="text-sm text-gray-500 font-medium">Available Balance</p>
+                  <p className="text-4xl font-bold mt-1 text-gray-900">{formatUSD(accountBalance?.balance || 0)}</p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    {new Intl.NumberFormat("en-LK", { style: "currency", currency: "LKR", maximumFractionDigits: 0 }).format(accountBalance?.balance || 0)} LKR
+                  </p>
+                  <div className="mt-4">
+                    {(accountBalance?.balance || 0) < MIN_WITHDRAWAL_LKR ? (
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button className="w-full text-xs font-semibold py-1.5 h-8 bg-pink-50 text-pink-700 hover:bg-pink-100 border-none shadow-none">
+                            Withdraw Funds
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-72 text-xs">
+                          <p className="font-semibold text-gray-900 mb-1">Minimum Withdrawal</p>
+                          <p className="text-gray-500">You need {formatUSD(MIN_WITHDRAWAL_LKR)} to withdraw. Current: {formatUSD(accountBalance?.balance || 0)}.</p>
+                        </PopoverContent>
+                      </Popover>
+                    ) : (
+                      <Button onClick={handleWithdrawal} className="w-full text-xs font-semibold py-1.5 h-8 text-white shadow-sm" style={{ background: PINK }}>
+                        Withdraw Funds
+                      </Button>
+                    )}
+                  </div>
+                  <div className="absolute -bottom-4 -right-4 w-20 h-20 rounded-full opacity-5" style={{ background: PINK }} />
+                </div>
 
-        {/* Connected Social Media Accounts */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="mb-12"
-        >
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">Connected Platforms</h2>
-          </div>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {connectedPlatforms.map((platform) => (
-              <motion.div
-                key={`${platform.type}-${platform.id}`}
-                whileHover={{ scale: 1.02 }}
-                transition={{ duration: 0.2 }}
-              >
-                <Card className="border border-gray-200 dark:border-gray-800 hover:border-pink-200 dark:hover:border-pink-800 transition-all bg-white dark:bg-gray-900">
-                  <CardContent className="p-4">
-                    <div className="flex items-center space-x-4">
-                      <div
-                        className={`w-12 h-12 rounded-full flex items-center justify-center text-white overflow-hidden ${
-                          !platform.profile_pic
-                            ? getPlatformColor(platform.platform)
-                            : ""
-                        }`}
-                      >
-                        {platform.profile_pic ? (
-                          <img
-                            src={platform.profile_pic}
-                            alt={platform.name || 'Profile'}
-                            className="w-full h-full object-cover"
-                          />
+                {/* Total Earnings */}
+                <div className="bg-white rounded-xl border border-gray-100 p-5 relative overflow-hidden">
+                  <div className="absolute top-4 right-4 w-8 h-8 rounded-lg flex items-center justify-center bg-blue-50">
+                    <DollarSign className="h-4 w-4 text-blue-500" />
+                  </div>
+                  <p className="text-sm text-gray-500 font-medium">Lifetime Earnings</p>
+                  <p className="text-4xl font-bold mt-1 text-gray-900">{formatUSD(accountBalance?.total_earning || 0)}</p>
+                  <p className="text-xs text-gray-400 mt-1">Across all completed tasks</p>
+                  <div className="absolute -bottom-4 -right-4 w-20 h-20 rounded-full opacity-5 bg-blue-500" />
+                </div>
+
+                {/* Connected Accounts */}
+                <div className="bg-white rounded-xl border border-gray-100 p-5 relative overflow-hidden">
+                  <div className="absolute top-4 right-4 w-8 h-8 rounded-lg flex items-center justify-center bg-indigo-50">
+                    <Users className="h-4 w-4 text-indigo-500" />
+                  </div>
+                  <p className="text-sm text-gray-500 font-medium">Connected Accounts</p>
+                  <p className="text-4xl font-bold mt-1 text-gray-900">{connectedPlatforms.length}</p>
+                  <p className="text-xs text-gray-400 mt-1">Active linked platforms</p>
+                  <div className="absolute -bottom-4 -right-4 w-20 h-20 rounded-full opacity-5 bg-indigo-500" />
+                </div>
+              </div>
+
+              {/* BrandSync Links */}
+              <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+                <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+                  <div>
+                    <h2 className="text-base font-semibold text-gray-900">BrandSync Links</h2>
+                    <p className="text-xs text-gray-500 mt-0.5">Your unique tracking links for active campaigns.</p>
+                  </div>
+                </div>
+                <div className="p-5">
+                  {isLoadingBrandSyncLinks ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {[...Array(3)].map((_, i) => <div key={i} className="h-40 bg-gray-50 rounded-lg animate-pulse" />)}
+                    </div>
+                  ) : brandSyncLinks.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {brandSyncLinks.map((link) => (
+                        <div key={link.id} className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:border-pink-200 transition-colors">
+                          {link.thumbnailUrl ? (
+                            <img src={link.thumbnailUrl} alt={link.title} className="h-32 w-full object-cover" />
+                          ) : (
+                            <div className="h-32 w-full bg-gradient-to-br from-pink-50 to-pink-100 flex items-center justify-center">
+                              <ExternalLink className="h-8 w-8 text-pink-200" />
+                            </div>
+                          )}
+                          <div className="p-4">
+                            <div className="flex items-start justify-between mb-3">
+                              <h3 className="font-semibold text-sm text-gray-900 truncate pr-2">{link.title}</h3>
+                              <Badge variant="secondary" className="text-[10px] shrink-0">{link.platform}</Badge>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Button asChild className="flex-1 text-xs h-8 shadow-sm text-white" style={{ background: PINK }}>
+                                <a href={link.uniqueUrl || link.brandSyncUrl} target="_blank" rel="noopener noreferrer">
+                                  <ExternalLink className="mr-1.5 h-3.5 w-3.5" /> Open
+                                </a>
+                              </Button>
+                              <Button
+                                variant="outline"
+                                className="h-8 w-8 p-0 shrink-0 text-gray-500"
+                                onClick={async () => {
+                                  await navigator.clipboard.writeText(link.uniqueUrl || link.brandSyncUrl);
+                                  toast.success("Link copied!");
+                                }}
+                              >
+                                <Copy className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-10 bg-gray-50 rounded-lg border border-dashed border-gray-200">
+                      <p className="text-sm font-semibold text-gray-700">No links yet</p>
+                      <p className="text-xs text-gray-500 mt-1">Check back when you have an active campaign.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Connected Platforms */}
+              <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+                <div className="px-5 py-4 border-b border-gray-100 bg-gray-50/50">
+                  <h2 className="text-base font-semibold text-gray-900">Connected Platforms</h2>
+                </div>
+                <div className="p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {connectedPlatforms.map((platform) => (
+                    <div key={`${platform.type}-${platform.id}`} className="flex items-center gap-3 p-3 rounded-lg border border-gray-100 bg-white shadow-sm">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-xs overflow-hidden ${!platform.profile_pic ? getPlatformColor(platform.platform) : ""}`}>
+                        {platform.profile_pic ? <img src={platform.profile_pic} alt={platform.name || 'Profile'} className="w-full h-full object-cover" /> : platform.platform.charAt(0)}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-gray-900 truncate">{platform.name || 'Unknown'}</p>
+                        <p className="text-[10px] text-gray-500">{platform.followers ? `${platform.followers} followers` : 'Pending'}</p>
+                      </div>
+                      <div className="shrink-0">
+                        {platform.type === 'pending' ? (
+                          <span className="text-[10px] font-semibold bg-yellow-50 text-yellow-700 px-2 py-1 rounded-md border border-yellow-100">Requested</span>
+                        ) : platform.is_verified ? (
+                          <span className="text-[10px] font-semibold bg-green-50 text-green-700 px-2 py-1 rounded-md border border-green-100">Verified</span>
                         ) : (
-                          platform.platform.charAt(0)
+                          <span className="text-[10px] font-semibold bg-gray-50 text-gray-600 px-2 py-1 rounded-md border border-gray-200">Pending</span>
                         )}
                       </div>
-                      <div>
-                        <h3 className="font-semibold text-gray-900 dark:text-gray-100">
-                          {platform.name || 'Unknown'}
-                        </h3>
-                        <p className="text-sm text-muted-foreground">
-                          {platform.followers ? `${platform.followers} followers` : 'Pending verification'}
-                        </p>
-                        <Badge
-                          variant={platform.is_verified ? "success" : "secondary"}
-                          className={`pointer-events-none select-none ${
-                            platform.is_verified
-                              ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                              : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
-                          }`}
-                        >
-                          {platform.type === 'pending' ? 'Verification Requested' : (platform.is_verified ? "Verified" : "Pending")}
-                        </Badge>
-                      </div>
                     </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
-
-        {/* Applied Tasks */}
-        {appliedTasks.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="mb-12"
-          >
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">Active Applications</h2>
-                <p className="text-muted-foreground mt-1">Tasks you've applied for</p>
-              </div>
-            </div>
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {appliedTasks.map((task, index) => (
-                <motion.div
-                  key={task.task_id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 * index }}
-                >
-                  <InfluencerTaskCard task={task} application={task.application} />
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
-        )}
-
-        {/* Tasks Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-        >
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
-            <div>
-              <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">Available Tasks</h2>
-              <p className="text-muted-foreground mt-1">Find opportunities that match your profile</p>
-            </div>
-          </div>
-          {hasIncompleteTask && (
-            <div className="mb-6">
-              <Alert variant="destructive" className="bg-pink-50 dark:bg-pink-900/20 border-pink-200 dark:border-pink-900 flex items-center">
-                <AlertCircle className="h-6 w-6 text-pink-600 dark:text-pink-400" />
-                <div>
-                  <AlertTitle className="text-pink-700 dark:text-pink-300">Complete Your Current Task</AlertTitle>
-                  <AlertDescription>
-                    You must complete your already applied task before applying for new tasks. As your profile grows, you can handle more tasks at once.
-                  </AlertDescription>
+                  ))}
                 </div>
-              </Alert>
-            </div>
-          )}
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {currentTasks.map((task, index) => (
-              <motion.div
-                key={task.task_id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 * index }}
-              >
-                <InfluencerTaskCard task={task} />
-              </motion.div>
-            ))}
-            {filteredTasks.length === 0 && (
-              <div className="col-span-full text-center py-12">
-                <p className="text-muted-foreground">
-                  {availableTasks.length === 0 
-                    ? "No tasks available at the moment. Check back later!"
-                    : "No tasks match your search criteria."
-                  }
-                </p>
               </div>
-            )}
-          </div>
 
-          {filteredTasks.length > ITEMS_PER_PAGE && (
-            <PaginationControls
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onFirstPage={() => setCurrentPage(1)}
-              onPrevPage={() => setCurrentPage(p => Math.max(1, p - 1))}
-              onNextPage={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-              onLastPage={() => setCurrentPage(totalPages)}
-            />
+              {/* Applied Tasks */}
+              {appliedTasks.length > 0 && (
+                <div>
+                  <h2 className="text-base font-semibold text-gray-900 mb-3 pl-1">Active Applications</h2>
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {appliedTasks.map((task) => (
+                      <InfluencerTaskCard key={task.task_id} task={task} application={task.application} />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+
+            </>
           )}
-        </motion.div>
+
+          {/* Footer */}
+          <footer className="flex items-center justify-between text-xs text-gray-400 pt-2 pb-4">
+            <span>© {new Date().getFullYear()} BrandSync Platform. All rights reserved.</span>
+            <div className="flex items-center gap-4">
+              <button className="hover:text-gray-600 transition-colors">Terms</button>
+              <button className="hover:text-gray-600 transition-colors">Privacy</button>
+              <button className="hover:text-gray-600 transition-colors">Support</button>
+            </div>
+          </footer>
+        </main>
       </div>
     </div>
   );
