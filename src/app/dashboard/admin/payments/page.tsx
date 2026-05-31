@@ -139,20 +139,29 @@ export default function AdminPaymentsPage() {
         status: statuses?.find(status => status.transfer_id === slip.id)
       })) as PaymentWithDetails[];
 
-      // Fetch BrandSync bank transfer slips
-      const { data: bsSlips, error: bsError } = await supabase
-        .from('brandsync_bank_transfer_slips')
-        .select(`*, brandsync:brandsync_links(id, title, amount, user_id)`)
+      // Fetch BrandSync bank transfer slips using the shared bank_transfer_slip table
+      const { data: bsSlips, error: bsError } = await (supabase as any)
+        .from('bank_transfer_slip')
+        .select('*, brandsync_id, brandsync:brandsync_links(id, title, amount, user_id)')
+        .not('brandsync_id', 'is', null)
         .order('created_at', { ascending: false });
 
       if (bsError) throw bsError;
 
+      const brandSyncSlipIds = (bsSlips || []).map((s: any) => s.id);
+      const { data: bsStatuses } = brandSyncSlipIds.length
+        ? await (supabase as any)
+            .from('bank_transfer_status')
+            .select('id, status, reviewed_at, reviewed_by, transfer_id')
+            .in('transfer_id', brandSyncSlipIds)
+        : { data: [] };
+
       const brandSyncPayments = (bsSlips || []).map((s: any) => ({
         id: s.id,
-        slip: s.slip_path,
+        slip: s.slip,
         created_at: s.created_at,
         slipUrl: null,
-        status: { status: s.status, reviewed_at: null, reviewed_by: null },
+        status: bsStatuses?.find((status: any) => status.transfer_id === s.id) || null,
         task: {
           title: s.brandsync?.title || 'BrandSync',
           description: null,
