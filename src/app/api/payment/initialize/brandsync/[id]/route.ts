@@ -5,14 +5,15 @@ import { Database } from "@/types/database.types";
 import { getPaymentEnvironmentVariables, generatePayHereHash } from "@/lib/utils/payment";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const id = Number(params.id);
+    const { id: idParam } = await params;
+    const id = Number(idParam);
     if (!id) return NextResponse.json({ error: 'Invalid BrandSync id' }, { status: 400 });
 
     const { data: row, error } = await supabaseAdmin
       .from('brandsync_links')
-      .select('id, title, platform, amount, user_id')
+      .select('id, title, platform, amount, user_id, is_paid')
       .eq('id', id)
       .single();
 

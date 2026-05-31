@@ -5,12 +5,13 @@ import { headers } from 'next/headers';
 
 export const dynamic = "force-dynamic";
 
-export default async function BrandSyncRedirectPage({ params }: { params: { token: string } }) {
+export default async function BrandSyncRedirectPage({ params }: { params: Promise<{ token: string }> }) {
+  const { token } = await params;
   // try to resolve a stored BrandSync link first (only paid links should be public)
   const { data } = await supabaseAdmin
     .from("brandsync_links")
     .select("id, platform_url, is_paid")
-    .eq("token", params.token)
+    .eq("token", token)
     .maybeSingle();
 
   const hdrs: any = headers();
@@ -50,7 +51,7 @@ export default async function BrandSyncRedirectPage({ params }: { params: { toke
 
   // fallback: token might be an encoded URL
   try {
-    const targetUrl = decodeBrandSyncToken(params.token);
+    const targetUrl = decodeBrandSyncToken(token);
 
     if (!/^https?:\/\//i.test(targetUrl)) {
       redirect("/dashboard/buyer");

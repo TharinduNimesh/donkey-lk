@@ -4,6 +4,7 @@ import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 import { Database } from "@/types/database.types";
 import { generatePayHereHash, getPaymentEnvironmentVariables } from "@/lib/utils/payment";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import crypto from 'crypto';
 
 export async function POST(req: NextRequest) {
   try {
@@ -22,7 +23,7 @@ export async function POST(req: NextRequest) {
     const amount = shares * 6; // LKR
 
     // Create pending BrandSync row
-    const { data: created, error: insertError } = await supabaseAdmin
+    const { data: created, error: insertError } = await (supabaseAdmin as any)
       .from('brandsync_links')
       .insert({
         token: crypto.randomUUID().replace(/-/g, ''),
@@ -87,5 +88,3 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Internal server error' }, { status: 500 });
   }
 }
-
-import crypto from 'crypto';

@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { sendMail } from '@/lib/utils/email';
-import { Database } from '@/types/database.types';
 
-export async function POST(req: NextRequest, { params }: { params: { slipId: string } }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ slipId: string }> }) {
   try {
-    const slipId = Number(params.slipId);
+    const { slipId: slipIdParam } = await params;
+    const slipId = Number(slipIdParam);
     if (!slipId) return NextResponse.json({ error: 'Invalid slip id' }, { status: 400 });
 
     const body = await req.json();
@@ -13,13 +13,19 @@ export async function POST(req: NextRequest, { params }: { params: { slipId: str
     const reason = body.reason as string | undefined;
 
     // Fetch slip and brandsync link
-    const { data: slip } = await supabaseAdmin
-      .from('brandsync_bank_transfer_slips')
-      .select('id, brandsync_id, slip_path, status, created_at')
+    const { data: slip } = await (supabaseAdmin as any)
+      .from('bank_transfer_slip')
+      .select('id, brandsync_id, slip, created_at')
       .eq('id', slipId)
       .single();
 
     if (!slip) return NextResponse.json({ error: 'Slip not found' }, { status: 404 });
+
+    const { data: slipStatus } = await (supabaseAdmin as any)
+      .from('bank_transfer_status')
+      .select('id, status, reviewed_at, reviewed_by, transfer_id')
+      .eq('transfer_id', slipId)
+      .single();
 
     const { data: link } = await supabaseAdmin
       .from('brandsync_links')
@@ -31,10 +37,10 @@ export async function POST(req: NextRequest, { params }: { params: { slipId: str
 
     if (action === 'accept') {
       // mark slip accepted and mark link as paid
-      const { error: u1 } = await supabaseAdmin
-        .from('brandsync_bank_transfer_slips')
-        .update({ status: 'ACCEPTED' })
-        .eq('id', slipId);
+      const { error: u1 } = await (supabaseAdmin as any)
+        .from('bank_transfer_status')
+        .update({ status: 'ACCEPTED', reviewed_at: new Date().toISOString() })
+        .eq('transfer_id', slipId);
       if (u1) throw u1;
 
       const { error: u2 } = await supabaseAdmin
@@ -69,10 +75,10 @@ export async function POST(req: NextRequest, { params }: { params: { slipId: str
       return NextResponse.json({ status: 'ok' });
     } else {
       // reject: mark slip rejected
-      const { error } = await supabaseAdmin
-        .from('brandsync_bank_transfer_slips')
-        .update({ status: 'REJECTED' })
-        .eq('id', slipId);
+      const { error } = await (supabaseAdmin as any)
+        .from('bank_transfer_status')
+        .update({ status: 'REJECTED', reviewed_at: new Date().toISOString() })
+        .eq('transfer_id', slipId);
       if (error) throw error;
 
       // send rejection email

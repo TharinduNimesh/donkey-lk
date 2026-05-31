@@ -1,9 +1,8 @@
-"use client"
-
 import Link from "next/link";
 
-export default function BrandSyncErrorPage({ searchParams }: { searchParams?: { code?: string } }) {
-  const code = searchParams?.code || '';
+export default async function BrandSyncErrorPage({ searchParams }: { searchParams?: Promise<{ code?: string }> }) {
+  const resolvedSearchParams = (await searchParams) || {};
+  const code = resolvedSearchParams.code || '';
 
   let title = 'Link unavailable';
   let message = 'This BrandSync link is not available.';

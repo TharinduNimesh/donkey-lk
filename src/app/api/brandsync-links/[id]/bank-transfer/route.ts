@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const formData = await request.formData();
     const file = formData.get('slip');
 
@@ -10,7 +11,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
       return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
     }
 
-    const brandsyncId = Number(params.id);
+    const brandsyncId = Number(id);
     if (!brandsyncId) {
       return NextResponse.json({ error: 'Invalid BrandSync ID' }, { status: 400 });
     }
@@ -27,10 +28,10 @@ export async function POST(request: Request, { params }: { params: { id: string 
       return NextResponse.json({ error: 'Failed to upload slip' }, { status: 500 });
     }
 
-    const { data, error: insertError } = await supabaseAdmin
-      .from('brandsync_bank_transfer_slips')
-      .insert({ brandsync_id: brandsyncId, slip_path: filePath })
-      .select('id, brandsync_id, slip_path, status, created_at')
+    const { data, error: insertError } = await (supabaseAdmin as any)
+      .from('bank_transfer_slip')
+      .insert({ brandsync_id: brandsyncId, slip: filePath })
+      .select('id, brandsync_id, slip, created_at')
       .single();
 
     if (insertError) {
