@@ -1,34 +1,29 @@
 "use client";
 
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import {
   LayoutDashboard,
-  BarChart2,
   Megaphone,
-  Link2,
-  ListChecks,
-  Settings,
   LogOut,
   HelpCircle,
   X,
   Menu,
   Bell,
-  ShieldCheck,
-  Plus,
+  CheckCircle,
+  Settings,
+  Share2
 } from "lucide-react";
 import { signOut } from "@/lib/supabase";
-import { Button } from "@/components/ui/button";
 
 const PINK = "#C8185A";
 
 type SidebarProps = {
-  activePage?: "dashboard" | "links" | "tasks" | "analytics" | "campaigns" | "settings";
-  linksCount?: number;
+  activePage?: "dashboard" | "tasks" | "platforms" | "settings";
   onNavigate?: () => void;
 };
 
-const SidebarNav = ({ activePage, linksCount, onNavigate }: SidebarProps) => {
+const SidebarNav = ({ activePage, onNavigate }: SidebarProps) => {
   const router = useRouter();
 
   const go = (path: string) => {
@@ -37,18 +32,16 @@ const SidebarNav = ({ activePage, linksCount, onNavigate }: SidebarProps) => {
   };
 
   const mainNav = [
-    { icon: LayoutDashboard, label: "Dashboard", page: "dashboard" as const, path: "/dashboard/buyer" },
-    { icon: BarChart2, label: "Analytics", page: "analytics" as const, path: "/dashboard/buyer/analytics" },
-    { icon: Megaphone, label: "Campaigns", page: "campaigns" as const, path: "/dashboard/buyer/campaigns" },
+    { icon: LayoutDashboard, label: "Dashboard", page: "dashboard" as const, path: "/dashboard/influencer" },
+    { icon: Megaphone, label: "Available Tasks", page: "tasks" as const, path: "/dashboard/influencer/tasks" },
   ];
 
   const mgmtNav = [
-    { icon: Link2, label: "All Links", page: "links" as const, path: "/dashboard/buyer/links", badge: linksCount },
-    { icon: ListChecks, label: "All Tasks", page: "tasks" as const, path: "/dashboard/buyer/all-tasks" },
-    { icon: Settings, label: "Brand Settings", page: "settings" as const, path: "/dashboard/buyer/settings" },
+    { icon: Share2, label: "Platforms", page: "platforms" as const, path: "/dashboard/influencer/platforms" },
+    { icon: Settings, label: "Settings", page: "settings" as const, path: "/dashboard/influencer/settings" },
   ];
 
-  const NavBtn = ({ icon: Icon, label, page, path, badge }: { icon: any; label: string; page: string; path: string; badge?: number }) => {
+  const NavBtn = ({ icon: Icon, label, page, path }: { icon: any; label: string; page: string; path: string }) => {
     const isActive = activePage === page;
     return (
       <button
@@ -60,14 +53,6 @@ const SidebarNav = ({ activePage, linksCount, onNavigate }: SidebarProps) => {
       >
         <Icon className="h-4 w-4 flex-shrink-0" />
         <span>{label}</span>
-        {badge !== undefined && badge > 0 && (
-          <span
-            className="ml-auto text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
-            style={isActive ? { background: "rgba(255,255,255,0.25)", color: "white" } : { background: "#f3f4f6", color: "#4b5563" }}
-          >
-            {badge}
-          </span>
-        )}
       </button>
     );
   };
@@ -111,21 +96,13 @@ const SidebarNav = ({ activePage, linksCount, onNavigate }: SidebarProps) => {
   );
 };
 
-export function BuyerSidebar({
+export function InfluencerSidebar({
   activePage = "dashboard",
-  linksCount,
 }: {
   activePage?: SidebarProps["activePage"];
-  linksCount?: number;
 }) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
-
-  const handleLogout = async () => {
-    await signOut();
-    router.push("/auth");
-    router.refresh();
-  };
 
   return (
     <>
@@ -143,22 +120,15 @@ export function BuyerSidebar({
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <SidebarNav activePage={activePage} linksCount={linksCount} onNavigate={() => setOpen(false)} />
+        <SidebarNav activePage={activePage} onNavigate={() => setOpen(false)} />
       </aside>
 
       {/* Desktop sidebar */}
       <aside className="hidden lg:flex w-52 bg-white border-r border-gray-100 flex-col flex-shrink-0">
-        <SidebarNav activePage={activePage} linksCount={linksCount} />
+        <SidebarNav activePage={activePage} />
       </aside>
 
-      {/* Top header bar (exported for use in each page) */}
-      <div
-        id="buyer-topbar-trigger"
-        data-open={open}
-        style={{ display: "none" }}
-      />
-
-      {/* Floating hamburger for mobile — rendered here so it's always available */}
+      {/* Floating hamburger for mobile */}
       <button
         onClick={() => setOpen(true)}
         className="lg:hidden fixed top-3 left-4 z-30 w-9 h-9 flex items-center justify-center rounded-lg bg-white border border-gray-200 text-gray-500 shadow-sm"
@@ -170,8 +140,7 @@ export function BuyerSidebar({
   );
 }
 
-// Reusable top header that pairs with BuyerSidebar
-export function BuyerTopbar({
+export function InfluencerTopbar({
   title,
   actions,
 }: {
@@ -192,8 +161,8 @@ export function BuyerTopbar({
         {/* Spacer for mobile hamburger */}
         <div className="w-9 lg:hidden" />
         <span className="hidden sm:flex items-center gap-1.5 text-sm font-medium text-gray-600 bg-gray-50 border border-gray-200 rounded-full px-3 py-1">
-          <ShieldCheck className="h-3.5 w-3.5" style={{ color: PINK }} />
-          Enterprise Portal
+          <CheckCircle className="h-3.5 w-3.5 text-green-500" />
+          Influencer Portal
         </span>
         {title && <h1 className="text-base font-semibold text-gray-800 lg:hidden">{title}</h1>}
       </div>
