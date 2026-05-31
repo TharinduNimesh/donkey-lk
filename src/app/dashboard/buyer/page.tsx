@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from 'sonner';
@@ -10,7 +10,7 @@ import { TaskCard } from "@/components/dashboard/task-card";
 import { Database } from "@/types/database.types";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { motion } from "framer-motion";
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ExternalLink } from "lucide-react";
 import { CircularProgressbar, buildStyles } from 'react-circular-progressbar';
 import 'react-circular-progressbar/dist/styles.css';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -23,9 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, SlidersHorizontal } from "lucide-react";
 import { SearchInput } from "@/components/ui/search-input";
-import { BrandSyncLinkModal } from "@/components/dashboard/brandsync-link-modal";
 
 const ITEMS_PER_PAGE = 6;
 
@@ -80,14 +78,23 @@ export default function BuyerDashboardPage() {
   const [filteredTasks, setFilteredTasks] = useState<TaskDetail[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [showPlatformModal, setShowPlatformModal] = useState(false);
-  const [showBrandSyncModal, setShowBrandSyncModal] = useState(false);
-  const [brandSyncLinks, setBrandSyncLinks] = useState<Array<{ id: number; title: string; platform: string; brandSyncUrl: string; thumbnailUrl?: string | null; shares?: number; isPaid?: boolean; amount?: number;}>>([]);
+  const [brandSyncLinks, setBrandSyncLinks] = useState<Array<{ id: number; title: string; platform: string; brandSyncUrl: string; platformUrl?: string | null; thumbnailUrl?: string | null; shares?: number; isPaid?: boolean; amount?: number;}>>([]);
   const [isLoadingLinks, setIsLoadingLinks] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<Record<number, number>>({});
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [platformFilter, setPlatformFilter] = useState<string>("ALL");
   const [sortBy, setSortBy] = useState<string>("created_at_desc");
+
+  const searchParams = useSearchParams();
+
+  // Show toast when returning from PayHere after BrandSync payment
+  useEffect(() => {
+    if (searchParams.get('payment') === 'success') {
+      toast.success('🎉 Payment successful! Your BrandSync link is now active.');
+      router.replace('/dashboard/buyer');
+    }
+  }, [searchParams, router]);
 
   useEffect(() => {
     const fetchTasks = async () => {
@@ -368,7 +375,7 @@ export default function BuyerDashboardPage() {
             </Button>
             <Button
               variant="outline"
-              onClick={() => setShowBrandSyncModal(true)}
+              onClick={() => router.push('/dashboard/buyer/brandsync')}
               className="w-full sm:w-auto border-pink-200 text-pink-700 hover:bg-pink-50 dark:border-pink-800 dark:text-pink-300 dark:hover:bg-pink-950/40"
             >
               Add BrandSync Link
@@ -384,10 +391,7 @@ export default function BuyerDashboardPage() {
           </div>
         </motion.div>
 
-        <BrandSyncLinkModal
-          open={showBrandSyncModal}
-          onOpenChange={setShowBrandSyncModal}
-        />
+
         
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
@@ -518,7 +522,7 @@ export default function BuyerDashboardPage() {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">BrandSync Links</h2>
             <div className="flex items-center gap-2">
-              <Button onClick={() => setShowBrandSyncModal(true)} className="bg-pink-600 hover:bg-pink-700 text-white">
+              <Button onClick={() => router.push('/dashboard/buyer/brandsync')} className="bg-pink-600 hover:bg-pink-700 text-white">
                 Create Link
               </Button>
             </div>
@@ -530,7 +534,7 @@ export default function BuyerDashboardPage() {
                   <p className="text-lg font-medium">No BrandSync links yet</p>
                   <p className="text-sm text-muted-foreground mt-2">Create a link to share your external video while hiding the original URL.</p>
                   <div className="mt-4">
-                    <Button onClick={() => setShowBrandSyncModal(true)} className="bg-pink-600 hover:bg-pink-700 text-white">Create your first link</Button>
+                    <Button onClick={() => router.push('/dashboard/buyer/brandsync')} className="bg-pink-600 hover:bg-pink-700 text-white">Create your first link</Button>
                   </div>
                 </div>
               ) : (
@@ -538,12 +542,7 @@ export default function BuyerDashboardPage() {
                   <Card key={link.id} className="overflow-hidden">
                     <CardHeader>
                       <CardTitle>
-                        <div className="flex items-center justify-between w-full">
-                          <span className="truncate max-w-[60%]">{link.title}</span>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-muted-foreground">{link.platform}</span>
-                          </div>
-                        </div>
+                        <span className="truncate">{link.title}</span>
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -556,20 +555,26 @@ export default function BuyerDashboardPage() {
                         <div className="flex-1 min-w-0">
                           <p className="text-sm truncate">{link.title}</p>
                           <p className="text-xs text-muted-foreground mt-1">Shares: {link.shares ?? 0} • Amount: LKR {Number(link.amount ?? 0).toLocaleString()}</p>
+                          {link.platformUrl && (
+                            <a
+                              href={link.platformUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 mt-1 flex items-center gap-1 truncate max-w-[200px]"
+                            >
+                              <ExternalLink className="h-3 w-3 shrink-0" />
+                              <span className="truncate">{link.platformUrl}</span>
+                            </a>
+                          )}
                           {!link.isPaid && (
                             <p className="text-xs text-yellow-700 mt-1">Status: Awaiting payment</p>
                           )}
                         </div>
                       </div>
                       <div className="flex gap-2 mt-4">
-                        {link.isPaid ? (
-                          <Button asChild variant="outline">
-                            <a href={link.brandSyncUrl} target="_blank" rel="noreferrer">Open</a>
-                          </Button>
-                        ) : (
+                        {!link.isPaid && (
                           <>
                             <Button type="button" onClick={async () => {
-                              // initialize PayHere for existing brandsync
                               try {
                                 const resp = await fetch(`/api/payment/initialize/brandsync/${link.id}`, { method: 'POST' });
                                 if (!resp.ok) { const e = await resp.json().catch(()=>({})); throw new Error(e?.error||'Failed to init payment'); }
@@ -605,6 +610,9 @@ export default function BuyerDashboardPage() {
                                   </div>
                                 )}
                           </>
+                        )}
+                        {link.isPaid && (
+                          <span className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">✅ Active — influencers can see this link</span>
                         )}
                       </div>
                     </CardContent>

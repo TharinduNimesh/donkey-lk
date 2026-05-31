@@ -84,6 +84,7 @@ function mapLink(row: BrandSyncLinkRow, origin: string, thumbnailUrl: string | n
     amount: Number(row.amount || 0),
     thumbnailUrl,
     brandSyncUrl: buildBrandSyncUrl(origin, row.token),
+    platformUrl: row.platform_url,
     createdAt: row.created_at,
   };
 }
@@ -134,7 +135,7 @@ export async function GET(request: Request) {
     const origin = getPublicOrigin(request);
     const { data, error } = await supabaseAdmin
       .from("brandsync_links")
-      .select("id, title, platform, token, thumbnail_path, created_at")
+      .select("id, title, platform, token, thumbnail_path, created_at, platform_url, is_paid, shares, amount")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(12);
