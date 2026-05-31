@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useState } from "react";
 import {
   LayoutDashboard,
@@ -12,14 +13,15 @@ import {
   Bell,
   CheckCircle,
   Settings,
-  Share2
+  Share2,
+  Link2
 } from "lucide-react";
 import { signOut } from "@/lib/supabase";
 
 const PINK = "#C8185A";
 
 type SidebarProps = {
-  activePage?: "dashboard" | "tasks" | "platforms" | "settings";
+  activePage?: "dashboard" | "tasks" | "platforms" | "settings" | "links";
   onNavigate?: () => void;
 };
 
@@ -34,6 +36,7 @@ const SidebarNav = ({ activePage, onNavigate }: SidebarProps) => {
   const mainNav = [
     { icon: LayoutDashboard, label: "Dashboard", page: "dashboard" as const, path: "/dashboard/influencer" },
     { icon: Megaphone, label: "Available Tasks", page: "tasks" as const, path: "/dashboard/influencer/tasks" },
+    { icon: Link2, label: "BrandSync Links", page: "links" as const, path: "/dashboard/influencer/links" },
   ];
 
   const mgmtNav = [
@@ -44,8 +47,9 @@ const SidebarNav = ({ activePage, onNavigate }: SidebarProps) => {
   const NavBtn = ({ icon: Icon, label, page, path }: { icon: any; label: string; page: string; path: string }) => {
     const isActive = activePage === page;
     return (
-      <button
-        onClick={() => go(path)}
+      <Link
+        href={path}
+        onClick={onNavigate}
         className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
           isActive ? "text-white shadow-sm" : "text-gray-500 hover:bg-gray-50 hover:text-gray-800"
         }`}
@@ -53,7 +57,7 @@ const SidebarNav = ({ activePage, onNavigate }: SidebarProps) => {
       >
         <Icon className="h-4 w-4 flex-shrink-0" />
         <span>{label}</span>
-      </button>
+      </Link>
     );
   };
 

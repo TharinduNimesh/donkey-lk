@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/sonner";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://brandsync.lk"),
   title: "BrandSync - Connect Influencers with Brands",
   description: "BrandSync is a social media monetization platform connecting influencers with brands for authentic content promotion and growth.",
   openGraph: {

@@ -53,7 +53,8 @@ async function verifyTransporter() {
 export async function POST(request: NextRequest) {
   try {
     // Get authenticated user's Supabase client
-    const supabase = createRouteHandlerClient<Database>({ cookies });
+    const cookieStore = await cookies();
+    const supabase = createRouteHandlerClient<Database>({ cookies: () => cookieStore as any });
     
     // Check authentication
     const { data: { user }, error: authError } = await supabase.auth.getUser();

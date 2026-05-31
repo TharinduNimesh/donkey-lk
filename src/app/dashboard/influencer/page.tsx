@@ -148,7 +148,8 @@ export default function InfluencerDashboardPage() {
           balanceResponse,
           verifiedProfilesResponse,
           pendingVerificationsResponse,
-          tasksResponse
+          tasksResponse,
+          brandsyncLinksData
         ] = await Promise.all([
           supabase.from("account_balance").select("*").eq("user_id", user.id).maybeSingle(),
           supabase.from("influencer_profile").select("*").eq("user_id", user.id),
@@ -159,29 +160,31 @@ export default function InfluencerDashboardPage() {
               id, created_at, is_cancelled,
               application_promises(platform, promised_reach, est_profit)
             )
-          `).eq("status", "ACTIVE")
+          `).eq("status", "ACTIVE"),
+          (async () => {
+            try {
+              const res = await fetch("/api/brandsync-links?scope=public");
+              if (!res.ok) return [];
+              const data = await res.json();
+              const links: BrandSyncLinkEntry[] = data.links || [];
+              const linksWithTokens = await Promise.all(
+                links.map(async (link) => {
+                  try {
+                    const tokenResp = await fetch(`/api/brandsync-links/${link.id}/influencer-token`, { credentials: 'include' });
+                    if (tokenResp.ok) return { ...link, uniqueUrl: (await tokenResp.json()).uniqueUrl as string };
+                  } catch {}
+                  return { ...link, uniqueUrl: link.brandSyncUrl };
+                })
+              );
+              return linksWithTokens;
+            } catch (err) {
+              console.error("Error fetching BrandSync links:", err);
+              return [];
+            }
+          })()
         ]);
 
-        try {
-          const response = await fetch("/api/brandsync-links?scope=public");
-          const data = await response.json();
-          if (!response.ok) throw new Error(data.error || "Failed to load BrandSync links");
-
-          const links: BrandSyncLinkEntry[] = data.links || [];
-          const linksWithTokens = await Promise.all(
-            links.map(async (link) => {
-              try {
-                const tokenResp = await fetch(`/api/brandsync-links/${link.id}/influencer-token`, { credentials: 'include' });
-                if (tokenResp.ok) return { ...link, uniqueUrl: (await tokenResp.json()).uniqueUrl as string };
-              } catch {}
-              return { ...link, uniqueUrl: link.brandSyncUrl };
-            })
-          );
-          setBrandSyncLinks(linksWithTokens);
-        } catch (error) {
-          console.error("Error fetching BrandSync links:", error);
-          setBrandSyncLinks([]);
-        }
+        setBrandSyncLinks(brandsyncLinksData);
 
         setAccountBalance(balanceResponse.data);
 
@@ -353,6 +356,14 @@ export default function InfluencerDashboardPage() {
                     <h2 className="text-base font-semibold text-gray-900">BrandSync Links</h2>
                     <p className="text-xs text-gray-500 mt-0.5">Your unique tracking links for active campaigns.</p>
                   </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => router.push("/dashboard/influencer/links")}
+                    className="h-8 text-xs font-semibold text-gray-600 hover:text-gray-900"
+                  >
+                    View All Links
+                  </Button>
                 </div>
                 <div className="p-5">
                   {isLoadingBrandSyncLinks ? (
@@ -361,7 +372,7 @@ export default function InfluencerDashboardPage() {
                     </div>
                   ) : brandSyncLinks.length > 0 ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {brandSyncLinks.map((link) => (
+                      {brandSyncLinks.slice(0, 3).map((link) => (
                         <div key={link.id} className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:border-pink-200 transition-colors">
                           {link.thumbnailUrl ? (
                             <img src={link.thumbnailUrl} alt={link.title} className="h-32 w-full object-cover" />

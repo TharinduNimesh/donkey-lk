@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { sendSMS, generateVerificationCode } from '@/lib/utils/sms';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import type { Database } from '@/types/database.types';
 
 const DAILY_VERIFICATION_LIMIT = 3;
 const VERIFICATION_EXPIRY_MINUTES = 15;
@@ -19,8 +20,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Initialize Supabase client for user auth and validation with proper cookies handling
-    const cookieStore = cookies();
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
+    const cookieStore = await cookies();
+    const supabase = createRouteHandlerClient<Database>({ cookies: () => cookieStore as any });
 
     // Check authentication
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -52,7 +53,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if contact is already verified
-    if (contact.contact_status?.[0]?.is_verified) {
+    const isVerified = contact.contact_status && 
+      (Array.isArray(contact.contact_status) 
+        ? contact.contact_status[0]?.is_verified 
+        : (contact.contact_status as any).is_verified);
+
+    if (isVerified) {
       return NextResponse.json(
         { error: 'Contact is already verified' },
         { status: 400 }

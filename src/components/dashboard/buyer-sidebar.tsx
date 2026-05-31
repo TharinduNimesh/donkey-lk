@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter, usePathname } from "next/navigation";
+import Link from "next/link";
 import { useState } from "react";
 import {
   LayoutDashboard,
@@ -51,8 +52,9 @@ const SidebarNav = ({ activePage, linksCount, onNavigate }: SidebarProps) => {
   const NavBtn = ({ icon: Icon, label, page, path, badge }: { icon: any; label: string; page: string; path: string; badge?: number }) => {
     const isActive = activePage === page;
     return (
-      <button
-        onClick={() => go(path)}
+      <Link
+        href={path}
+        onClick={onNavigate}
         className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
           isActive ? "text-white shadow-sm" : "text-gray-500 hover:bg-gray-50 hover:text-gray-800"
         }`}
@@ -68,7 +70,7 @@ const SidebarNav = ({ activePage, linksCount, onNavigate }: SidebarProps) => {
             {badge}
           </span>
         )}
-      </button>
+      </Link>
     );
   };
 

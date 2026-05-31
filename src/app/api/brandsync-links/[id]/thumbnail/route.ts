@@ -6,8 +6,8 @@ import type { Database } from "@/types/database.types";
 import crypto from "crypto";
 
 async function getCurrentUser() {
-  const cookieStore = cookies();
-  const supabase = createRouteHandlerClient<Database>({ cookies: () => cookieStore });
+  const cookieStore = await cookies();
+  const supabase = createRouteHandlerClient<Database>({ cookies: () => cookieStore as any });
   const { data: { user }, error } = await supabase.auth.getUser();
   if (error || !user) return null;
   return user;

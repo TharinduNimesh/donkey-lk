@@ -24,8 +24,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Initialize Supabase client for user authentication and validation
-    const cookieStore = cookies();
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
+    const cookieStore = await cookies();
+    const supabase = createRouteHandlerClient<Database>({ cookies: () => cookieStore as any });
 
     // Check authentication
     const { data: { user }, error: authError } = await supabase.auth.getUser();

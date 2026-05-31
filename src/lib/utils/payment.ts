@@ -83,7 +83,8 @@ export async function getPaymentEnvironmentVariables() {
 }
 
 export async function validateTaskOwnership(taskId: number) {
-  const supabase = createServerComponentClient<Database>({ cookies });
+  const cookieStore = await cookies();
+  const supabase = createServerComponentClient<Database>({ cookies: () => cookieStore as any });
   
   const { data, error } = await supabase
     .rpc('is_it_my_task', { task_id_input: taskId });

@@ -89,36 +89,31 @@ export default function BuyerDashboardPage() {
   }, [searchParams, router]);
 
   useEffect(() => {
-    const fetchTasks = async () => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      setIsLoadingLinks(true);
+      
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { router.push('/auth'); return; }
 
-      const { data, error } = await supabase
-        .from('task_details_view')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+      // Fetch Tasks and Links in parallel for better performance
+      const [tasksResult, linksResult] = await Promise.all([
+        supabase
+          .from('task_details_view')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false }),
+        fetch('/api/brandsync-links', { credentials: 'include' }).then(res => res.ok ? res.json() : { links: [] })
+      ]);
 
-      if (!error) setTasks(data || []);
+      if (!tasksResult.error) setTasks(tasksResult.data || []);
+      setBrandSyncLinks(linksResult.links ?? []);
+      
       setIsLoading(false);
+      setIsLoadingLinks(false);
     };
 
-    const loadLinks = async () => {
-      setIsLoadingLinks(true);
-      try {
-        const res = await fetch('/api/brandsync-links', { credentials: 'include' });
-        if (!res.ok) return;
-        const data = await res.json();
-        setBrandSyncLinks(data.links ?? []);
-      } catch (err) {
-        console.error('Failed to load BrandSync links', err);
-      } finally {
-        setIsLoadingLinks(false);
-      }
-    };
-
-    fetchTasks();
-    loadLinks();
+    fetchData();
   }, [supabase, router]);
 
   const handleLogout = async () => {
