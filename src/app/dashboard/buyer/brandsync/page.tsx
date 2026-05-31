@@ -86,8 +86,25 @@ export default function BrandSyncCreatePage() {
         return;
       }
 
-      setPendingBrandSyncId(Number(data.brandsyncId));
+      const brandsyncId = Number(data.brandsyncId);
+      setPendingBrandSyncId(brandsyncId);
       setRequiresPaymentAmount(Number(data.amount));
+
+      // Upload thumbnail if one was selected
+      if (thumbnailFile) {
+        try {
+          const fd = new FormData();
+          fd.append("thumbnail", thumbnailFile);
+          await fetch(`/api/brandsync-links/${brandsyncId}/thumbnail`, {
+            method: "POST",
+            credentials: "include",
+            body: fd,
+          });
+        } catch (thumbErr) {
+          console.warn("Thumbnail upload failed (non-critical):", thumbErr);
+        }
+      }
+
       toast.success("BrandSync link created! Complete payment to activate it.");
       setTitle("");
       setVideoUrl("");

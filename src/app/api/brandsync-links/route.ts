@@ -65,7 +65,7 @@ async function getThumbnailUrl(thumbnailPath: string | null) {
 
   const { data, error } = await supabaseAdmin.storage
     .from("proof-images")
-    .createSignedUrl(thumbnailPath, 60 * 60);
+    .createSignedUrl(thumbnailPath, 60 * 60 * 24 * 7); // 7 days
 
   if (error) {
     return null;
