@@ -1,33 +1,34 @@
 "use client"
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { toast } from 'sonner';
 import { signOut } from "@/lib/supabase";
-import { TaskCard } from "@/components/dashboard/task-card";
 import { Database } from "@/types/database.types";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { motion } from "framer-motion";
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { CircularProgressbar, buildStyles } from 'react-circular-progressbar';
 import 'react-circular-progressbar/dist/styles.css';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Json } from '@/types/database.types';
-import { Input } from "@/components/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Search, SlidersHorizontal } from "lucide-react";
-import { SearchInput } from "@/components/ui/search-input";
-import { BrandSyncLinkModal } from "@/components/dashboard/brandsync-link-modal";
-
-const ITEMS_PER_PAGE = 6;
+  LayoutDashboard,
+  BarChart2,
+  Megaphone,
+  Link2,
+  ListChecks,
+  Settings,
+  Bell,
+  LogOut,
+  MoreVertical,
+  ExternalLink,
+  Plus,
+  ClipboardList,
+  ChevronRight,
+  ShieldCheck,
+  HelpCircle,
+  Menu,
+  X,
+} from "lucide-react";
 
 type TaskDetail = {
   task_id: number | null;
@@ -47,55 +48,50 @@ type TaskDetail = {
   targets: Json | null;
 };
 
-const BlobSVG = ({ color }: { color: string }) => (
-  <svg
-    viewBox="0 0 200 200"
-    className="absolute bottom-0 left-0 w-48 h-48 -mb-12 -ml-12 opacity-15"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <defs>
-      <filter id="glow">
-        <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
-        <feComposite in="SourceGraphic" in2="coloredBlur" operator="over"/>
-        <feMerge>
-          <feMergeNode in="coloredBlur"/>
-          <feMergeNode in="SourceGraphic"/>
-        </feMerge>
-      </filter>
-    </defs>
-    <path
-      fill={color}
-      filter="url(#glow)"
-      d="M52.8,-75.5C68.7,-67.4,81.9,-52.3,89.3,-34.4C96.7,-16.5,98.2,4.3,92.7,23.2C87.2,42.1,74.7,59,58.3,70.3C41.9,81.6,21,87.2,0.7,86.2C-19.5,85.2,-39,77.6,-56.1,66.1C-73.2,54.6,-87.9,39.2,-94.1,20.7C-100.4,2.2,-98.2,-19.4,-88.6,-36.3C-79,-53.2,-62,-65.4,-44.6,-72.7C-27.2,-80,-13.6,-82.4,2.9,-86.8C19.4,-91.2,38.8,-97.7,52.8,-75.5Z"
-      transform="translate(100 100)"
-    />
-  </svg>
-);
+type BrandSyncLink = {
+  id: number;
+  title: string;
+  platform: string;
+  brandSyncUrl: string;
+  platformUrl?: string | null;
+  thumbnailUrl?: string | null;
+  shares?: number;
+  isPaid?: boolean;
+  amount?: number;
+};
+
+const PINK = "#C8185A";
+
+const navItems = [
+  { icon: LayoutDashboard, label: "Dashboard", active: true },
+  { icon: BarChart2, label: "Analytics", active: false },
+  { icon: Megaphone, label: "Campaigns", active: false },
+];
 
 export default function BuyerDashboardPage() {
   const router = useRouter();
   const supabase = createClientComponentClient<Database>();
   const [isLoading, setIsLoading] = useState(true);
   const [tasks, setTasks] = useState<TaskDetail[]>([]);
-  const [filteredTasks, setFilteredTasks] = useState<TaskDetail[]>([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [showPlatformModal, setShowPlatformModal] = useState(false);
-  const [showBrandSyncModal, setShowBrandSyncModal] = useState(false);
-  const [brandSyncLinks, setBrandSyncLinks] = useState<Array<{ id: number; title: string; platform: string; brandSyncUrl: string; thumbnailUrl?: string | null; shares?: number; isPaid?: boolean; amount?: number;}>>([]);
-  const [isLoadingLinks, setIsLoadingLinks] = useState(false);
+  const [brandSyncLinks, setBrandSyncLinks] = useState<BrandSyncLink[]>([]);
+  const [isLoadingLinks, setIsLoadingLinks] = useState(true);
   const [uploadProgress, setUploadProgress] = useState<Record<number, number>>({});
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("ALL");
-  const [platformFilter, setPlatformFilter] = useState<string>("ALL");
-  const [sortBy, setSortBy] = useState<string>("created_at_desc");
+  const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.get('payment') === 'success') {
+      toast.success('🎉 Payment successful! Your BrandSync link is now active.');
+      router.replace('/dashboard/buyer');
+    }
+  }, [searchParams, router]);
 
   useEffect(() => {
     const fetchTasks = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        router.push('/auth');
-        return;
-      }
+      if (!user) { router.push('/auth'); return; }
 
       const { data, error } = await supabase
         .from('task_details_view')
@@ -103,17 +99,10 @@ export default function BuyerDashboardPage() {
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Error fetching tasks:', error);
-        return;
-      }
-
-      setTasks(data || []);
+      if (!error) setTasks(data || []);
       setIsLoading(false);
     };
 
-    fetchTasks();
-    // load user's BrandSync links (non-blocking)
     const loadLinks = async () => {
       setIsLoadingLinks(true);
       try {
@@ -128,576 +117,536 @@ export default function BuyerDashboardPage() {
       }
     };
 
+    fetchTasks();
     loadLinks();
   }, [supabase, router]);
 
-  useEffect(() => {
-    let filtered = [...tasks];
-
-    // Apply search filter
-    if (searchQuery) {
-      filtered = filtered.filter(
-        task =>
-          task.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          task.description?.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-
-    // Apply status filter
-    if (statusFilter !== "ALL") {
-      filtered = filtered.filter(task => task.status === statusFilter);
-    }
-
-    // Apply platform filter
-    if (platformFilter !== "ALL") {
-      filtered = filtered.filter(task => {
-        const targets = task.targets as Array<{ platform: Database['public']['Enums']['Platforms'] }> | null;
-        return targets?.some(target => target.platform === platformFilter);
-      });
-    }
-
-    // Apply sorting
-    filtered.sort((a, b) => {
-      switch (sortBy) {
-        case "created_at_desc":
-          return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
-        case "created_at_asc":
-          return new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime();
-        case "title_asc":
-          return (a.title || "").localeCompare(b.title || "");
-        case "title_desc":
-          return (b.title || "").localeCompare(a.title || "");
-        default:
-          return 0;
-      }
-    });
-
-    setFilteredTasks(filtered);
-    setCurrentPage(1); // Reset to first page when filters change
-  }, [tasks, searchQuery, statusFilter, platformFilter, sortBy]);
-
   const handleLogout = async () => {
-    setIsLoading(true);
     const { error } = await signOut();
-    if (!error) {
-      router.push('/auth');
-      router.refresh();
-    }
-    setIsLoading(false);
+    if (!error) { router.push('/auth'); router.refresh(); }
   };
 
-  const handleCreateTask = () => {
-    router.push('/dashboard/buyer/tasks/create');
+  const handleUploadSlipForLink = async (e: React.ChangeEvent<HTMLInputElement>, linkId: number) => {
+    const file = e.target?.files?.[0];
+    if (!file) return;
+    const fd = new FormData();
+    fd.append('slip', file);
+    setUploadProgress(prev => ({ ...prev, [linkId]: 0 }));
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', `/api/brandsync-links/${linkId}/bank-transfer`);
+        xhr.upload.onprogress = (ev) => {
+          if (ev.lengthComputable) setUploadProgress(prev => ({ ...prev, [linkId]: Math.round((ev.loaded / ev.total) * 100) }));
+        };
+        xhr.onload = () => xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`Upload failed: ${xhr.status}`));
+        xhr.onerror = () => reject(new Error('Network error'));
+        xhr.send(fd);
+      });
+      toast.success('Slip uploaded — admin will verify');
+      const updated = await fetch('/api/brandsync-links', { credentials: 'include' });
+      if (updated.ok) { const json = await updated.json(); setBrandSyncLinks(json.links ?? []); }
+    } catch { toast.error('Failed to upload slip'); }
+    finally { setUploadProgress(prev => { const c = { ...prev }; delete c[linkId]; return c; }); }
   };
 
-  // Calculate dashboard statistics
+  // Stats
   const activeTasksCount = tasks.filter(t => t.status === 'ACTIVE').length;
   const totalBudget = tasks.reduce((sum, task) => {
     const cost = task.cost as { amount: number } | null;
     return sum + (cost?.amount || 0);
   }, 0);
-  
   const platformCounts = tasks.reduce((counts, task) => {
     const targets = task.targets as Array<{ platform: Database['public']['Enums']['Platforms'] }> | null;
-    targets?.forEach(target => {
-      counts[target.platform] = (counts[target.platform] || 0) + 1;
-    });
+    targets?.forEach(t => { counts[t.platform] = (counts[t.platform] || 0) + 1; });
     return counts;
   }, {} as Record<string, number>);
+  const topPlatform = Object.entries(platformCounts).sort((a, b) => b[1] - a[1])[0];
+  const totalPlatformTasks = Object.values(platformCounts).reduce((s, v) => s + v, 0);
+  const topPlatformPct = topPlatform && totalPlatformTasks > 0 ? Math.round((topPlatform[1] / totalPlatformTasks) * 100) : 0;
 
-  // Pagination calculations
-  const totalPages = Math.ceil(filteredTasks.length / ITEMS_PER_PAGE);
-  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const endIndex = startIndex + ITEMS_PER_PAGE;
-  const currentTasks = filteredTasks.slice(startIndex, endIndex);
+  const recentLinks = brandSyncLinks.slice(0, 3);
+  const recentTasks = tasks.slice(0, 3);
 
-  const PaginationControls = () => (
-    <div className="flex items-center justify-end space-x-2 py-4">
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => setCurrentPage(1)}
-        disabled={currentPage === 1}
-        className="h-8 w-8 p-0 rounded-md border border-gray-200 dark:border-gray-800"
-      >
-        <ChevronsLeft className="h-4 w-4" />
-      </Button>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => setCurrentPage(prev => prev - 1)}
-        disabled={currentPage === 1}
-        className="h-8 w-8 p-0 rounded-md border border-gray-200 dark:border-gray-800"
-      >
-        <ChevronLeft className="h-4 w-4" />
-      </Button>
-      <div className="text-sm font-medium px-4">
-        Page {currentPage} of {totalPages}
-      </div>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => setCurrentPage(prev => prev + 1)}
-        disabled={currentPage === totalPages}
-        className="h-8 w-8 p-0 rounded-md border border-gray-200 dark:border-gray-800"
-      >
-        <ChevronRight className="h-4 w-4" />
-      </Button>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => setCurrentPage(totalPages)}
-        disabled={currentPage === totalPages}
-        className="h-8 w-8 p-0 rounded-md border border-gray-200 dark:border-gray-800"
-      >
-        <ChevronsRight className="h-4 w-4" />
-      </Button>
-    </div>
-  );
-
-  const handleUploadSlipForLink = async (e: React.ChangeEvent<HTMLInputElement>, linkId: number) => {
-    try {
-      const file = e.target?.files?.[0];
-      if (!file) {
-        toast.error('No file selected');
-        return;
-      }
-
-      const fd = new FormData();
-      fd.append('slip', file);
-
-
-      setUploadProgress(prev => ({ ...prev, [linkId]: 0 }));
-
-      await new Promise<void>((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open('POST', `/api/brandsync-links/${linkId}/bank-transfer`);
-
-        xhr.upload.onprogress = (ev) => {
-          if (ev.lengthComputable) {
-            const percent = Math.round((ev.loaded / ev.total) * 100);
-            setUploadProgress(prev => ({ ...prev, [linkId]: percent }));
-          }
-        };
-
-        xhr.onload = () => {
-          try {
-            if (xhr.status >= 200 && xhr.status < 300) {
-              resolve();
-            } else {
-              const text = xhr.responseText || `Upload failed: ${xhr.status}`;
-              let parsed: any = null;
-              try { parsed = JSON.parse(text); } catch {}
-              const msg = parsed?.error || parsed?.message || text;
-              reject(new Error(String(msg)));
-            }
-          } catch (e) {
-            reject(e instanceof Error ? e : new Error('Unknown upload error'));
-          }
-        };
-
-        xhr.onerror = () => reject(new Error('Upload network error'));
-
-        xhr.send(fd);
-      });
-
-      toast.success('Slip uploaded — admin will verify');
-      // refresh links
-      const updated = await fetch('/api/brandsync-links', { credentials: 'include' });
-      if (updated.ok) {
-        const json = await updated.json();
-        setBrandSyncLinks(json.links ?? []);
-      }
-    } catch (err) {
-      console.error(err);
-      toast.error('Failed to upload slip');
-    } finally {
-      setUploadProgress(prev => {
-        const copy = { ...prev };
-        delete copy[linkId];
-        return copy;
-      });
+  const getStatusColor = (status: string | null) => {
+    switch (status) {
+      case 'ACTIVE': return 'bg-green-100 text-green-700';
+      case 'COMPLETED': return 'bg-blue-100 text-blue-700';
+      case 'DRAFT': return 'bg-gray-100 text-gray-600';
+      case 'ARCHIVED': return 'bg-orange-100 text-orange-700';
+      default: return 'bg-gray-100 text-gray-600';
     }
   };
 
+  // Shared sidebar nav content
+  const SidebarContent = ({ onNavigate }: { onNavigate?: () => void }) => (
+    <>
+      {/* Logo */}
+      <div className="px-4 py-4 border-b border-gray-100 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <img src="/logo.png" alt="BrandSync" className="h-7 w-7 rounded-lg object-contain" />
+          <span className="text-base font-bold tracking-tight" style={{ color: PINK }}>BrandSync</span>
+        </div>
+        {/* Close button — mobile only */}
+        {onNavigate && (
+          <button onClick={onNavigate} className="lg:hidden p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-50">
+            <X className="h-5 w-5" />
+          </button>
+        )}
+      </div>
+
+      {/* Nav */}
+      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest px-2 mb-2">Main Menu</p>
+
+        {navItems.map(({ icon: Icon, label, active }) => (
+          <button
+            key={label}
+            onClick={() => {
+              if (label === 'Dashboard') router.push('/dashboard/buyer');
+              else if (label === 'Analytics') router.push('/dashboard/buyer/analytics');
+              else if (label === 'Campaigns') router.push('/dashboard/buyer/campaigns');
+              onNavigate?.();
+            }}
+            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+              active ? 'text-white shadow-sm' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-800'
+            }`}
+            style={active ? { background: `linear-gradient(135deg, ${PINK}, #e91e80)` } : {}}
+          >
+            <Icon className="h-4 w-4 flex-shrink-0" />
+            {label}
+          </button>
+        ))}
+
+        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest px-2 mt-5 mb-2">Management</p>
+
+        <button
+          onClick={() => { router.push('/dashboard/buyer/links'); onNavigate?.(); }}
+          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-800 transition-all"
+        >
+          <Link2 className="h-4 w-4 flex-shrink-0" />
+          All Links
+          {brandSyncLinks.length > 0 && (
+            <span className="ml-auto bg-gray-100 text-gray-600 text-[10px] font-semibold px-1.5 py-0.5 rounded-full">
+              {brandSyncLinks.length}
+            </span>
+          )}
+        </button>
+
+        <button
+          onClick={() => { router.push('/dashboard/buyer/all-tasks'); onNavigate?.(); }}
+          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-800 transition-all"
+        >
+          <ListChecks className="h-4 w-4 flex-shrink-0" />
+          All Tasks
+        </button>
+
+        <button
+          onClick={() => { router.push('/dashboard/buyer/settings'); onNavigate?.(); }}
+          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-800 transition-all"
+        >
+          <Settings className="h-4 w-4 flex-shrink-0" />
+          Brand Settings
+        </button>
+      </nav>
+
+      {/* Help Card */}
+      <div className="m-3 rounded-xl p-3 text-xs" style={{ background: 'linear-gradient(135deg, #fff0f6, #ffe4ef)' }}>
+        <div className="flex items-center gap-1.5 font-semibold text-gray-800 mb-1">
+          <HelpCircle className="h-3.5 w-3.5" style={{ color: PINK }} />
+          Need Help?
+        </div>
+        <p className="text-gray-500 leading-snug mb-2.5">Access our documentation or contact support for assistance.</p>
+        <button className="w-full py-1.5 rounded-lg text-white text-xs font-semibold" style={{ background: PINK }}>
+          Support Center
+        </button>
+      </div>
+    </>
+  );
+
   if (isLoading) {
     return (
-      <div className="min-h-screen w-full bg-white dark:bg-gray-950">
-        <div className="container mx-auto py-8 px-4">
-          <div className="h-8 w-48 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse mb-8" />
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-12">
-            {[...Array(3)].map((_, i) => (
-              <Card key={i} className="overflow-hidden border border-gray-100 dark:border-gray-800">
-                <CardHeader>
-                  <div className="h-6 w-32 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" />
-                </CardHeader>
-                <CardContent>
-                  <div className="h-8 w-24 bg-gray-100 dark:bg-gray-800 rounded animate-pulse mb-2" />
-                  <div className="h-4 w-40 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" />
-                </CardContent>
-              </Card>
-            ))}
+      <div className="flex h-screen bg-gray-50">
+        <div className="hidden lg:block w-52 bg-white border-r border-gray-100 flex-shrink-0" />
+        <div className="flex-1 p-6 space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {[...Array(3)].map((_, i) => <div key={i} className="h-28 bg-gray-100 rounded-xl animate-pulse" />)}
           </div>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {[...Array(3)].map((_, i) => (
-              <div key={i} className="h-[420px] bg-gray-100 dark:bg-gray-800 rounded-xl animate-pulse" />
-            ))}
-          </div>
+          <div className="h-64 bg-gray-100 rounded-xl animate-pulse" />
+          <div className="h-64 bg-gray-100 rounded-xl animate-pulse" />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen w-full bg-white dark:bg-gray-950 font-['Roboto']">
-      <div className="container mx-auto py-8 px-4">
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8"
-        >
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 text-center sm:text-left">
-            Brand Dashboard
-          </h1>
-          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-            <Button 
-              onClick={handleCreateTask}
-              className="w-full sm:w-auto bg-pink-600 hover:bg-pink-700 text-white shadow-sm hover:shadow-md transition-all duration-300"
-            >
-              Create New Task
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => setShowBrandSyncModal(true)}
-              className="w-full sm:w-auto border-pink-200 text-pink-700 hover:bg-pink-50 dark:border-pink-800 dark:text-pink-300 dark:hover:bg-pink-950/40"
-            >
-              Add BrandSync Link
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={handleLogout}
-              disabled={isLoading}
-              className="w-full sm:w-auto border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-900"
-            >
-              {isLoading ? 'Logging out...' : 'Logout'}
-            </Button>
-          </div>
-        </motion.div>
+    <div className="flex h-screen bg-[#fafafa] font-sans overflow-hidden">
 
-        <BrandSyncLinkModal
-          open={showBrandSyncModal}
-          onOpenChange={setShowBrandSyncModal}
+      {/* ─── Mobile sidebar backdrop ─── */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm lg:hidden"
+          onClick={() => setSidebarOpen(false)}
         />
-        
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-12"
-        >
-          <Card className="border-0 bg-pink-50 dark:bg-pink-950/20 overflow-hidden relative">
-            <BlobSVG color="#ec4899" />
-            <CardHeader>
-              <CardTitle className="text-pink-900 dark:text-pink-100">Active Tasks</CardTitle>
-            </CardHeader>
-            <CardContent className="relative">
-              <p className="text-4xl font-bold text-pink-700 dark:text-pink-300">
-                {activeTasksCount}
-              </p>
-              <p className="text-sm text-pink-600/80 dark:text-pink-300/80 mt-1">
-                {activeTasksCount === 1 ? '1 campaign running' : `${activeTasksCount} campaigns running`}
-              </p>
-            </CardContent>
-          </Card>
+      )}
 
-          <Card className="border-0 bg-blue-50 dark:bg-blue-950/20 overflow-hidden relative">
-            <BlobSVG color="#0ea5e9" />
-            <CardHeader>
-              <CardTitle className="text-blue-900 dark:text-blue-100">Total Budget</CardTitle>
-            </CardHeader>
-            <CardContent className="relative">
-              <p className="text-4xl font-bold text-blue-700 dark:text-blue-300">
+      {/* ─── Mobile slide-over drawer ─── */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-white flex flex-col shadow-2xl transition-transform duration-300 ease-in-out lg:hidden ${
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <SidebarContent onNavigate={() => setSidebarOpen(false)} />
+      </aside>
+
+      {/* ─── Desktop sidebar (always visible) ─── */}
+      <aside className="hidden lg:flex w-52 bg-white border-r border-gray-100 flex-col flex-shrink-0">
+        <SidebarContent />
+      </aside>
+
+      {/* ─── Main ─── */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+
+        {/* Top bar */}
+        <header className="bg-white border-b border-gray-100 px-4 lg:px-6 py-3 flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center gap-3">
+            {/* Hamburger — mobile only */}
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="lg:hidden w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-50 transition-colors"
+              aria-label="Open menu"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+            <span className="hidden sm:flex items-center gap-1.5 text-sm font-medium text-gray-600 bg-gray-50 border border-gray-200 rounded-full px-3 py-1">
+              <ShieldCheck className="h-3.5 w-3.5" style={{ color: PINK }} />
+              Enterprise Portal
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={() => router.push('/dashboard/buyer/tasks/create')}
+              className="h-9 px-4 text-sm font-semibold text-white rounded-lg shadow-sm"
+              style={{ background: PINK }}
+            >
+              <Plus className="h-4 w-4 sm:mr-1.5" />
+              <span className="hidden sm:inline">Create New Task</span>
+            </Button>
+            <button className="relative w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-50 transition-colors">
+              <Bell className="h-4.5 w-4.5" />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full" style={{ background: PINK }} />
+            </button>
+            <button
+              onClick={handleLogout}
+              className="w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-50 transition-colors"
+              title="Logout"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          </div>
+        </header>
+
+        {/* Scrollable content */}
+        <main className="flex-1 overflow-y-auto p-4 lg:p-6 space-y-5">
+
+          {/* ─── Stat Cards ─── */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            {/* Active Tasks */}
+            <div className="bg-white rounded-xl border border-gray-100 p-5 relative overflow-hidden">
+              <div className="absolute top-4 right-4 w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: '#fff0f6' }}>
+                <ClipboardList className="h-4 w-4" style={{ color: PINK }} />
+              </div>
+              <p className="text-sm text-gray-500 font-medium">Active Tasks</p>
+              <p className="text-4xl font-bold text-gray-900 mt-1">{activeTasksCount}</p>
+              <p className="text-xs text-gray-400 mt-1">
+                {activeTasksCount === 0 ? '0 campaigns running' : `${activeTasksCount} campaign${activeTasksCount !== 1 ? 's' : ''} running`}
+              </p>
+              {/* decorative blob */}
+              <div className="absolute -bottom-4 -right-4 w-20 h-20 rounded-full opacity-5" style={{ background: PINK }} />
+            </div>
+
+            {/* Total Budget */}
+            <div className="bg-white rounded-xl border border-gray-100 p-5 relative overflow-hidden">
+              <div className="absolute top-4 right-4 w-8 h-8 rounded-lg flex items-center justify-center bg-blue-50">
+                <BarChart2 className="h-4 w-4 text-blue-500" />
+              </div>
+              <p className="text-sm text-gray-500 font-medium">Total Budget</p>
+              <p className="text-4xl font-bold mt-1" style={{ color: '#0ea5e9' }}>
                 Rs. {totalBudget.toLocaleString()}
               </p>
-              <p className="text-sm text-blue-600/80 dark:text-blue-300/80 mt-1">Across all campaigns</p>
-            </CardContent>
-          </Card>
+              <p className="text-xs text-gray-400 mt-1">Across all campaigns</p>
+              <div className="absolute -bottom-4 -right-4 w-20 h-20 rounded-full opacity-5 bg-blue-500" />
+            </div>
 
-          <Card className="border-0 bg-indigo-50 dark:bg-indigo-950/20 overflow-hidden relative">
-            <BlobSVG color="#6366f1" />
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-indigo-900 dark:text-indigo-100">Platform Distribution</CardTitle>
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={() => setShowPlatformModal(true)}
-                className="text-sm text-indigo-600/80 hover:text-indigo-700 dark:text-indigo-300/80 dark:hover:text-indigo-200"
-              >
-                View All
-              </Button>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                {Object.entries(platformCounts)
-                  .slice(0, 2)
-                  .map(([platform, count]) => {
-                    const percentage = (count / tasks.length) * 100;
-                    return (
-                      <div key={platform} className="text-center">
-                        <div className="w-16 h-16 mx-auto mb-2">
-                          <CircularProgressbar
-                            value={percentage}
-                            text={`${count}`}
-                            styles={buildStyles({
-                              pathColor: platform === 'INSTAGRAM' ? '#E1306C' :
-                                        platform === 'FACEBOOK' ? '#4267B2' :
-                                        platform === 'TIKTOK' ? '#000000' : '#6366f1',
-                              textColor: '#4338ca',
-                              trailColor: '#e0e7ff',
-                            })}
-                          />
-                        </div>
-                        <p className="text-xs font-medium mt-1 text-indigo-700 dark:text-indigo-300">
-                          {platform.charAt(0) + platform.slice(1).toLowerCase()}
-                        </p>
-                      </div>
-                    );
-                })}
+            {/* Platform Reach */}
+            <div className="bg-white rounded-xl border border-gray-100 p-5 relative overflow-hidden">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm text-gray-500 font-medium">Platform Reach</p>
+                  {topPlatform ? (
+                    <p className="text-lg font-bold text-gray-800 mt-1">{topPlatform[0].charAt(0) + topPlatform[0].slice(1).toLowerCase()}</p>
+                  ) : (
+                    <p className="text-sm text-gray-400 mt-1">No activity yet</p>
+                  )}
+                </div>
+                <button
+                  className="text-xs font-semibold"
+                  style={{ color: PINK }}
+                >
+                  Details
+                </button>
               </div>
-            </CardContent>
-          </Card>
+              <div className="flex items-center gap-4 mt-3">
+                <div className="w-14 h-14 flex-shrink-0">
+                  <CircularProgressbar
+                    value={topPlatformPct}
+                    text={topPlatform ? `${topPlatformPct}%` : '—'}
+                    styles={buildStyles({
+                      pathColor: PINK,
+                      textColor: '#374151',
+                      trailColor: '#f3f4f6',
+                      textSize: '26px',
+                    })}
+                  />
+                </div>
+                <div className="text-xs text-gray-400">
+                  {topPlatform
+                    ? <>{topPlatform[1]} task{topPlatform[1] !== 1 ? 's' : ''} on {topPlatform[0].charAt(0) + topPlatform[0].slice(1).toLowerCase()}</>
+                    : 'No activity yet'}
+                </div>
+              </div>
+            </div>
+          </div>
 
-          {/* Platform Distribution Modal */}
-          <Dialog open={showPlatformModal} onOpenChange={setShowPlatformModal}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Platform Distribution</DialogTitle>
-              </DialogHeader>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-6 py-4">
-                {Object.entries(platformCounts).map(([platform, count]) => {
-                  const percentage = (count / tasks.length) * 100;
-                  return (
-                    <div key={platform} className="text-center">
-                      <div className="w-20 h-20 mx-auto mb-3">
-                        <CircularProgressbar
-                          value={percentage}
-                          text={`${count}`}
-                          styles={buildStyles({
-                            pathColor: platform === 'INSTAGRAM' ? '#E1306C' :
-                                      platform === 'FACEBOOK' ? '#4267B2' :
-                                      platform === 'TIKTOK' ? '#000000' : '#ec4899',
-                            textColor: 'currentColor',
-                            trailColor: '#E5E7EB',
-                            pathTransitionDuration: 0.5,
-                          })}
-                        />
+          {/* ─── Recent BrandSync Links ─── */}
+          <section className="bg-white rounded-xl border border-gray-100 p-5">
+            <div className="flex items-center justify-between mb-1">
+              <div>
+                <h2 className="text-base font-semibold text-gray-900">Recent BrandSync Links</h2>
+                <p className="text-xs text-gray-400 mt-0.5">Manage and monitor your top active influencer links.</p>
+              </div>
+              <button
+                onClick={() => router.push('/dashboard/buyer/brandsync')}
+                className="flex items-center gap-1 text-xs font-semibold hover:underline"
+                style={{ color: PINK }}
+              >
+                View All <ChevronRight className="h-3.5 w-3.5" />
+              </button>
+            </div>
+
+            {isLoadingLinks ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-4">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="h-40 bg-gray-50 rounded-xl animate-pulse" />
+                ))}
+              </div>
+            ) : recentLinks.length === 0 ? (
+              <div className="mt-4 rounded-xl border border-dashed border-gray-200 py-10 text-center">
+                <Link2 className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                <p className="text-sm font-medium text-gray-500">No BrandSync links yet</p>
+                <p className="text-xs text-gray-400 mt-1">Share your video with influencers using a hidden proxy link.</p>
+                <button
+                  onClick={() => router.push('/dashboard/buyer/brandsync')}
+                  className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-white text-sm font-semibold"
+                  style={{ background: PINK }}
+                >
+                  <Plus className="h-3.5 w-3.5" /> Create your first link
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-4">
+                {recentLinks.map(link => (
+                  <div key={link.id} className="rounded-xl border border-gray-100 p-3.5 hover:border-pink-100 hover:shadow-sm transition-all relative">
+                    {/* Card menu */}
+                    <div className="flex items-start justify-between mb-2.5">
+                      <p className="text-sm font-semibold text-gray-800 truncate max-w-[75%]">{link.title}</p>
+                      <div className="relative">
+                        <button
+                          onClick={() => setOpenMenuId(openMenuId === link.id ? null : link.id)}
+                          className="w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:text-gray-600 hover:bg-gray-50"
+                        >
+                          <MoreVertical className="h-3.5 w-3.5" />
+                        </button>
+                        {openMenuId === link.id && (
+                          <div className="absolute right-0 top-7 bg-white border border-gray-100 rounded-lg shadow-lg z-10 py-1 w-28">
+                            <button
+                              onClick={() => { setOpenMenuId(null); router.push(`/dashboard/buyer/brandsync`); }}
+                              className="w-full text-left px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50"
+                            >
+                              Edit
+                            </button>
+                          </div>
+                        )}
                       </div>
-                      <div className="space-y-1">
-                        <p className="font-medium">
-                          {platform.charAt(0) + platform.slice(1).toLowerCase()}
+                    </div>
+
+                    {/* Thumbnail + info */}
+                    <div className="flex items-center gap-3 mb-3">
+                      {link.thumbnailUrl ? (
+                        <img src={link.thumbnailUrl} alt={link.title} className="h-14 w-20 rounded-lg object-cover flex-shrink-0" />
+                      ) : (
+                        <div className="h-14 w-20 rounded-lg bg-gradient-to-br from-gray-100 to-gray-200 flex-shrink-0 flex items-center justify-center">
+                          <Link2 className="h-5 w-5 text-gray-300" />
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs text-gray-600 font-medium">
+                          Shares: {link.shares ?? 0} • LKR {Number(link.amount ?? 0).toLocaleString()}
                         </p>
-                        <p className="text-sm text-muted-foreground">
-                          {percentage.toFixed(1)}% of tasks
-                        </p>
+                        {link.platformUrl && (
+                          <a
+                            href={link.platformUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex items-center gap-1 text-xs mt-1 truncate hover:underline"
+                            style={{ color: '#3b82f6' }}
+                          >
+                            <ExternalLink className="h-3 w-3 flex-shrink-0" />
+                            <span className="truncate">{link.platformUrl.replace(/^https?:\/\//, '')}</span>
+                          </a>
+                        )}
+                        {!link.isPaid && (
+                          <span className="inline-block mt-1 text-[10px] font-medium px-2 py-0.5 rounded-full" style={{ background: '#fff0f6', color: PINK }}>
+                            Status: Awaiting payment
+                          </span>
+                        )}
+                        {link.isPaid && (
+                          <span className="inline-block mt-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-green-50 text-green-700">
+                            ✓ Active
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    {!link.isPaid && (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={async () => {
+                            try {
+                              const resp = await fetch(`/api/payment/initialize/brandsync/${link.id}`, { method: 'POST' });
+                              if (!resp.ok) { const e = await resp.json().catch(() => ({})); throw new Error(e?.error || 'Failed'); }
+                              const formData = await resp.json();
+                              const paymentForm = document.createElement('form');
+                              paymentForm.method = 'post';
+                              paymentForm.action = formData.checkout_url;
+                              paymentForm.target = '_blank';
+                              Object.entries(formData).forEach(([key, value]) => {
+                                if (value !== undefined && value !== null) {
+                                  const input = document.createElement('input');
+                                  input.type = 'hidden'; input.name = key; input.value = String(value);
+                                  paymentForm.appendChild(input);
+                                }
+                              });
+                              document.body.appendChild(paymentForm);
+                              paymentForm.submit();
+                              setTimeout(() => document.body.removeChild(paymentForm), 100);
+                            } catch { toast.error('Failed to initialize payment'); }
+                          }}
+                          className="flex-1 py-1.5 rounded-lg text-white text-xs font-semibold"
+                          style={{ background: '#16a34a' }}
+                        >
+                          Pay
+                        </button>
+                        <label className="flex-1 py-1.5 rounded-lg border border-gray-200 text-gray-600 text-xs font-semibold text-center cursor-pointer hover:bg-gray-50 transition-colors">
+                          <input type="file" accept="image/*,application/pdf" className="hidden" onChange={e => handleUploadSlipForLink(e, link.id)} />
+                          Upload Slip
+                        </label>
+                      </div>
+                    )}
+                    {uploadProgress[link.id] != null && (
+                      <div className="mt-2">
+                        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                          <div className="h-1.5 rounded-full transition-all" style={{ width: `${uploadProgress[link.id]}%`, background: PINK }} />
+                        </div>
+                        <p className="text-[10px] text-gray-400 mt-1">Uploading: {uploadProgress[link.id]}%</p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* ─── Recent Tasks ─── */}
+          <section className="bg-white rounded-xl border border-gray-100 p-5">
+            <div className="flex items-center justify-between mb-1">
+              <div>
+                <h2 className="text-base font-semibold text-gray-900">Recent Tasks</h2>
+                <p className="text-xs text-gray-400 mt-0.5">Stay updated on your most recent campaign progress.</p>
+              </div>
+              <button
+                onClick={() => router.push('/dashboard/buyer')}
+                className="flex items-center gap-1 text-xs font-semibold hover:underline"
+                style={{ color: PINK }}
+              >
+                View All Tasks <ChevronRight className="h-3.5 w-3.5" />
+              </button>
+            </div>
+
+            {recentTasks.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-gray-200 py-12 text-center mt-4">
+                <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center mx-auto mb-3">
+                  <ClipboardList className="h-6 w-6 text-gray-400" />
+                </div>
+                <p className="text-sm font-semibold text-gray-700">No tasks found</p>
+                <p className="text-xs text-gray-400 mt-1">Start your first task to begin tracking growth.</p>
+                <button
+                  onClick={() => router.push('/dashboard/buyer/tasks/create')}
+                  className="mt-5 inline-flex items-center gap-1.5 px-5 py-2.5 rounded-lg text-white text-sm font-semibold shadow-sm"
+                  style={{ background: PINK }}
+                >
+                  <Plus className="h-4 w-4" /> Create First Task
+                </button>
+              </div>
+            ) : (
+              <div className="mt-4 divide-y divide-gray-50">
+                {recentTasks.map(task => {
+                  const cost = task.cost as { amount: number } | null;
+                  const budget = cost?.amount || 0;
+                  return (
+                    <div
+                      key={task.task_id}
+                      className="flex items-center gap-4 py-3 hover:bg-gray-50/50 rounded-lg px-2 cursor-pointer transition-colors"
+                      onClick={() => router.push(`/dashboard/task/${task.task_id}`)}
+                    >
+                      <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: '#fff0f6' }}>
+                        <ClipboardList className="h-4 w-4" style={{ color: PINK }} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-800 truncate">{task.title}</p>
+                        <p className="text-xs text-gray-400 truncate">{task.description}</p>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <p className="text-sm font-semibold text-gray-700">Rs. {budget.toLocaleString()}</p>
+                        <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${getStatusColor(task.status)}`}>
+                          {task.status}
+                        </span>
                       </div>
                     </div>
                   );
                 })}
               </div>
-            </DialogContent>
-          </Dialog>
-
-        </motion.div>
-
-        {/* BrandSync Links Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
-        >
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">BrandSync Links</h2>
-            <div className="flex items-center gap-2">
-              <Button onClick={() => setShowBrandSyncModal(true)} className="bg-pink-600 hover:bg-pink-700 text-white">
-                Create Link
-              </Button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {brandSyncLinks.length === 0 ? (
-                <div className="col-span-full rounded-lg border border-dashed p-6 text-center">
-                  <p className="text-lg font-medium">No BrandSync links yet</p>
-                  <p className="text-sm text-muted-foreground mt-2">Create a link to share your external video while hiding the original URL.</p>
-                  <div className="mt-4">
-                    <Button onClick={() => setShowBrandSyncModal(true)} className="bg-pink-600 hover:bg-pink-700 text-white">Create your first link</Button>
-                  </div>
-                </div>
-              ) : (
-                brandSyncLinks.map(link => (
-                  <Card key={link.id} className="overflow-hidden">
-                    <CardHeader>
-                      <CardTitle>
-                        <div className="flex items-center justify-between w-full">
-                          <span className="truncate max-w-[60%]">{link.title}</span>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-muted-foreground">{link.platform}</span>
-                          </div>
-                        </div>
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex items-center gap-3">
-                        {link.thumbnailUrl ? (
-                          <img src={link.thumbnailUrl} alt={link.title} className="h-16 w-24 rounded-md object-cover" />
-                        ) : (
-                          <div className="h-16 w-24 rounded-md bg-muted" />
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm truncate">{link.title}</p>
-                          <p className="text-xs text-muted-foreground mt-1">Shares: {link.shares ?? 0} • Amount: LKR {Number(link.amount ?? 0).toLocaleString()}</p>
-                          {!link.isPaid && (
-                            <p className="text-xs text-yellow-700 mt-1">Status: Awaiting payment</p>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex gap-2 mt-4">
-                        {link.isPaid ? (
-                          <Button asChild variant="outline">
-                            <a href={link.brandSyncUrl} target="_blank" rel="noreferrer">Open</a>
-                          </Button>
-                        ) : (
-                          <>
-                            <Button type="button" onClick={async () => {
-                              // initialize PayHere for existing brandsync
-                              try {
-                                const resp = await fetch(`/api/payment/initialize/brandsync/${link.id}`, { method: 'POST' });
-                                if (!resp.ok) { const e = await resp.json().catch(()=>({})); throw new Error(e?.error||'Failed to init payment'); }
-                                const formData = await resp.json();
-                                const paymentForm = document.createElement('form');
-                                paymentForm.method = 'post';
-                                paymentForm.action = formData.checkout_url;
-                                paymentForm.target = '_blank';
-                                Object.entries(formData).forEach(([key, value]) => {
-                                  if (value !== undefined && value !== null) {
-                                    const input = document.createElement('input');
-                                    input.type = 'hidden';
-                                    input.name = key;
-                                    input.value = String(value);
-                                    paymentForm.appendChild(input);
-                                  }
-                                });
-                                document.body.appendChild(paymentForm);
-                                paymentForm.submit();
-                                setTimeout(()=>document.body.removeChild(paymentForm),100);
-                              } catch (err) { console.error(err); toast.error('Failed to initialize payment'); }
-                            }} className="bg-green-600 text-white">Pay</Button>
-                            <label className="inline-flex items-center px-3 py-2 border rounded-md cursor-pointer">
-                                  <input type="file" accept="image/*,application/pdf" className="hidden" onChange={(e)=>handleUploadSlipForLink(e, link.id)} />
-                                  Upload Slip
-                                </label>
-                                {uploadProgress[link.id] != null && (
-                                  <div className="w-full mt-2">
-                                    <div className="h-2 bg-gray-200 rounded overflow-hidden">
-                                      <div className="h-2 bg-pink-600" style={{ width: `${uploadProgress[link.id]}%` }} />
-                                    </div>
-                                    <p className="text-xs text-muted-foreground">Uploading: {uploadProgress[link.id]}%</p>
-                                  </div>
-                                )}
-                          </>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))
-              )}
-          </div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-        >
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">Your Tasks</h2>
-            
-            <div className="flex flex-col sm:flex-row gap-3">
-              <SearchInput
-                placeholder="Search tasks..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full sm:w-[200px]"
-              />
-              
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full sm:w-[140px]">
-                  <SelectValue placeholder="Filter by status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">All Status</SelectItem>
-                  <SelectItem value="DRAFT">Draft</SelectItem>
-                  <SelectItem value="ACTIVE">Active</SelectItem>
-                  <SelectItem value="COMPLETED">Completed</SelectItem>
-                  <SelectItem value="ARCHIVED">Archived</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={platformFilter} onValueChange={setPlatformFilter}>
-                <SelectTrigger className="w-full sm:w-[140px]">
-                  <SelectValue placeholder="Filter by platform" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">All Platforms</SelectItem>
-                  <SelectItem value="INSTAGRAM">Instagram</SelectItem>
-                  <SelectItem value="FACEBOOK">Facebook</SelectItem>
-                  <SelectItem value="TIKTOK">TikTok</SelectItem>
-                  <SelectItem value="YOUTUBE">YouTube</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className="w-full sm:w-[140px]">
-                  <SelectValue placeholder="Sort by" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="created_at_desc">Newest First</SelectItem>
-                  <SelectItem value="created_at_asc">Oldest First</SelectItem>
-                  <SelectItem value="title_asc">Title A-Z</SelectItem>
-                  <SelectItem value="title_desc">Title Z-A</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {currentTasks.map((task, index) => (
-              <motion.div
-                key={task.task_id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 * index }}
-              >
-                <TaskCard task={task} />
-              </motion.div>
-            ))}
-            {filteredTasks.length === 0 && (
-              <div className="col-span-full text-center py-12">
-                <p className="text-muted-foreground">
-                  {tasks.length === 0 
-                    ? "No tasks found. Create your first task to get started!"
-                    : "No tasks match your search criteria."
-                  }
-                </p>
-              </div>
             )}
-          </div>
+          </section>
 
-          {filteredTasks.length > ITEMS_PER_PAGE && (
-            <PaginationControls />
-          )}
-        </motion.div>
+          {/* ─── Footer ─── */}
+          <footer className="flex items-center justify-between text-xs text-gray-400 pt-2 pb-4">
+            <span>© {new Date().getFullYear()} BrandSync Platform. All rights reserved.</span>
+            <div className="flex items-center gap-4">
+              <button className="hover:text-gray-600 transition-colors">Terms</button>
+              <button className="hover:text-gray-600 transition-colors">Privacy</button>
+              <button className="hover:text-gray-600 transition-colors">Support</button>
+            </div>
+          </footer>
+
+        </main>
       </div>
+
+      {/* Close dropdown on outside click */}
+      {openMenuId !== null && (
+        <div className="fixed inset-0 z-[5]" onClick={() => setOpenMenuId(null)} />
+      )}
     </div>
   );
 }

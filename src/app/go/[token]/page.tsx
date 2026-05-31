@@ -7,19 +7,57 @@ export const dynamic = "force-dynamic";
 
 export default async function BrandSyncRedirectPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
-  // try to resolve a stored BrandSync link first (only paid links should be public)
+
+  const hdrs: any = headers();
+  const forwarded = (typeof hdrs.get === 'function' ? hdrs.get('x-forwarded-for') : hdrs['x-forwarded-for']) || (typeof hdrs.get === 'function' ? hdrs.get('x-real-ip') : hdrs['x-real-ip']) || '';
+  const ip = String(forwarded).split(',')[0]?.trim() || 'unknown';
+
+  // --- Step 1: Check per-influencer sub-token table first ---
+  try {
+    const { data: subToken } = await (supabaseAdmin as any)
+      .from('brandsync_influencer_tokens')
+      .select('id, brandsync_id, influencer_user_id, clicked_at')
+      .eq('token', token)
+      .maybeSingle();
+
+    if (subToken) {
+      // Fetch parent link's platform_url
+      const { data: parent } = await supabaseAdmin
+        .from('brandsync_links')
+        .select('platform_url, is_paid')
+        .eq('id', subToken.brandsync_id)
+        .maybeSingle();
+
+      if (!parent?.is_paid) {
+        redirect('/brandsync/error?code=not_available');
+        return;
+      }
+
+      if (parent?.platform_url && /^https?:\/\//i.test(parent.platform_url)) {
+        // Record the click if not already recorded
+        if (!subToken.clicked_at) {
+          await (supabaseAdmin as any)
+            .from('brandsync_influencer_tokens')
+            .update({ clicked_at: new Date().toISOString(), ip_address: ip })
+            .eq('id', subToken.id);
+        }
+
+        redirect(parent.platform_url);
+        return;
+      }
+    }
+  } catch (err) {
+    console.error('Error checking influencer sub-token:', err);
+  }
+
+  // --- Step 2: Check standard brandsync_links table (direct token) ---
   const { data } = await supabaseAdmin
     .from("brandsync_links")
     .select("id, platform_url, is_paid")
     .eq("token", token)
     .maybeSingle();
 
-  const hdrs: any = headers();
-  const forwarded = (typeof hdrs.get === 'function' ? hdrs.get('x-forwarded-for') : hdrs['x-forwarded-for']) || (typeof hdrs.get === 'function' ? hdrs.get('x-real-ip') : hdrs['x-real-ip']) || '';
-  const ip = String(forwarded).split(',')[0]?.trim() || 'unknown';
-
   if (data && data.platform_url && /^https?:\/\//i.test(data.platform_url)) {
-    // If the link is stored, ensure it's paid
     if (!data.is_paid) {
       redirect('/brandsync/error?code=not_available');
       return;
@@ -39,17 +77,16 @@ export default async function BrandSyncRedirectPage({ params }: { params: Promis
         return;
       }
 
-      // record click
+      // Record click
       await (supabaseAdmin as any).from('brandsync_clicks').insert({ brandsync_id: data.id, ip_address: ip });
     } catch (err) {
       console.error('Error recording BrandSync click', err);
-      // continue with redirect if recording fails
     }
 
     redirect(data.platform_url);
   }
 
-  // fallback: token might be an encoded URL
+  // --- Step 3: Fallback to legacy encoded token ---
   try {
     const targetUrl = decodeBrandSyncToken(token);
 

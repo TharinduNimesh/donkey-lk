@@ -134,6 +134,7 @@ type BrandSyncLinkEntry = {
   thumbnailUrl?: string | null;
   brandSyncUrl: string;
   createdAt: string;
+  uniqueUrl?: string | null;
 };
 
 export default function InfluencerDashboardPage() {
@@ -259,7 +260,27 @@ export default function InfluencerDashboardPage() {
             throw new Error(data.error || "Failed to load BrandSync links");
           }
 
-          setBrandSyncLinks(data.links || []);
+          const links: BrandSyncLinkEntry[] = data.links || [];
+
+          // Fetch per-influencer unique tokens for each link in parallel
+          const linksWithTokens = await Promise.all(
+            links.map(async (link) => {
+              try {
+                const tokenResp = await fetch(`/api/brandsync-links/${link.id}/influencer-token`, {
+                  credentials: 'include',
+                });
+                if (tokenResp.ok) {
+                  const tokenData = await tokenResp.json();
+                  return { ...link, uniqueUrl: tokenData.uniqueUrl as string };
+                }
+              } catch {
+                // swallow — fall back to brandSyncUrl
+              }
+              return { ...link, uniqueUrl: link.brandSyncUrl };
+            })
+          );
+
+          setBrandSyncLinks(linksWithTokens);
         } catch (brandSyncError) {
           console.error("Error fetching BrandSync links:", brandSyncError);
           setBrandSyncLinks([]);
@@ -639,18 +660,19 @@ export default function InfluencerDashboardPage() {
 
                       <div className="flex items-center gap-2">
                         <Button type="button" asChild className="flex-1 bg-pink-600 hover:bg-pink-700 text-white">
-                          <a href={link.brandSyncUrl} target="_blank" rel="noopener noreferrer">
+                          <a href={link.uniqueUrl || link.brandSyncUrl} target="_blank" rel="noopener noreferrer">
                             <ExternalLink className="mr-2 h-4 w-4" />
-                            Open Link
+                            Open My Link
                           </a>
                         </Button>
                         <Button
                           type="button"
                           variant="outline"
                           onClick={async () => {
-                            await navigator.clipboard.writeText(link.brandSyncUrl);
-                            toast.success("BrandSync link copied");
+                            await navigator.clipboard.writeText(link.uniqueUrl || link.brandSyncUrl);
+                            toast.success("Your unique link copied!");
                           }}
+                          title="Copy your unique link"
                         >
                           <Copy className="h-4 w-4" />
                         </Button>

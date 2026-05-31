@@ -4,12 +4,17 @@ import { redirect } from "next/navigation";
 export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams;
   const orderId = searchParams.get('order_id');
-  
-  // Redirect to task detail page if order_id is available
+
+  // BrandSync payment — redirect back to buyer dashboard with a success flag
+  if (orderId?.startsWith('BRANDSYNC:')) {
+    redirect("/dashboard/buyer?payment=success");
+  }
+
+  // Regular task payment — redirect to task detail page
   if (orderId) {
     redirect(`/dashboard/task/${orderId}`);
   }
   
-  // Otherwise redirect to tasks list
+  // Fallback
   redirect("/dashboard/buyer");
 }
