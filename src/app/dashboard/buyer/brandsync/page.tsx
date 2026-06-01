@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Stepper } from "@/components/ui/stepper";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
+import { FileUpload } from "@/components/ui/file-upload";
 
 
 export default function BrandSyncCreatePage() {
@@ -220,19 +221,13 @@ export default function BrandSyncCreatePage() {
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          <Button
-            variant="ghost"
+          <button
             onClick={() => router.push("/dashboard/buyer")}
-            className="mb-4 -ml-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
+            className="flex items-center gap-2 text-gray-500 hover:text-foreground transition-colors group mb-4"
           >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Dashboard
-          </Button>
-
-          <div className="inline-flex items-center gap-2 rounded-full border border-pink-200 bg-pink-50 px-3 py-1 text-xs font-medium text-pink-700 shadow-sm dark:border-pink-900/50 dark:bg-pink-950/30 dark:text-pink-300 mb-4">
-            <Sparkles className="h-3.5 w-3.5" />
-            BrandSync Link Creator
-          </div>
+            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+            <span className="text-sm">Back to Dashboard</span>
+          </button>
 
           <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
             Create a BrandSync Link
@@ -325,21 +320,14 @@ export default function BrandSyncCreatePage() {
 
                 <div className="space-y-2">
                   <Label htmlFor="brandsync-thumbnail">Thumbnail (optional)</Label>
-                  <div className="flex items-center gap-3">
-                    <Input
-                      id="brandsync-thumbnail"
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => handleThumbnailChange(e.target.files?.[0] || null)}
-                      disabled={!!pendingBrandSyncId}
-                    />
-                    {thumbnailFile && (
-                      <Button type="button" variant="ghost" size="sm" onClick={() => handleThumbnailChange(null)}>
-                        <X className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                  {thumbnailName && <p className="text-xs text-muted-foreground">Selected: {thumbnailName}</p>}
+                  <FileUpload
+                    id="brandsync-thumbnail"
+                    onFileSelect={handleThumbnailChange}
+                    selectedFile={thumbnailFile}
+                    accept="image/*"
+                    disabled={!!pendingBrandSyncId}
+                    maxSize={10 * 1024 * 1024} // 10MB
+                  />
                 </div>
 
                 {thumbnailPreviewUrl && (
@@ -421,11 +409,12 @@ export default function BrandSyncCreatePage() {
                 </p>
 
                 <div className="space-y-3">
-                  <Input
-                    type="file"
+                  <FileUpload
+                    onFileSelect={setSlipFile}
+                    selectedFile={slipFile}
                     accept="image/*,application/pdf"
-                    onChange={(e) => setSlipFile(e.target.files?.[0] || null)}
                     disabled={!pendingBrandSyncId}
+                    maxSize={5 * 1024 * 1024} // 5MB
                   />
                   <Button
                     type="button"

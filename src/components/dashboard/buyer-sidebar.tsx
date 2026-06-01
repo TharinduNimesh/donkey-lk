@@ -90,11 +90,11 @@ const SidebarNav = ({ activePage, linksCount, onNavigate }: SidebarProps) => {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest px-2 mb-2">Main Menu</p>
+      <nav className="flex-1 px-3 py-4 flex flex-col gap-1 overflow-y-auto">
+        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest px-2 mb-1">Main Menu</p>
         {mainNav.map(item => <NavBtn key={item.label} {...item} />)}
 
-        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest px-2 mt-5 mb-2">Management</p>
+        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest px-2 mt-4 mb-1">Management</p>
         {mgmtNav.map(item => <NavBtn key={item.label} {...item} />)}
       </nav>
 
