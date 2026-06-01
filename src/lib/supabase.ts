@@ -81,10 +81,12 @@ export const signOut = async () => {
 
 export const signInWithGoogle = async () => {
   try {
+    // Use the current origin so this works on localhost AND production
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://www.brandsync.lk';
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `https://www.brandsync.lk/auth/callback`,
+        redirectTo: `${origin}/auth/callback`,
         queryParams: {
           access_type: 'offline',
           prompt: 'consent',

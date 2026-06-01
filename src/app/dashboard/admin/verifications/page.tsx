@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import type { Database } from "@/types/database.types";
 import { format } from "date-fns";
@@ -186,104 +186,108 @@ export default function AdminVerificationsPage() {
   };
 
   return (
-    <div className="container mx-auto py-8 px-4">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">Ownership Verifications</h1>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="space-y-1">
+        <h1 className="text-2xl font-bold tracking-tight text-gray-900">Ownership Verifications</h1>
+        <p className="text-xs text-gray-500">Review and verify channel ownership submissions from platform influencers.</p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Platform Verification Requests</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <section className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm space-y-4">
+        <div>
+          <h2 className="text-base font-semibold text-gray-900">Platform Verification Requests</h2>
+          <p className="text-xs text-gray-400">Manage and verify pending account verifications below.</p>
+        </div>
+
+        <div className="overflow-x-auto rounded-lg border border-gray-100 bg-white">
           {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full"></div>
+            <div className="flex items-center justify-center py-10">
+              <div className="animate-spin w-8 h-8 border-4 border-pink-500 border-t-transparent rounded-full"></div>
             </div>
           ) : requests.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">No verification requests found</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-3 px-4">User</th>
-                    <th className="text-left py-3 px-4">Contact Info</th>
-                    <th className="text-left py-3 px-4">Platform</th>
-                    <th className="text-left py-3 px-4">Profile URL</th>
-                    <th className="text-left py-3 px-4">Submitted</th>
-                    <th className="text-left py-3 px-4">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {requests.map((request) => (
-                    <tr key={request.id} className="border-b">
-                      <td className="py-3 px-4">
-                        <div>
-                          <div className="font-medium">{request.profile.name}</div>
-                          <div className="text-sm text-muted-foreground">
-                            Joined {format(new Date(request.profile.created_at), 'MMM d, yyyy')}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="space-y-1">
-                          <div className="text-sm">
-                            <span className="font-medium">Email:</span>{' '}
-                            {request.profile.email}
-                          </div>
-                          <div className="text-sm">
-                            <span className="font-medium">Mobile:</span>{' '}
-                            {getContactByType(request.profile.contacts, 'MOBILE')}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4">
-                        <Badge variant="secondary" className="bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400">
-                          {request.platform}
-                        </Badge>
-                      </td>
-                      <td className="py-3 px-4">
-                        <a 
-                          href={request.profile_url} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-sm text-pink-600 hover:text-pink-700 dark:text-pink-400 dark:hover:text-pink-300"
-                        >
-                          View Profile
-                        </a>
-                      </td>
-                      <td className="py-3 px-4">
-                        {format(new Date(request.created_at), 'MMM d, yyyy')}
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="flex gap-2">
-                          <Button
-                            variant="default"
-                            size="sm"
-                            onClick={() => handleVerificationAction(request, 'accept')}
-                            className="bg-green-600 hover:bg-green-700"
-                          >
-                            Accept
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleVerificationAction(request, 'reject')}
-                            className="text-red-600 border-red-600 hover:bg-red-50"
-                          >
-                            Reject
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="text-center text-gray-400 py-10 text-sm">
+              No verification requests found
             </div>
+          ) : (
+            <Table>
+              <TableHeader className="bg-gray-50/50">
+                <TableRow className="border-b border-gray-100 hover:bg-transparent">
+                  <TableHead className="py-3 px-4 font-semibold text-gray-600 text-xs">User</TableHead>
+                  <TableHead className="py-3 px-4 font-semibold text-gray-600 text-xs">Contact Info</TableHead>
+                  <TableHead className="py-3 px-4 font-semibold text-gray-600 text-xs">Platform</TableHead>
+                  <TableHead className="py-3 px-4 font-semibold text-gray-600 text-xs">Profile URL</TableHead>
+                  <TableHead className="py-3 px-4 font-semibold text-gray-600 text-xs">Submitted</TableHead>
+                  <TableHead className="py-3 px-4 font-semibold text-gray-600 text-xs text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {requests.map((request) => (
+                  <TableRow key={request.id} className="border-b border-gray-100 hover:bg-gray-50/30 transition-colors">
+                    <TableCell className="py-3.5 px-4">
+                      <div>
+                        <div className="font-semibold text-sm text-gray-800">{request.profile.name}</div>
+                        <div className="text-[10px] text-gray-400">
+                          Joined {format(new Date(request.profile.created_at), 'MMM d, yyyy')}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-3.5 px-4">
+                      <div className="space-y-0.5 text-xs text-gray-600">
+                        <div>
+                          <span className="font-medium text-gray-400">Email:</span>{' '}
+                          <span className="text-gray-700">{request.profile.email}</span>
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-400">Mobile:</span>{' '}
+                          <span className="text-gray-700">{getContactByType(request.profile.contacts, 'MOBILE') || '-'}</span>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-3.5 px-4">
+                      <Badge variant="secondary" className="bg-pink-50 text-pink-700 hover:bg-pink-50/80 border-0 font-semibold text-[10px] px-2 py-0.5">
+                        {request.platform}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="py-3.5 px-4 text-xs font-semibold">
+                      <a 
+                        href={request.profile_url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-pink-600 hover:text-pink-700 hover:underline"
+                      >
+                        View Profile
+                      </a>
+                    </TableCell>
+                    <TableCell className="py-3.5 px-4 text-xs text-gray-500">
+                      {format(new Date(request.created_at), 'MMM d, yyyy')}
+                    </TableCell>
+                    <TableCell className="py-3.5 px-4 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => handleVerificationAction(request, 'accept')}
+                          className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white font-semibold shadow-sm"
+                        >
+                          Accept
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleVerificationAction(request, 'reject')}
+                          className="h-7 text-xs text-red-600 border-red-200 bg-red-50/30 hover:bg-red-50 hover:text-red-700 font-semibold"
+                        >
+                          Reject
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
       {verificationModal.request && (
         <OwnershipVerificationModal

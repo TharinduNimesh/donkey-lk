@@ -96,7 +96,7 @@ export default function AdminLayout({
               href={route.path}
               onClick={onNavigate}
               className={cn(
-                "w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all",
+                "w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap",
                 isActive
                   ? "text-white shadow-sm"
                   : "text-gray-500 hover:bg-gray-50 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-gray-900/50"
@@ -181,7 +181,7 @@ export default function AdminLayout({
         </header>
 
         {/* Page children container */}
-        <main className="flex-1 overflow-y-auto bg-[#fafafa]">
+        <main className="flex-1 overflow-y-auto bg-[#fafafa] p-4 lg:p-6">
           {children}
         </main>
       </div>

@@ -37,11 +37,18 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ sli
 
     if (action === 'accept') {
       // mark slip accepted and mark link as paid
-      const { error: u1 } = await (supabaseAdmin as any)
-        .from('bank_transfer_status')
-        .update({ status: 'ACCEPTED', reviewed_at: new Date().toISOString() })
-        .eq('transfer_id', slipId);
-      if (u1) throw u1;
+      if (slipStatus) {
+        const { error: u1 } = await (supabaseAdmin as any)
+          .from('bank_transfer_status')
+          .update({ status: 'ACCEPTED', reviewed_at: new Date().toISOString() })
+          .eq('transfer_id', slipId);
+        if (u1) throw u1;
+      } else {
+        const { error: u1 } = await (supabaseAdmin as any)
+          .from('bank_transfer_status')
+          .insert({ transfer_id: slipId, status: 'ACCEPTED', reviewed_at: new Date().toISOString() });
+        if (u1) throw u1;
+      }
 
       const { error: u2 } = await supabaseAdmin
         .from('brandsync_links')
@@ -57,29 +64,51 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ sli
         .single();
 
       if (profile?.email) {
-        await sendMail({
-          to: profile.email,
-          subject: 'Payment Accepted - BrandSync',
-          template: 'payment-accepted',
-          context: {
-            name: profile.name || 'User',
-            taskTitle: link.title || '',
-            taskId: String(link.id),
-            amount: String(link.amount || 0),
-            date: new Date().toISOString().split('T')[0]
+        const origin = new URL(req.url).origin;
+        // Dispatch email notification in the background without awaiting SMTP delivery
+        fetch(`${origin}/api/mail/send`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Cookie': req.headers.get('cookie') || '',
           },
-          from: 'accounts@brandsync.lk'
+          body: JSON.stringify({
+            to: profile.email,
+            subject: 'Payment Accepted - BrandSync',
+            template: 'payment-accepted',
+            context: {
+              name: profile.name || 'User',
+              taskTitle: link.title || '',
+              taskId: String(link.id),
+              amount: String(link.amount || 0),
+              date: new Date().toISOString().split('T')[0]
+            },
+            from: 'accounts@brandsync.lk'
+          })
+        }).then(mailResp => {
+          if (!mailResp.ok) {
+            console.error('Failed to send payment accepted email: status', mailResp.status);
+          }
+        }).catch(mailErr => {
+          console.error('Failed to send payment accepted email:', mailErr);
         });
       }
 
       return NextResponse.json({ status: 'ok' });
     } else {
       // reject: mark slip rejected
-      const { error } = await (supabaseAdmin as any)
-        .from('bank_transfer_status')
-        .update({ status: 'REJECTED', reviewed_at: new Date().toISOString() })
-        .eq('transfer_id', slipId);
-      if (error) throw error;
+      if (slipStatus) {
+        const { error } = await (supabaseAdmin as any)
+          .from('bank_transfer_status')
+          .update({ status: 'REJECTED', reviewed_at: new Date().toISOString() })
+          .eq('transfer_id', slipId);
+        if (error) throw error;
+      } else {
+        const { error } = await (supabaseAdmin as any)
+          .from('bank_transfer_status')
+          .insert({ transfer_id: slipId, status: 'REJECTED', reviewed_at: new Date().toISOString() });
+        if (error) throw error;
+      }
 
       // send rejection email
       const { data: profile } = await supabaseAdmin
@@ -89,18 +118,33 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ sli
         .single();
 
       if (profile?.email) {
-        await sendMail({
-          to: profile.email,
-          subject: 'Payment Rejected - BrandSync',
-          template: 'payment-rejected',
-          context: {
-            name: profile.name || 'User',
-            taskTitle: link.title || '',
-            taskId: String(link.id),
-            reason: reason || 'REJECTED',
-            date: new Date().toISOString().split('T')[0]
+        const origin = new URL(req.url).origin;
+        // Dispatch email notification in the background without awaiting SMTP delivery
+        fetch(`${origin}/api/mail/send`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Cookie': req.headers.get('cookie') || '',
           },
-          from: 'accounts@brandsync.lk'
+          body: JSON.stringify({
+            to: profile.email,
+            subject: 'Payment Rejected - BrandSync',
+            template: 'payment-rejected',
+            context: {
+              name: profile.name || 'User',
+              taskTitle: link.title || '',
+              taskId: String(link.id),
+              reason: reason || 'REJECTED',
+              date: new Date().toISOString().split('T')[0]
+            },
+            from: 'accounts@brandsync.lk'
+          })
+        }).then(mailResp => {
+          if (!mailResp.ok) {
+            console.error('Failed to send payment rejected email: status', mailResp.status);
+          }
+        }).catch(mailErr => {
+          console.error('Failed to send payment rejected email:', mailErr);
         });
       }
 

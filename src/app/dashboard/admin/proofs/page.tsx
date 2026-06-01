@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -401,12 +401,12 @@ export default function AdminProofsPage() {
   const getStatusBadgeVariant = (status?: Database["public"]["Enums"]["ProofStatus"]) => {
     switch (status) {
       case 'ACCEPTED':
-        return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
+        return 'bg-emerald-50 text-emerald-700 hover:bg-emerald-50/80 border-0 font-semibold';
       case 'REJECTED':
-        return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
+        return 'bg-red-50 text-red-700 hover:bg-red-50/80 border-0 font-semibold';
       case 'UNDER_REVIEW':
       default:
-        return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400';
+        return 'bg-amber-50 text-amber-700 hover:bg-amber-50/80 border-0 font-semibold';
     }
   };
 
@@ -453,10 +453,14 @@ export default function AdminProofsPage() {
   );
 
   return (
-    <div className="container mx-auto py-8 px-4">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">Application Proofs</h1>
-        <div className="flex items-center gap-4">
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900">Application Proofs</h1>
+          <p className="text-xs text-gray-500">Review and approve task campaign completion proofs submitted by influencers.</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
           <Select
             value={sortBy}
             onValueChange={(value: SortOption) => {
@@ -464,7 +468,7 @@ export default function AdminProofsPage() {
               setCurrentPage(1);
             }}
           >
-            <SelectTrigger className="w-[140px]">
+            <SelectTrigger className="w-[140px] bg-white border-gray-200">
               <SelectValue placeholder="Sort by" />
             </SelectTrigger>
             <SelectContent>
@@ -480,7 +484,7 @@ export default function AdminProofsPage() {
               setCurrentPage(1);
             }}
           >
-            <SelectTrigger className="w-[140px]">
+            <SelectTrigger className="w-[140px] bg-white border-gray-200">
               <SelectValue placeholder="Filter by status" />
             </SelectTrigger>
             <SelectContent>
@@ -498,7 +502,7 @@ export default function AdminProofsPage() {
               setCurrentPage(1);
             }}
           >
-            <SelectTrigger className="w-[140px]">
+            <SelectTrigger className="w-[140px] bg-white border-gray-200">
               <SelectValue placeholder="Filter by platform" />
             </SelectTrigger>
             <SelectContent>
@@ -515,7 +519,7 @@ export default function AdminProofsPage() {
               <Button
                 variant="outline"
                 className={cn(
-                  "w-[160px] justify-start text-left font-normal",
+                  "w-[160px] justify-start text-left font-normal bg-white border-gray-200",
                   !dateFilter && "text-muted-foreground"
                 )}
               >
@@ -553,79 +557,71 @@ export default function AdminProofsPage() {
       
       <div className="space-y-6">
         {isLoading ? (
-          <Card>
-            <CardContent className="flex items-center justify-center py-8">
-              <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full"></div>
-            </CardContent>
-          </Card>
+          <div className="bg-white rounded-xl border border-gray-100 p-10 flex items-center justify-center">
+            <div className="animate-spin w-8 h-8 border-4 border-pink-500 border-t-transparent rounded-full"></div>
+          </div>
         ) : groupedProofs.length === 0 ? (
-          <Card>
-            <CardContent>
-              <p className="text-center text-muted-foreground py-8">
-                No proof submissions found
-              </p>
-            </CardContent>
-          </Card>
+          <div className="bg-white rounded-xl border border-gray-100 p-10 text-center text-gray-400 text-sm">
+            No proof submissions found
+          </div>
         ) : (
           groupedProofs.map(group => (
-            <Card key={group.applicationId}>
-              <CardHeader>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <CardTitle>{group.task.title}</CardTitle>
-                    <p className="text-sm text-muted-foreground mt-1">{group.task.description}</p>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-medium">{group.user.name}</div>
-                    <div className="text-sm text-muted-foreground">{group.user.email}</div>
-                  </div>
+            <div key={group.applicationId} className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm space-y-4">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-100 pb-4">
+                <div>
+                  <h3 className="font-semibold text-lg text-gray-900">{group.task.title}</h3>
+                  <p className="text-xs text-gray-500 mt-1">{group.task.description}</p>
                 </div>
-              </CardHeader>
-              <CardContent>
+                <div className="text-left md:text-right">
+                  <div className="font-semibold text-sm text-gray-800">{group.user.name}</div>
+                  <div className="text-xs text-gray-500">{group.user.email}</div>
+                </div>
+              </div>
+
+              <div className="space-y-6">
                 {group.promises.map(promise => (
-                  <div key={promise.platform} className="mb-6 last:mb-0">
-                    <div className="flex items-center justify-between mb-4">
-                      <Badge variant="secondary" className="bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400">
+                  <div key={promise.platform} className="space-y-3 last:mb-0">
+                    <div className="flex items-center justify-between bg-gray-50/50 p-3 rounded-lg border border-gray-100">
+                      <Badge variant="secondary" className="bg-pink-50 text-pink-700 hover:bg-pink-50/80 border-0 font-semibold text-xs px-2 py-0.5">
                         {promise.platform}
                       </Badge>
-                      <div className="text-sm">
-                        <span className="text-muted-foreground">Promised: </span>
-                        <span className="font-medium">{formatViewCount(parseViewCount(promise.promised_reach))} views</span>
+                      <div className="text-xs font-medium text-gray-500">
+                        <span>Promised Reach: <strong className="text-gray-800 font-semibold">{formatViewCount(parseViewCount(promise.promised_reach))} views</strong></span>
                         <span className="mx-2">•</span>
-                        <span className="text-muted-foreground">Est. Earnings: </span>
-                        <span className="font-medium">Rs. {parseFloat(promise.est_profit).toFixed(2)}</span>
+                        <span>Est. Earnings: <strong className="text-emerald-600 font-semibold">Rs. {parseFloat(promise.est_profit).toFixed(2)}</strong></span>
                       </div>
                     </div>
 
                     {promise.proofs.length > 0 ? (
-                      <div className="overflow-x-auto">
-                        <table className="w-full">
-                          <thead>
-                            <tr className="border-b">
-                              <th className="text-left py-3 px-4">Type</th>
-                              <th className="text-left py-3 px-4">Content</th>
-                              <th className="text-left py-3 px-4">Status</th>
-                              <th className="text-left py-3 px-4">Submitted</th>
-                              <th className="text-left py-3 px-4">Reviewed By</th>
-                              <th className="text-left py-3 px-4">Reviewed At</th>
-                              <th className="text-left py-3 px-4">Actions</th>
-                            </tr>
-                          </thead>
-                          <tbody>
+                      <div className="overflow-x-auto rounded-lg border border-gray-100 bg-white">
+                        <Table>
+                          <TableHeader className="bg-gray-50/50">
+                            <TableRow className="border-b border-gray-100 hover:bg-transparent">
+                              <TableHead className="py-2.5 px-4 font-semibold text-gray-600 text-xs">Type</TableHead>
+                              <TableHead className="py-2.5 px-4 font-semibold text-gray-600 text-xs">Content</TableHead>
+                              <TableHead className="py-2.5 px-4 font-semibold text-gray-600 text-xs">Status</TableHead>
+                              <TableHead className="py-2.5 px-4 font-semibold text-gray-600 text-xs">Submitted</TableHead>
+                              <TableHead className="py-2.5 px-4 font-semibold text-gray-600 text-xs">Reviewed By</TableHead>
+                              <TableHead className="py-2.5 px-4 font-semibold text-gray-600 text-xs">Reviewed At</TableHead>
+                              <TableHead className="py-2.5 px-4 font-semibold text-gray-600 text-xs text-right">Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
                             {promise.proofs.map((proof) => (
-                              <tr key={proof.id} className="border-b">
-                                <td className="py-3 px-4">
+                              <TableRow key={proof.id} className="border-b border-gray-100 hover:bg-gray-50/30 transition-colors">
+                                <TableCell className="py-3 px-4 text-xs font-semibold text-gray-700">
                                   {proof.proof_type}
-                                </td>
-                                <td className="py-3 px-4">
+                                </TableCell>
+                                <TableCell className="py-3 px-4 text-xs">
                                   {proof.proof_type === 'URL' ? (
                                     <a 
                                       href={proof.content} 
                                       target="_blank" 
                                       rel="noopener noreferrer"
-                                      className="text-pink-600 hover:text-pink-700 dark:text-pink-400 dark:hover:text-pink-300"
+                                      className="inline-flex items-center gap-1 text-pink-600 hover:text-pink-700 font-semibold hover:underline"
                                     >
-                                      View URL
+                                      <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                                      Open URL
                                     </a>
                                   ) : (
                                     proofUrls[proof.content] && (
@@ -633,38 +629,43 @@ export default function AdminProofsPage() {
                                         href={proofUrls[proof.content]} 
                                         target="_blank" 
                                         rel="noopener noreferrer"
-                                        className="text-pink-600 hover:text-pink-700 dark:text-pink-400 dark:hover:text-pink-300"
+                                        className="group inline-block"
+                                        title="Click to view full image"
                                       >
-                                        View Image
+                                        <img
+                                          src={proofUrls[proof.content]}
+                                          alt="Proof screenshot"
+                                          className="w-16 h-12 object-cover rounded-md border border-gray-200 shadow-sm group-hover:shadow-md group-hover:border-pink-200 transition-all"
+                                        />
                                       </a>
                                     )
                                   )}
-                                </td>
-                                <td className="py-3 px-4">
-                                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                </TableCell>
+                                <TableCell className="py-3 px-4">
+                                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border-0 ${
                                     getStatusBadgeVariant(proof.proof_status.status)
                                   }`}>
                                     {proof.proof_status.status}
                                   </span>
-                                </td>
-                                <td className="py-3 px-4">
+                                </TableCell>
+                                <TableCell className="py-3 px-4 text-xs text-gray-500">
                                   {format(new Date(proof.created_at), 'MMM d, yyyy')}
-                                </td>
-                                <td className="py-3 px-4">
+                                </TableCell>
+                                <TableCell className="py-3 px-4 text-xs text-gray-500">
                                   {proof.proof_status.reviewer?.name || '-'}
-                                </td>
-                                <td className="py-3 px-4">
+                                </TableCell>
+                                <TableCell className="py-3 px-4 text-xs text-gray-500">
                                   {proof.proof_status.reviewed_at 
                                     ? format(new Date(proof.proof_status.reviewed_at), 'MMM d, yyyy')
                                     : '-'}
-                                </td>
-                                <td className="py-3 px-4">
+                                </TableCell>
+                                <TableCell className="py-3 px-4 text-right">
                                   {proof.proof_status.status === 'UNDER_REVIEW' && (
-                                    <div className="flex gap-2">
+                                    <div className="flex items-center justify-end gap-2">
                                       <Button
                                         size="sm"
                                         variant="outline"
-                                        className="text-green-600 border-green-200 hover:bg-green-50 hover:text-green-700"
+                                        className="h-7 text-xs text-emerald-600 border-emerald-200 bg-emerald-50/30 hover:bg-emerald-50 hover:text-emerald-700"
                                         onClick={() => handleProofAction(proof, 'accept')}
                                       >
                                         Accept
@@ -672,28 +673,28 @@ export default function AdminProofsPage() {
                                       <Button
                                         size="sm"
                                         variant="outline"
-                                        className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+                                        className="h-7 text-xs text-red-600 border-red-200 bg-red-50/30 hover:bg-red-50 hover:text-red-700"
                                         onClick={() => handleProofAction(proof, 'reject')}
                                       >
                                         Reject
                                       </Button>
                                     </div>
                                   )}
-                                </td>
-                              </tr>
+                                </TableCell>
+                              </TableRow>
                             ))}
-                          </tbody>
-                        </table>
+                          </TableBody>
+                        </Table>
                       </div>
                     ) : (
-                      <p className="text-sm text-muted-foreground text-center py-4 border rounded-lg">
+                      <p className="text-xs text-gray-400 text-center py-4 border border-dashed border-gray-200 rounded-lg bg-gray-50/20">
                         No proofs submitted for {promise.platform}
                       </p>
                     )}
                   </div>
                 ))}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           ))
         )}
         {groupedProofs.length > 0 && <PaginationControls />}

@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { FancyText } from "@/components/ui/fancy-text";
+import { IconBrandGoogle } from "@tabler/icons-react";
 
 const LabelInputContainer = ({
   children,
@@ -130,7 +131,22 @@ export function SignInForm() {
         </button>
       </form>
 
+      <div className="bg-gradient-to-r from-transparent via-neutral-200 dark:via-neutral-800 to-transparent my-6 h-[1px] w-full" />
 
+      <div className="flex flex-col gap-4">
+        <button
+          className="relative group/btn flex space-x-2 items-center justify-center px-4 w-full rounded-md h-11 font-medium bg-pink-50 border border-pink-100 hover:bg-pink-100 text-pink-700 transition duration-200 cursor-pointer shadow-sm"
+          type="button"
+          onClick={handleGoogleSignIn}
+          disabled={loading}
+        >
+          <IconBrandGoogle className="h-4 w-4 text-pink-600" />
+          <span className="text-pink-700 text-sm font-semibold">
+            {loading ? "Connecting..." : "Continue with Google"}
+          </span>
+          <BottomGradient />
+        </button>
+      </div>
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
         Don't have an account?{" "}

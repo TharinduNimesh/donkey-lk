@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { SearchInput } from "@/components/ui/search-input";
 import {
@@ -290,87 +291,84 @@ export default function AdminAccountingPage() {
   );
 
   return (
-    <div className="container mx-auto py-8 px-4">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">Accounting</h1>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="space-y-1">
+        <h1 className="text-2xl font-bold tracking-tight text-gray-900">Accounting</h1>
+        <p className="text-xs text-gray-500">Monitor platform revenues, expenses, and transaction logs.</p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
-        <Card>
-          <CardHeader>
-            <CardTitle>Monthly Income</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-green-500" />
-              <p className="text-3xl font-bold">Rs. {monthlyIncome.toLocaleString()}</p>
-            </div>
-            <p className="text-sm text-muted-foreground mt-2">
-              Income for {format(new Date(), 'MMMM yyyy')}
-            </p>
-          </CardContent>
-        </Card>
+      {/* Metrics Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {/* Monthly Income */}
+        <div className="bg-white rounded-xl border border-gray-100 p-5 relative overflow-hidden shadow-sm hover:shadow-md transition-all duration-200">
+          <div className="absolute top-0 left-0 w-full h-[3px] bg-emerald-500" />
+          <div className="absolute top-4 right-4 w-8 h-8 rounded-lg flex items-center justify-center bg-emerald-50">
+            <TrendingUp className="h-4 w-4 text-emerald-500" />
+          </div>
+          <p className="text-sm text-gray-500 font-medium">Monthly Income</p>
+          <p className="text-2xl font-bold text-gray-900 mt-1">Rs. {monthlyIncome.toLocaleString()}</p>
+          <p className="text-xs text-gray-400 mt-2">
+            Income for {format(new Date(), 'MMMM yyyy')}
+          </p>
+          <div className="absolute -bottom-4 -right-4 w-20 h-20 rounded-full opacity-[0.03] bg-emerald-500" />
+        </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Monthly Expenses</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-red-500" />
-              <p className="text-3xl font-bold">Rs. {monthlyExpenses.toLocaleString()}</p>
-            </div>
-            <p className="text-sm text-muted-foreground mt-2">
-              Expenses for {format(new Date(), 'MMMM yyyy')}
-            </p>
-          </CardContent>
-        </Card>
+        {/* Monthly Expenses */}
+        <div className="bg-white rounded-xl border border-gray-100 p-5 relative overflow-hidden shadow-sm hover:shadow-md transition-all duration-200">
+          <div className="absolute top-0 left-0 w-full h-[3px] bg-red-500" />
+          <div className="absolute top-4 right-4 w-8 h-8 rounded-lg flex items-center justify-center bg-red-50">
+            <TrendingUp className="h-4 w-4 text-red-500" />
+          </div>
+          <p className="text-sm text-gray-500 font-medium">Monthly Expenses</p>
+          <p className="text-2xl font-bold text-gray-900 mt-1">Rs. {monthlyExpenses.toLocaleString()}</p>
+          <p className="text-xs text-gray-400 mt-2">
+            Expenses for {format(new Date(), 'MMMM yyyy')}
+          </p>
+          <div className="absolute -bottom-4 -right-4 w-20 h-20 rounded-full opacity-[0.03] bg-red-500" />
+        </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Total Income</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-green-500" />
-              <p className="text-3xl font-bold">Rs. {totalIncome.toLocaleString()}</p>
-            </div>
-            <p className="text-sm text-muted-foreground mt-2">
-              All-time earnings
-            </p>
-          </CardContent>
-        </Card>
+        {/* Total Income */}
+        <div className="bg-white rounded-xl border border-gray-100 p-5 relative overflow-hidden shadow-sm hover:shadow-md transition-all duration-200">
+          <div className="absolute top-0 left-0 w-full h-[3px] bg-emerald-500" />
+          <div className="absolute top-4 right-4 w-8 h-8 rounded-lg flex items-center justify-center bg-emerald-50">
+            <TrendingUp className="h-4 w-4 text-emerald-500" />
+          </div>
+          <p className="text-sm text-gray-500 font-medium">Total Income</p>
+          <p className="text-2xl font-bold text-gray-900 mt-1">Rs. {totalIncome.toLocaleString()}</p>
+          <p className="text-xs text-gray-400 mt-2">All-time platform earnings</p>
+          <div className="absolute -bottom-4 -right-4 w-20 h-20 rounded-full opacity-[0.03] bg-emerald-500" />
+        </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Total Expenses</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-red-500" />
-              <p className="text-3xl font-bold">Rs. {totalExpenses.toLocaleString()}</p>
-            </div>
-            <p className="text-sm text-muted-foreground mt-2">
-              All-time expenses
-            </p>
-          </CardContent>
-        </Card>
+        {/* Total Expenses */}
+        <div className="bg-white rounded-xl border border-gray-100 p-5 relative overflow-hidden shadow-sm hover:shadow-md transition-all duration-200">
+          <div className="absolute top-0 left-0 w-full h-[3px] bg-red-500" />
+          <div className="absolute top-4 right-4 w-8 h-8 rounded-lg flex items-center justify-center bg-red-50">
+            <TrendingUp className="h-4 w-4 text-red-500" />
+          </div>
+          <p className="text-sm text-gray-500 font-medium">Total Expenses</p>
+          <p className="text-2xl font-bold text-gray-900 mt-1">Rs. {totalExpenses.toLocaleString()}</p>
+          <p className="text-xs text-gray-400 mt-2">All-time platform expenses</p>
+          <div className="absolute -bottom-4 -right-4 w-20 h-20 rounded-full opacity-[0.03] bg-red-500" />
+        </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Financial Transactions</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-4 mb-6">
+      <section className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm space-y-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-100 pb-4">
+          <div>
+            <h2 className="text-base font-semibold text-gray-900">Financial Transactions</h2>
+            <p className="text-xs text-gray-400">Search and sort transaction records across the platform.</p>
+          </div>
+          
+          <div className="flex flex-wrap items-center gap-3">
             <SearchInput
-              placeholder="Search by task title or buyer name"
+              placeholder="Search by title or buyer..."
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
                 setCurrentPage(1);
               }}
-              className="max-w-sm"
+              className="w-[240px] bg-white border-gray-200"
               type="text"
             />
 
@@ -383,7 +381,7 @@ export default function AdminAccountingPage() {
                 setCurrentPage(1);
               }}
             >
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-[180px] bg-white border-gray-200">
                 <SelectValue placeholder="Sort by" />
               </SelectTrigger>
               <SelectContent>
@@ -394,74 +392,78 @@ export default function AdminAccountingPage() {
               </SelectContent>
             </Select>
           </div>
+        </div>
 
+        <div className="overflow-x-auto rounded-lg border border-gray-100 bg-white">
           {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full"></div>
+            <div className="flex items-center justify-center py-10">
+              <div className="animate-spin w-8 h-8 border-4 border-pink-500 border-t-transparent rounded-full"></div>
             </div>
           ) : transactions.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">
+            <div className="text-center text-gray-400 py-10 text-sm">
               No transactions found
-            </p>
+            </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-3 px-4">Date</th>
-                    <th className="text-left py-3 px-4">Type</th>
-                    <th className="text-left py-3 px-4">Details</th>
-                    <th className="text-left py-3 px-4">Payment Info</th>
-                    <th className="text-left py-3 px-4">Amount</th>
-                  </tr>
-                </thead>
-                <tbody>
+            <>
+              <Table>
+                <TableHeader className="bg-gray-50/50">
+                  <TableRow className="border-b border-gray-100 hover:bg-transparent">
+                    <TableHead className="py-3 px-4 font-semibold text-gray-600 text-xs">Date</TableHead>
+                    <TableHead className="py-3 px-4 font-semibold text-gray-600 text-xs">Type</TableHead>
+                    <TableHead className="py-3 px-4 font-semibold text-gray-600 text-xs">Details</TableHead>
+                    <TableHead className="py-3 px-4 font-semibold text-gray-600 text-xs">Payment Info</TableHead>
+                    <TableHead className="py-3 px-4 font-semibold text-gray-600 text-xs text-right">Amount</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {transactions.map((transaction) => (
-                    <tr key={`${transaction.type}-${transaction.id}`} className="border-b">
-                      <td className="py-3 px-4">
+                    <TableRow key={`${transaction.type}-${transaction.id}`} className="border-b border-gray-100 hover:bg-gray-50/30 transition-colors">
+                      <TableCell className="py-3.5 px-4 text-xs text-gray-500">
                         {format(new Date(transaction.paidAt), 'MMM d, yyyy HH:mm')}
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className={`font-medium ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
+                      </TableCell>
+                      <TableCell className="py-3.5 px-4">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border-0 ${
+                          transaction.type === 'income' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
+                        }`}>
                           {transaction.type === 'income' ? 'Income' : 'Expense'}
-                        </div>
-                      </td>
-                      <td className="py-3 px-4">
+                        </span>
+                      </TableCell>
+                      <TableCell className="py-3.5 px-4">
                         {transaction.type === 'income' ? (
-                          <>
-                            <div className="font-medium">{transaction.taskTitle}</div>
-                            <div className="text-sm text-muted-foreground">ID: {transaction.taskId}</div>
-                            <div className="text-sm text-muted-foreground">Buyer: {transaction.buyerName}</div>
-                          </>
+                          <div className="space-y-0.5">
+                            <div className="font-semibold text-sm text-gray-800">{transaction.taskTitle}</div>
+                            <div className="text-[10px] text-gray-400 font-medium">Task ID: {transaction.taskId} • Buyer: {transaction.buyerName}</div>
+                          </div>
                         ) : (
-                          <>
-                            <div className="font-medium">Withdrawal</div>
-                            <div className="text-sm text-muted-foreground">User: {transaction.userName}</div>
-                          </>
+                          <div className="space-y-0.5">
+                            <div className="font-semibold text-sm text-gray-800">Withdrawal</div>
+                            <div className="text-[10px] text-gray-400 font-medium">Influencer: {transaction.userName}</div>
+                          </div>
                         )}
-                      </td>
-                      <td className="py-3 px-4">
+                      </TableCell>
+                      <TableCell className="py-3.5 px-4 text-xs text-gray-600">
                         {transaction.type === 'income' ? (
                           transaction.paymentMethod === 'PAYMENT_GATEWAY' ? 'Online Payment' : 'Bank Transfer'
                         ) : (
-                          <div className="text-sm">{transaction.description}</div>
+                          <span className="font-mono text-[11px] text-gray-500">{transaction.description}</span>
                         )}
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className={`flex items-center gap-2 ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
-                          <TrendingUp className="h-4 w-4" />
+                      </TableCell>
+                      <TableCell className="py-3.5 px-4 text-right">
+                        <div className={`flex items-center justify-end gap-1.5 font-semibold text-sm ${transaction.type === 'income' ? 'text-emerald-600' : 'text-red-600'}`}>
                           <span>Rs. {transaction.amount.toLocaleString()}</span>
                         </div>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
-              <PaginationControls />
-            </div>
+                </TableBody>
+              </Table>
+              <div className="px-4 border-t border-gray-100">
+                <PaginationControls />
+              </div>
+            </>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </section>
     </div>
   );
 }

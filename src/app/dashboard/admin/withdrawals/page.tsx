@@ -322,219 +322,221 @@ export default function AdminWithdrawalsPage() {
   };
 
   return (
-    <div className="container mx-auto py-8 px-4">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Withdrawal Requests</h1>
-        <p className="text-muted-foreground mt-2">Manage and review withdrawal requests from influencers</p>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="space-y-1">
+        <h1 className="text-2xl font-bold tracking-tight text-gray-900">Withdrawal Requests</h1>
+        <p className="text-xs text-gray-500">Manage and review withdrawal requests from influencers.</p>
       </div>
 
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[50px]"></TableHead>
-              <TableHead>Influencer</TableHead>
-              <TableHead>Amount</TableHead>
-              <TableHead>Bank Details</TableHead>
-              <TableHead>Requested On</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {withdrawals.map((withdrawal) => (
-              <React.Fragment key={withdrawal.id}>
-                <TableRow>
-                  <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => toggleRow(withdrawal.id, withdrawal.user_id)}
-                    >
-                      {expandedRows.includes(withdrawal.id) ? (
-                        <ChevronUp className="h-4 w-4" />
-                      ) : (
-                        <ChevronDown className="h-4 w-4" />
+      <section className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm space-y-4">
+        <div>
+          <h2 className="text-base font-semibold text-gray-900">Withdrawal Requests List</h2>
+          <p className="text-xs text-gray-400">Review pending and processed withdrawal request transactions below.</p>
+        </div>
+
+        <div className="overflow-x-auto rounded-lg border border-gray-100 bg-white">
+          <Table>
+            <TableHeader className="bg-gray-50/50">
+              <TableRow className="border-b border-gray-100 hover:bg-transparent">
+                <TableHead className="w-[50px] py-3 px-4 font-semibold text-gray-600 text-xs"></TableHead>
+                <TableHead className="py-3 px-4 font-semibold text-gray-600 text-xs">Influencer</TableHead>
+                <TableHead className="py-3 px-4 font-semibold text-gray-600 text-xs">Amount</TableHead>
+                <TableHead className="py-3 px-4 font-semibold text-gray-600 text-xs">Bank Details</TableHead>
+                <TableHead className="py-3 px-4 font-semibold text-gray-600 text-xs">Requested On</TableHead>
+                <TableHead className="py-3 px-4 font-semibold text-gray-600 text-xs">Status</TableHead>
+                <TableHead className="py-3 px-4 font-semibold text-gray-600 text-xs text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {withdrawals.map((withdrawal) => (
+                <React.Fragment key={withdrawal.id}>
+                  <TableRow className="border-b border-gray-100 hover:bg-gray-50/30 transition-colors">
+                    <TableCell className="py-3.5 px-4">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => toggleRow(withdrawal.id, withdrawal.user_id)}
+                        className="h-8 w-8 text-gray-500 hover:text-gray-900 hover:bg-gray-100"
+                      >
+                        {expandedRows.includes(withdrawal.id) ? (
+                          <ChevronUp className="h-4 w-4" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </TableCell>
+                    <TableCell className="py-3.5 px-4">
+                      <div>
+                        <p className="font-semibold text-sm text-gray-800">{withdrawal.profile.name}</p>
+                        <p className="text-xs text-gray-500">{withdrawal.profile.email}</p>
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-3.5 px-4">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1 font-semibold text-sm text-gray-800">
+                          <DollarSign className="h-3.5 w-3.5 text-gray-400" />
+                          <span>Rs. {withdrawal.amount.toFixed(2)}</span>
+                        </div>
+                        <p className="text-[10px] text-gray-400 font-medium">
+                          After 10% fee: <span className="text-gray-700 font-medium">Rs. {(withdrawal.amount * 0.9).toFixed(2)}</span>
+                        </p>
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-3.5 px-4">
+                      <div className="text-xs text-gray-600">
+                        <p className="font-semibold text-gray-700">{withdrawal.withdrawal_option.bank_name}</p>
+                        <p className="text-gray-500 font-mono">{withdrawal.withdrawal_option.account_number}</p>
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-3.5 px-4 text-xs text-gray-500">
+                      {new Date(withdrawal.created_at).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell className="py-3.5 px-4">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border-0 ${
+                        withdrawal.status?.status === "ACCEPTED" ? "bg-emerald-50 text-emerald-700" :
+                        withdrawal.status?.status === "REJECTED" ? "bg-red-50 text-red-700" :
+                        "bg-amber-50 text-amber-700"
+                      }`}>
+                        {withdrawal.status?.status || "PENDING"}
+                      </span>
+                    </TableCell>
+                    <TableCell className="py-3.5 px-4 text-right">
+                      {(!withdrawal.status || withdrawal.status.status === "PENDING") && isSuperAdmin && (
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              const now = new Date().toISOString();
+                              setSelectedWithdrawal({
+                                ...withdrawal,
+                                status: withdrawal.status ? {
+                                  ...withdrawal.status,
+                                  status: "ACCEPTED"
+                                } : {
+                                  created_at: now,
+                                  id: 0, // Will be set by the database
+                                  request_id: withdrawal.id,
+                                  reviewed_at: null,
+                                  reviewed_by: null,
+                                  status: "ACCEPTED"
+                                }
+                              });
+                              setShowConfirmDialog(true);
+                            }}
+                            className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white font-semibold shadow-sm"
+                          >
+                            Accept
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              const now = new Date().toISOString();
+                              setSelectedWithdrawal({
+                                ...withdrawal,
+                                status: withdrawal.status ? {
+                                  ...withdrawal.status,
+                                  status: "REJECTED"
+                                } : {
+                                  created_at: now,
+                                  id: 0, // Will be set by the database
+                                  request_id: withdrawal.id,
+                                  reviewed_at: null,
+                                  reviewed_by: null,
+                                  status: "REJECTED"
+                                }
+                              });
+                              setShowConfirmDialog(true);
+                            }}
+                            className="h-7 text-xs text-red-600 border-red-200 bg-red-50/30 hover:bg-red-50 hover:text-red-700 font-semibold"
+                          >
+                            Reject
+                          </Button>
+                        </div>
                       )}
-                    </Button>
-                  </TableCell>
-                  <TableCell>
-                    <div>
-                      <p className="font-medium">{withdrawal.profile.name}</p>
-                      <p className="text-sm text-muted-foreground">{withdrawal.profile.email}</p>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <DollarSign className="h-4 w-4 text-muted-foreground" />
-                        <span>Rs. {withdrawal.amount.toFixed(2)}</span>
-                      </div>
-                      <p className="text-sm text-muted-foreground flex items-center gap-1">
-                        <span>After 10% fee:</span>
-                        <span>Rs. {(withdrawal.amount * 0.9).toFixed(2)}</span>
-                      </p>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div>
-                      <p className="text-sm">{withdrawal.withdrawal_option.bank_name}</p>
-                      <p className="text-sm text-muted-foreground">{withdrawal.withdrawal_option.account_number}</p>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {new Date(withdrawal.created_at).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell>
-                    <Badge 
-                      variant={
-                        withdrawal.status?.status === "ACCEPTED" ? "success" :
-                        withdrawal.status?.status === "REJECTED" ? "destructive" :
-                        "default"
-                      }
-                    >
-                      {withdrawal.status?.status || "PENDING"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {(!withdrawal.status || withdrawal.status.status === "PENDING") && isSuperAdmin && (
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          size="sm"
-                          onClick={() => {
-                            const now = new Date().toISOString();
-                            setSelectedWithdrawal({
-                              ...withdrawal,
-                              status: withdrawal.status ? {
-                                ...withdrawal.status,
-                                status: "ACCEPTED"
-                              } : {
-                                created_at: now,
-                                id: 0, // Will be set by the database
-                                request_id: withdrawal.id,
-                                reviewed_at: null,
-                                reviewed_by: null,
-                                status: "ACCEPTED"
-                              }
-                            });
-                            setShowConfirmDialog(true);
-                          }}
-                          className="bg-green-600 hover:bg-green-700"
-                        >
-                          <CheckCircle className="h-4 w-4 mr-2" />
-                          Accept
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            const now = new Date().toISOString();
-                            setSelectedWithdrawal({
-                              ...withdrawal,
-                              status: withdrawal.status ? {
-                                ...withdrawal.status,
-                                status: "REJECTED"
-                              } : {
-                                created_at: now,
-                                id: 0, // Will be set by the database
-                                request_id: withdrawal.id,
-                                reviewed_at: null,
-                                reviewed_by: null,
-                                status: "REJECTED"
-                              }
-                            });
-                            setShowConfirmDialog(true);
-                          }}
-                          className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
-                        >
-                          <XCircle className="h-4 w-4 mr-2" />
-                          Reject
-                        </Button>
-                      </div>
+                    </TableCell>
+                  </TableRow>
+                  <AnimatePresence>
+                    {expandedRows.includes(withdrawal.id) && (
+                      <TableRow className="bg-gray-50/30">
+                        <TableCell colSpan={7} className="p-0 border-b border-gray-100">
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: "auto" }}
+                            exit={{ opacity: 0, height: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="overflow-hidden"
+                          >
+                            <div className="bg-white rounded-xl border border-gray-100 p-5 m-4 shadow-sm space-y-3">
+                              <div>
+                                <h4 className="text-sm font-semibold text-gray-900">Latest Completed Tasks</h4>
+                                <p className="text-xs text-gray-400 mt-0.5">Recently completed and approved tasks by this influencer</p>
+                              </div>
+                              <div className="pt-2">
+                                {loadingApplications[withdrawal.user_id] ? (
+                                  <div className="flex justify-center py-6">
+                                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-pink-500"></div>
+                                  </div>
+                                ) : applicationsByUser[withdrawal.user_id]?.length > 0 ? (
+                                  <div className="space-y-3">
+                                    {applicationsByUser[withdrawal.user_id].map((app) => (
+                                      <div key={app.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-100 bg-gray-50/20">
+                                        <div className="space-y-1.5">
+                                          <h3 className="font-semibold text-xs text-gray-800">{app.tasks.title}</h3>
+                                          <div className="flex flex-wrap gap-1.5">
+                                            {app.application_promises.map((promise, idx) => (
+                                              <Badge key={idx} variant="outline" className="text-[10px] border-gray-200 text-gray-600 bg-white font-medium">
+                                                {promise.platform} • {promise.promised_reach} views
+                                              </Badge>
+                                            ))}
+                                          </div>
+                                          <div className="flex items-center gap-1.5 text-[10px] text-gray-500 font-medium">
+                                            <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
+                                            <span>
+                                              {app.application_proofs.length} proof{app.application_proofs.length !== 1 ? 's' : ''} verified
+                                            </span>
+                                            {app.application_proofs[0]?.proof_status.reviewed_by && (
+                                              <span className="text-[9px] text-gray-400 ml-1">
+                                                by {app.application_proofs[0].proof_status.reviewed_by.name} on{' '}
+                                                {new Date(app.application_proofs[0].proof_status.reviewed_at || '').toLocaleDateString()}
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
+                                        <div className="text-right">
+                                          <p className="text-[10px] text-gray-400 font-medium">
+                                            Completed on {new Date(app.created_at).toLocaleDateString()}
+                                          </p>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <p className="text-center py-6 text-xs text-gray-400">
+                                    No completed tasks found
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </motion.div>
+                        </TableCell>
+                      </TableRow>
                     )}
+                  </AnimatePresence>
+                </React.Fragment>
+              ))}
+              {withdrawals.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={7} className="h-24 text-center text-gray-400 text-sm">
+                    No withdrawal requests found
                   </TableCell>
                 </TableRow>
-                <AnimatePresence>
-                  {expandedRows.includes(withdrawal.id) && (
-                    <TableRow>
-                      <TableCell colSpan={7}>
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: "auto" }}
-                          exit={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.2 }}
-                          className="overflow-hidden"
-                        >
-                          <Card className="mx-4 my-2">
-                            <CardHeader>
-                              <CardTitle className="text-lg">Latest Completed Tasks</CardTitle>
-                              <CardDescription>
-                                Recently completed and approved tasks by this influencer
-                              </CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                              {loadingApplications[withdrawal.user_id] ? (
-                                <div className="flex justify-center py-8">
-                                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500"></div>
-                                </div>
-                              ) : applicationsByUser[withdrawal.user_id]?.length > 0 ? (
-                                <div className="space-y-4">
-                                  {applicationsByUser[withdrawal.user_id].map((app) => (
-                                    <div key={app.id} className="flex items-center justify-between p-4 rounded-lg border">
-                                      <div className="space-y-2">
-                                        <h3 className="font-medium">{app.tasks.title}</h3>
-                                        <div className="flex flex-wrap gap-2">
-                                          {app.application_promises.map((promise, idx) => (
-                                            <Badge key={idx} variant="outline">
-                                              {promise.platform} • {promise.promised_reach} views
-                                            </Badge>
-                                          ))}
-                                        </div>
-                                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                          <CheckCircle className="w-4 h-4 text-green-500" />
-                                          <span>
-                                            {app.application_proofs.length} proof{app.application_proofs.length !== 1 ? 's' : ''} verified
-                                          </span>
-                                          {app.application_proofs[0]?.proof_status.reviewed_by && (
-                                            <span className="text-xs ml-2">
-                                              by {app.application_proofs[0].proof_status.reviewed_by.name} on{' '}
-                                              {new Date(app.application_proofs[0].proof_status.reviewed_at || '').toLocaleDateString()}
-                                            </span>
-                                          )}
-                                        </div>
-                                      </div>
-                                      <div className="text-right">
-                                        <p className="text-xs text-muted-foreground">
-                                          Completed on {new Date(app.created_at).toLocaleDateString()}
-                                        </p>
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              ) : (
-                                <p className="text-center py-8 text-muted-foreground">
-                                  No completed tasks found
-                                </p>
-                              )}
-                            </CardContent>
-                          </Card>
-                        </motion.div>
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </AnimatePresence>
-              </React.Fragment>
-            ))}
-            {withdrawals.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center">
-                  No withdrawal requests found
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </section>
 
       <PaymentWithdrawalModal
         isOpen={showConfirmDialog}

@@ -28,6 +28,7 @@ import {
   HelpCircle,
   Menu,
   X,
+  Clock,
 } from "lucide-react";
 
 type TaskDetail = {
@@ -59,6 +60,8 @@ type BrandSyncLink = {
   isPaid?: boolean;
   amount?: number;
   clicks?: number;
+  paymentStatus?: string | null;
+  rejectionCount?: number;
 };
 
 const PINK = "#C8185A";
@@ -116,6 +119,33 @@ export default function BuyerDashboardPage() {
 
     fetchData();
   }, [supabase, router]);
+
+  const handleDeleteLink = async (linkId: number) => {
+    if (!window.confirm("Are you sure you want to delete this BrandSync link? This will permanently remove all associated clicks and data.")) {
+      return;
+    }
+
+    try {
+      const resp = await fetch(`/api/brandsync-links/${linkId}`, {
+        method: "DELETE",
+      });
+
+      if (!resp.ok) {
+        const errorData = await resp.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to delete link");
+      }
+
+      toast.success("BrandSync link deleted successfully");
+      const linksResp = await fetch('/api/brandsync-links', { credentials: 'include' });
+      if (linksResp.ok) {
+        const linksResult = await linksResp.json();
+        setBrandSyncLinks(linksResult.links ?? []);
+      }
+    } catch (err) {
+      console.error("Delete link error:", err);
+      toast.error(err instanceof Error ? err.message : "Failed to delete link");
+    }
+  };
 
   const handleLogout = async () => {
     const { error } = await signOut();
@@ -466,10 +496,10 @@ export default function BuyerDashboardPage() {
                         {openMenuId === link.id && (
                           <div className="absolute right-0 top-7 bg-white border border-gray-100 rounded-lg shadow-lg z-10 py-1 w-28">
                             <button
-                              onClick={() => { setOpenMenuId(null); router.push(`/dashboard/buyer/brandsync`); }}
-                              className="w-full text-left px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50"
+                              onClick={() => { setOpenMenuId(null); handleDeleteLink(link.id); }}
+                              className="w-full text-left px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 font-medium"
                             >
-                              Edit
+                              Delete Link
                             </button>
                           </div>
                         )}
@@ -502,8 +532,28 @@ export default function BuyerDashboardPage() {
                           </a>
                         )}
                         {!link.isPaid && (
-                          <span className="inline-block mt-1 text-[10px] font-medium px-2 py-0.5 rounded-full" style={{ background: '#fff0f6', color: PINK }}>
-                            Status: Awaiting payment
+                          <span
+                            className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full mt-1"
+                            style={
+                              link.paymentStatus === "PENDING"
+                                ? { background: "#fffbeb", color: "#d97706" }
+                                : link.paymentStatus === "REJECTED"
+                                ? { background: "#fef2f2", color: "#dc2626" }
+                                : { background: "#fff0f6", color: PINK }
+                            }
+                          >
+                            {link.paymentStatus === "PENDING" ? (
+                              <Clock className="h-2.5 w-2.5" />
+                            ) : link.paymentStatus === "REJECTED" ? (
+                              <X className="h-2.5 w-2.5" />
+                            ) : (
+                              <Clock className="h-2.5 w-2.5" />
+                            )}
+                            {link.paymentStatus === "PENDING"
+                              ? "Verification in Progress"
+                              : link.paymentStatus === "REJECTED"
+                              ? "Payment Rejected"
+                              : "Awaiting payment"}
                           </span>
                         )}
                         {link.isPaid && (
@@ -514,41 +564,64 @@ export default function BuyerDashboardPage() {
                       </div>
                     </div>
 
+                    {/* Status Messaging */}
+                    {!link.isPaid && link.paymentStatus === "PENDING" && (
+                      <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-2">
+                        Payment verification in progress. Our team will verify your slip shortly.
+                      </p>
+                    )}
+                    {!link.isPaid && link.paymentStatus === "REJECTED" && (link.rejectionCount || 0) < 3 && (
+                      <p className="text-[10px] text-red-600 dark:text-red-400 mt-2 font-medium">
+                        Your payment slip was rejected. Please upload a valid transfer receipt. (Attempt {link.rejectionCount || 1}/3)
+                      </p>
+                    )}
+                    {!link.isPaid && (link.rejectionCount || 0) >= 3 && (
+                      <p className="text-[10px] text-red-600 dark:text-red-400 mt-2 font-semibold bg-red-50 p-2 rounded-lg border border-red-200">
+                        ⚠️ Locked: Upload blocked after 3 rejected slips. Contact accounts@brandsync.lk.
+                      </p>
+                    )}
+
                     {/* Actions */}
                     {!link.isPaid && (
-                      <div className="flex gap-2">
-                        <button
-                          onClick={async () => {
-                            try {
-                              const resp = await fetch(`/api/payment/initialize/brandsync/${link.id}`, { method: 'POST' });
-                              if (!resp.ok) { const e = await resp.json().catch(() => ({})); throw new Error(e?.error || 'Failed'); }
-                              const formData = await resp.json();
-                              const paymentForm = document.createElement('form');
-                              paymentForm.method = 'post';
-                              paymentForm.action = formData.checkout_url;
-                              paymentForm.target = '_blank';
-                              Object.entries(formData).forEach(([key, value]) => {
-                                if (value !== undefined && value !== null) {
-                                  const input = document.createElement('input');
-                                  input.type = 'hidden'; input.name = key; input.value = String(value);
-                                  paymentForm.appendChild(input);
-                                }
-                              });
-                              document.body.appendChild(paymentForm);
-                              paymentForm.submit();
-                              setTimeout(() => document.body.removeChild(paymentForm), 100);
-                            } catch { toast.error('Failed to initialize payment'); }
-                          }}
-                          className="flex-1 py-1.5 rounded-lg text-white text-xs font-semibold"
-                          style={{ background: '#16a34a' }}
-                        >
-                          Pay
-                        </button>
-                        <label className="flex-1 py-1.5 rounded-lg border border-gray-200 text-gray-600 text-xs font-semibold text-center cursor-pointer hover:bg-gray-50 transition-colors">
-                          <input type="file" accept="image/*,application/pdf" className="hidden" onChange={e => handleUploadSlipForLink(e, link.id)} />
-                          Upload Slip
-                        </label>
-                      </div>
+                      (link.rejectionCount || 0) >= 3 ? (
+                        <div className="text-center text-xs text-red-500 font-semibold py-1 bg-red-50/50 rounded-lg border border-dashed border-red-100 mt-2.5">
+                          Payment Suspended
+                        </div>
+                      ) : (
+                        <div className="flex gap-2 mt-2.5">
+                          <button
+                            onClick={async () => {
+                              try {
+                                const resp = await fetch(`/api/payment/initialize/brandsync/${link.id}`, { method: 'POST' });
+                                if (!resp.ok) { const e = await resp.json().catch(() => ({})); throw new Error(e?.error || 'Failed'); }
+                                const formData = await resp.json();
+                                const paymentForm = document.createElement('form');
+                                paymentForm.method = 'post';
+                                paymentForm.action = formData.checkout_url;
+                                paymentForm.target = '_blank';
+                                Object.entries(formData).forEach(([key, value]) => {
+                                  if (value !== undefined && value !== null) {
+                                    const input = document.createElement('input');
+                                    input.type = 'hidden'; input.name = key; input.value = String(value);
+                                    paymentForm.appendChild(input);
+                                  }
+                                });
+                                document.body.appendChild(paymentForm);
+                                paymentForm.submit();
+                                setTimeout(() => document.body.removeChild(paymentForm), 100);
+                              } catch { toast.error('Failed to initialize payment'); }
+                            }}
+                            className="flex-1 py-1.5 rounded-lg text-white text-xs font-semibold hover:shadow-sm"
+                            style={{ background: '#16a34a' }}
+                          >
+                            Pay
+                          </button>
+                          <label className="flex-1 py-1.5 rounded-lg border border-gray-200 text-gray-600 text-xs font-semibold text-center cursor-pointer hover:bg-gray-50 hover:border-gray-300 transition-all">
+                            <input type="file" accept="image/*,application/pdf" className="hidden" onChange={e => handleUploadSlipForLink(e, link.id)} />
+                            {link.paymentStatus === "PENDING" ? "Replace Slip" : "Upload Slip"}
+                          </label>
+                        </div>
+                      )
                     )}
                     {uploadProgress[link.id] != null && (
                       <div className="mt-2">
