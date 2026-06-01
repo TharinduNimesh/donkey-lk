@@ -79,6 +79,9 @@ export default async function BrandSyncRedirectPage({ params }: { params: Promis
       }
     }
   } catch (err) {
+    if (err && typeof err === 'object' && 'digest' in err) {
+      throw err;
+    }
     console.error('Error checking influencer sub-token:', err);
   }
 
