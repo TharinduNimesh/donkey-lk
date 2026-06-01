@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { signOut } from "@/lib/supabase";
 import { Database } from "@/types/database.types";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { Badge } from "@/components/ui/badge";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { InfluencerTaskCard } from "@/components/dashboard/influencer-task-card";
@@ -382,10 +381,9 @@ export default function InfluencerDashboardPage() {
                             </div>
                           )}
                           <div className="p-4">
-                            <div className="flex items-start justify-between mb-3">
-                              <h3 className="font-semibold text-sm text-gray-900 truncate pr-2">{link.title}</h3>
-                              <Badge variant="secondary" className="text-[10px] shrink-0">{link.platform}</Badge>
-                            </div>
+                             <div className="flex items-start justify-between mb-3">
+                               <h3 className="font-semibold text-sm text-gray-900 truncate">{link.title}</h3>
+                             </div>
                             <div className="flex items-center gap-2">
                               <Button asChild className="flex-1 text-xs h-8 shadow-sm text-white" style={{ background: PINK }}>
                                 <a href={link.uniqueUrl || link.brandSyncUrl} target="_blank" rel="noopener noreferrer">

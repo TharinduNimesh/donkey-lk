@@ -33,6 +33,7 @@ type BrandSyncLink = {
   shares?: number;
   isPaid?: boolean;
   amount?: number;
+  clicks?: number;
 };
 
 type FilterStatus = "ALL" | "PAID" | "PENDING";
@@ -300,8 +301,8 @@ export default function AllLinksPage() {
                     {/* Stats row */}
                     <div className="flex items-center gap-3 text-xs text-gray-500 mb-3 bg-gray-50 rounded-lg px-3 py-2">
                       <div className="flex flex-col">
-                        <span className="text-[10px] text-gray-400">Shares</span>
-                        <span className="font-semibold text-gray-700">{link.shares ?? 0}</span>
+                        <span className="text-[10px] text-gray-400">Progress (Clicks)</span>
+                        <span className="font-semibold text-gray-700">{link.clicks ?? 0} / {link.shares ?? 100}</span>
                       </div>
                       <div className="w-px h-6 bg-gray-200" />
                       <div className="flex flex-col">

@@ -58,6 +58,7 @@ type BrandSyncLink = {
   shares?: number;
   isPaid?: boolean;
   amount?: number;
+  clicks?: number;
 };
 
 const PINK = "#C8185A";
@@ -486,7 +487,7 @@ export default function BuyerDashboardPage() {
                       )}
                       <div className="min-w-0 flex-1">
                         <p className="text-xs text-gray-600 font-medium">
-                          Shares: {link.shares ?? 0} • LKR {Number(link.amount ?? 0).toLocaleString()}
+                          Clicks: {link.clicks ?? 0} / {link.shares ?? 100} • LKR {Number(link.amount ?? 0).toLocaleString()}
                         </p>
                         {link.platformUrl && (
                           <a
