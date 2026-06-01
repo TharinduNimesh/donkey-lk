@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
@@ -14,6 +16,31 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const brandsyncId = Number(id);
     if (!brandsyncId) {
       return NextResponse.json({ error: 'Invalid BrandSync ID' }, { status: 400 });
+    }
+
+    // Check existing rejections first
+    const { data: slips, error: slipsError } = await supabaseAdmin
+      .from('bank_transfer_slip')
+      .select(`
+        id,
+        bank_transfer_status (
+          status
+        )
+      `)
+      .eq('brandsync_id', brandsyncId);
+
+    if (!slipsError && slips) {
+      const rejectionCount = slips.filter((s: any) => {
+        const statusObj = s.bank_transfer_status;
+        const statusVal = Array.isArray(statusObj) 
+          ? statusObj[0]?.status 
+          : statusObj?.status;
+        return statusVal === 'REJECTED';
+      }).length;
+
+      if (rejectionCount >= 3) {
+        return NextResponse.json({ error: 'Upload blocked: This link is locked after 3 rejected attempts. Contact accounts@brandsync.lk.' }, { status: 403 });
+      }
     }
 
     const extension = file.name.split('.').pop() || 'png';

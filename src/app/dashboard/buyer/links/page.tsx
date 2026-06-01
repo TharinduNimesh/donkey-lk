@@ -34,6 +34,8 @@ type BrandSyncLink = {
   isPaid?: boolean;
   amount?: number;
   clicks?: number;
+  paymentStatus?: string | null;
+  rejectionCount?: number;
 };
 
 type FilterStatus = "ALL" | "PAID" | "PENDING";
@@ -81,6 +83,12 @@ export default function AllLinksPage() {
   }, [links, search, statusFilter]);
 
   const handleUploadSlip = async (e: React.ChangeEvent<HTMLInputElement>, linkId: number) => {
+    const link = links.find(l => l.id === linkId);
+    if (link && (link.rejectionCount || 0) >= 3) {
+      toast.error("Upload blocked: This link is locked after 3 rejected attempts.");
+      return;
+    }
+
     const file = e.target?.files?.[0];
     if (!file) return;
     const fd = new FormData();
@@ -103,6 +111,29 @@ export default function AllLinksPage() {
       toast.error("Failed to upload slip");
     } finally {
       setUploadProgress(p => { const c = { ...p }; delete c[linkId]; return c; });
+    }
+  };
+
+  const handleDeleteLink = async (linkId: number) => {
+    if (!window.confirm("Are you sure you want to delete this BrandSync link? This will permanently remove all associated clicks and data.")) {
+      return;
+    }
+
+    try {
+      const resp = await fetch(`/api/brandsync-links/${linkId}`, {
+        method: "DELETE",
+      });
+
+      if (!resp.ok) {
+        const errorData = await resp.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to delete link");
+      }
+
+      toast.success("BrandSync link deleted successfully");
+      loadLinks();
+    } catch (err) {
+      console.error("Delete link error:", err);
+      toast.error(err instanceof Error ? err.message : "Failed to delete link");
     }
   };
 
@@ -249,7 +280,15 @@ export default function AllLinksPage() {
                   {/* Card top: status stripe */}
                   <div
                     className="h-1 w-full"
-                    style={{ background: link.isPaid ? "#16a34a" : PINK }}
+                    style={{
+                      background: link.isPaid
+                        ? "#16a34a"
+                        : link.paymentStatus === "PENDING"
+                        ? "#d97706"
+                        : link.paymentStatus === "REJECTED"
+                        ? "#dc2626"
+                        : PINK
+                    }}
                   />
 
                   <div className="p-4">
@@ -267,13 +306,32 @@ export default function AllLinksPage() {
                           <p className="text-sm font-semibold text-gray-800 truncate max-w-[160px]">{link.title}</p>
                           <span
                             className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full mt-0.5"
-                            style={link.isPaid
-                              ? { background: "#f0fdf4", color: "#16a34a" }
-                              : { background: "#fff0f6", color: PINK }
+                            style={
+                              link.isPaid
+                                ? { background: "#f0fdf4", color: "#16a34a" }
+                                : link.paymentStatus === "PENDING"
+                                ? { background: "#fffbeb", color: "#d97706" }
+                                : link.paymentStatus === "REJECTED"
+                                ? { background: "#fef2f2", color: "#dc2626" }
+                                : { background: "#fff0f6", color: PINK }
                             }
                           >
-                            {link.isPaid ? <CheckCircle2 className="h-2.5 w-2.5" /> : <Clock className="h-2.5 w-2.5" />}
-                            {link.isPaid ? "Active" : "Awaiting payment"}
+                            {link.isPaid ? (
+                              <CheckCircle2 className="h-2.5 w-2.5" />
+                            ) : link.paymentStatus === "PENDING" ? (
+                              <Clock className="h-2.5 w-2.5" />
+                            ) : link.paymentStatus === "REJECTED" ? (
+                              <X className="h-2.5 w-2.5" />
+                            ) : (
+                              <Clock className="h-2.5 w-2.5" />
+                            )}
+                            {link.isPaid
+                              ? "Active"
+                              : link.paymentStatus === "PENDING"
+                              ? "Verification in Progress"
+                              : link.paymentStatus === "REJECTED"
+                              ? "Payment Rejected"
+                              : "Awaiting payment"}
                           </span>
                         </div>
                       </div>
@@ -287,10 +345,10 @@ export default function AllLinksPage() {
                         {openMenuId === link.id && (
                           <div className="absolute right-0 top-8 bg-white border border-gray-100 rounded-lg shadow-lg z-10 py-1 w-28">
                             <button
-                              onClick={() => { setOpenMenuId(null); router.push("/dashboard/buyer/brandsync"); }}
-                              className="w-full text-left px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50"
+                              onClick={() => { setOpenMenuId(null); handleDeleteLink(link.id); }}
+                              className="w-full text-left px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 font-medium"
                             >
-                              Edit
+                              Delete Link
                             </button>
                           </div>
                         )}
@@ -325,21 +383,44 @@ export default function AllLinksPage() {
                       )}
                     </div>
 
+                    {/* Status Messaging */}
+                    {!link.isPaid && link.paymentStatus === "PENDING" && (
+                      <p className="text-[10px] text-amber-600 dark:text-amber-400 mb-2.5">
+                        Payment verification in progress. Our team will verify your slip shortly.
+                      </p>
+                    )}
+                    {!link.isPaid && link.paymentStatus === "REJECTED" && (link.rejectionCount || 0) < 3 && (
+                      <p className="text-[10px] text-red-600 dark:text-red-400 mb-2.5 font-medium">
+                        Your payment slip was rejected. Please upload a valid transfer receipt. (Attempt {link.rejectionCount || 1}/3)
+                      </p>
+                    )}
+                    {!link.isPaid && (link.rejectionCount || 0) >= 3 && (
+                      <p className="text-[10px] text-red-600 dark:text-red-400 mb-2.5 font-semibold bg-red-50 p-2 rounded-lg border border-red-200">
+                        ⚠️ Locked: Upload blocked after 3 rejected slips. Contact accounts@brandsync.lk.
+                      </p>
+                    )}
+
                     {/* Actions */}
                     {!link.isPaid ? (
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handlePay(link)}
-                          className="flex-1 py-1.5 rounded-lg text-white text-xs font-semibold transition-opacity hover:opacity-90"
-                          style={{ background: "#16a34a" }}
-                        >
-                          Pay Now
-                        </button>
-                        <label className="flex-1 py-1.5 rounded-lg border border-gray-200 text-gray-600 text-xs font-semibold text-center cursor-pointer hover:bg-gray-50 transition-colors">
-                          <input type="file" accept="image/*,application/pdf" className="hidden" onChange={e => handleUploadSlip(e, link.id)} />
-                          Upload Slip
-                        </label>
-                      </div>
+                      (link.rejectionCount || 0) >= 3 ? (
+                        <div className="text-center text-xs text-red-500 font-semibold py-1 bg-red-50/50 rounded-lg border border-dashed border-red-100">
+                          Payment Suspended
+                        </div>
+                      ) : (
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handlePay(link)}
+                            className="flex-1 py-1.5 rounded-lg text-white text-xs font-semibold transition-opacity hover:opacity-90 hover:shadow-sm"
+                            style={{ background: "#16a34a" }}
+                          >
+                            Pay Now
+                          </button>
+                          <label className="flex-1 py-1.5 rounded-lg border border-gray-200 text-gray-600 text-xs font-semibold text-center cursor-pointer hover:bg-gray-50 hover:border-gray-300 transition-all">
+                            <input type="file" accept="image/*,application/pdf" className="hidden" onChange={e => handleUploadSlip(e, link.id)} />
+                            {link.paymentStatus === "PENDING" ? "Replace Slip" : "Upload Slip"}
+                          </label>
+                        </div>
+                      )
                     ) : (
                       <div className="flex items-center gap-1.5 text-xs text-green-600 font-medium">
                         <CheckCircle2 className="h-3.5 w-3.5" />

@@ -8,14 +8,19 @@ import { useSetupStore } from "@/lib/store";
 interface UserTypeFormProps {
   onNext: () => void;
   onBack: () => void;
+  onSelect?: (type: "brand" | "influencer") => void;
 }
 
-export function UserTypeForm({ onNext, onBack }: UserTypeFormProps) {
+export function UserTypeForm({ onNext, onBack, onSelect }: UserTypeFormProps) {
   const { setUserType } = useSetupStore();
 
   const handleSelect = (type: "brand" | "influencer") => {
     setUserType(type);
-    onNext();
+    if (onSelect) {
+      onSelect(type);
+    } else {
+      onNext();
+    }
   };
 
   const cardVariants = {

@@ -11,6 +11,7 @@ import { Database } from "@/types/database.types";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 
 const ITEMS_PER_PAGE = 10;
+const PINK = "#C8185A";
 
 type TaskDetail = Database['public']['Views']['task_details']['Row'];
 
@@ -214,139 +215,163 @@ export default function AdminDashboardPage() {
   );
 
   return (
-    <div className="container mx-auto py-8 px-4">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="space-y-1">
+        <h1 className="text-2xl font-bold tracking-tight text-gray-900">Admin Overview</h1>
+        <p className="text-xs text-gray-500">Monitor platform users, campaigns, and overall business revenues.</p>
       </div>
       
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <Card>
-          <CardHeader>
-            <CardTitle>Total Buyers</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{stats.totalBuyers}</p>
-            <div className="mt-2 space-y-1">
-              <p className="text-sm text-muted-foreground">Influencers: {stats.totalInfluencers}</p>
-            </div>
-          </CardContent>
-        </Card>
+      {/* Stats Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {/* Total Users */}
+        <div className="bg-white rounded-xl border border-gray-100 p-5 relative overflow-hidden shadow-sm hover:shadow-md transition-all duration-200">
+          <div className="absolute top-0 left-0 w-full h-[3px]" style={{ background: PINK }} />
+          <div className="absolute top-4 right-4 w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: '#fff0f6' }}>
+            <svg className="h-4 w-4" style={{ color: PINK }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+          </div>
+          <p className="text-sm text-gray-500 font-medium">Total Registered Users</p>
+          <p className="text-3xl font-bold text-gray-900 mt-1">{(stats.totalBuyers + stats.totalInfluencers).toLocaleString()}</p>
+          <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
+            <span>Buyers: <strong className="text-gray-700 font-medium">{stats.totalBuyers}</strong></span>
+            <span>•</span>
+            <span>Influencers: <strong className="text-gray-700 font-medium">{stats.totalInfluencers}</strong></span>
+          </div>
+          <div className="absolute -bottom-4 -right-4 w-20 h-20 rounded-full opacity-[0.03]" style={{ background: PINK }} />
+        </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Active Tasks</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{stats.activeTasks}</p>
-            <p className="text-sm text-muted-foreground">Total campaign tasks: {stats.totalCampaignTasks}</p>
-          </CardContent>
-        </Card>
+        {/* Active Tasks */}
+        <div className="bg-white rounded-xl border border-gray-100 p-5 relative overflow-hidden shadow-sm hover:shadow-md transition-all duration-200">
+          <div className="absolute top-0 left-0 w-full h-[3px] bg-blue-500" />
+          <div className="absolute top-4 right-4 w-8 h-8 rounded-lg flex items-center justify-center bg-blue-50">
+            <svg className="h-4 w-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+            </svg>
+          </div>
+          <p className="text-sm text-gray-500 font-medium">Active Tasks</p>
+          <p className="text-3xl font-bold text-gray-900 mt-1">{stats.activeTasks}</p>
+          <p className="text-xs text-gray-400 mt-2">Total tasks in system: <strong className="text-gray-700 font-medium">{stats.totalCampaignTasks}</strong></p>
+          <div className="absolute -bottom-4 -right-4 w-20 h-20 rounded-full opacity-[0.03] bg-blue-500" />
+        </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Total Revenue</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">Rs. {stats.totalRevenue.toLocaleString()}</p>
-            <p className="text-sm text-muted-foreground">Monthly revenue: Rs. {stats.totalMonthlyRevenue.toLocaleString()}</p>
-            <p className="text-sm text-muted-foreground">Pending payments: Rs. {stats.pendingPayments.toLocaleString()}</p>
-          </CardContent>
-        </Card>
+        {/* Total Revenue */}
+        <div className="bg-white rounded-xl border border-gray-100 p-5 relative overflow-hidden shadow-sm hover:shadow-md transition-all duration-200">
+          <div className="absolute top-0 left-0 w-full h-[3px] bg-emerald-500" />
+          <div className="absolute top-4 right-4 w-8 h-8 rounded-lg flex items-center justify-center bg-emerald-50">
+            <svg className="h-4 w-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <p className="text-sm text-gray-500 font-medium">Total Platform Revenue</p>
+          <p className="text-3xl font-bold text-gray-900 mt-1">Rs. {stats.totalRevenue.toLocaleString()}</p>
+          <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
+            <span>Monthly: <strong className="text-gray-700 font-medium">Rs. {stats.totalMonthlyRevenue.toLocaleString()}</strong></span>
+            <span>•</span>
+            <span>Pending: <strong className="text-gray-700 font-medium">Rs. {stats.pendingPayments.toLocaleString()}</strong></span>
+          </div>
+          <div className="absolute -bottom-4 -right-4 w-20 h-20 rounded-full opacity-[0.03] bg-emerald-500" />
+        </div>
       </div>
 
-      <div className="mt-12">
-        <h2 className="text-2xl font-bold mb-6">Buyers</h2>
-        <Card>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-b">
-                    <TableHead className="py-3 px-4">Name</TableHead>
-                    <TableHead className="py-3 px-4">Email</TableHead>
-                    <TableHead className="py-3 px-4">Total Tasks</TableHead>
-                    <TableHead className="py-3 px-4">Total Paid (Rs.)</TableHead>
-                    <TableHead className="py-3 px-4">Pending Payment (Rs.)</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {buyers.map((buyer) => (
-                    <TableRow key={buyer.id} className="border-b hover:bg-muted/50">
-                      <TableCell className="py-3 px-4">
-                        <div className="font-medium">{buyer.name}</div>
-                      </TableCell>
-                      <TableCell className="py-3 px-4">
-                        <div className="text-muted-foreground">{buyer.email}</div>
-                      </TableCell>
-                      <TableCell className="py-3 px-4">{buyer.totalTasks}</TableCell>
-                      <TableCell className="py-3 px-4 text-green-600">Rs. {buyer.totalPaid.toLocaleString()}</TableCell>
-                      <TableCell className="py-3 px-4 text-amber-600">Rs. {buyer.totalPending.toLocaleString()}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-              {buyers.length > 0 ? (
-                <PaginationControls 
-                  currentPage={currentBuyersPage}
-                  totalPages={totalBuyersPages}
-                  onPageChange={setCurrentBuyersPage}
-                />
-              ) : (
-                <div className="text-center text-muted-foreground py-8">
-                  No buyers found
-                </div>
-              )}
+      {/* Buyers Section */}
+      <section className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm space-y-4">
+        <div>
+          <h2 className="text-base font-semibold text-gray-900">Registered Buyers</h2>
+          <p className="text-xs text-gray-400">Monitor registered buyers, campaigns, and transaction balances.</p>
+        </div>
+        
+        <div className="overflow-x-auto rounded-lg border border-gray-100 bg-white">
+          <Table>
+            <TableHeader className="bg-gray-50/50">
+              <TableRow className="border-b border-gray-100 hover:bg-transparent">
+                <TableHead className="py-3 px-4 font-semibold text-gray-600 text-xs">Name</TableHead>
+                <TableHead className="py-3 px-4 font-semibold text-gray-600 text-xs">Email</TableHead>
+                <TableHead className="py-3 px-4 font-semibold text-gray-600 text-xs">Total Tasks</TableHead>
+                <TableHead className="py-3 px-4 font-semibold text-gray-600 text-xs">Total Paid</TableHead>
+                <TableHead className="py-3 px-4 font-semibold text-gray-600 text-xs">Pending Payments</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {buyers.map((buyer) => (
+                <TableRow key={buyer.id} className="border-b border-gray-100 hover:bg-gray-50/30 transition-colors">
+                  <TableCell className="py-3.5 px-4">
+                    <div className="font-semibold text-sm text-gray-800">{buyer.name}</div>
+                  </TableCell>
+                  <TableCell className="py-3.5 px-4">
+                    <div className="text-xs text-gray-500">{buyer.email}</div>
+                  </TableCell>
+                  <TableCell className="py-3.5 px-4 text-xs font-medium text-gray-700">{buyer.totalTasks}</TableCell>
+                  <TableCell className="py-3.5 px-4 text-xs font-semibold text-emerald-600">Rs. {buyer.totalPaid.toLocaleString()}</TableCell>
+                  <TableCell className="py-3.5 px-4 text-xs font-semibold text-amber-600">Rs. {buyer.totalPending.toLocaleString()}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          
+          {buyers.length > 0 ? (
+            <PaginationControls 
+              currentPage={currentBuyersPage}
+              totalPages={totalBuyersPages}
+              onPageChange={setCurrentBuyersPage}
+            />
+          ) : (
+            <div className="text-center text-gray-400 py-10 text-sm">
+              No buyers found
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          )}
+        </div>
+      </section>
 
-      <div className="mt-12">
-        <h2 className="text-2xl font-bold mb-6">Influencers</h2>
-        <Card>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-b">
-                    <TableHead className="py-3 px-4">Name</TableHead>
-                    <TableHead className="py-3 px-4">Email</TableHead>
-                    <TableHead className="py-3 px-4">Verified Profiles</TableHead>
-                    <TableHead className="py-3 px-4">Completed Tasks</TableHead>
-                    <TableHead className="py-3 px-4">Total Earnings (Rs.)</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {influencers.map((influencer) => (
-                    <TableRow key={influencer.id} className="border-b hover:bg-muted/50">
-                      <TableCell className="py-3 px-4">
-                        <div className="font-medium">{influencer.name}</div>
-                      </TableCell>
-                      <TableCell className="py-3 px-4">
-                        <div className="text-muted-foreground">{influencer.email}</div>
-                      </TableCell>
-                      <TableCell className="py-3 px-4">{influencer.verifiedProfiles}</TableCell>
-                      <TableCell className="py-3 px-4">{influencer.completedTasks}</TableCell>
-                      <TableCell className="py-3 px-4 text-green-600">Rs. {influencer.totalEarnings.toLocaleString()}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-              {influencers.length > 0 ? (
-                <PaginationControls 
-                  currentPage={currentInfluencersPage}
-                  totalPages={totalInfluencersPages}
-                  onPageChange={setCurrentInfluencersPage}
-                />
-              ) : (
-                <div className="text-center text-muted-foreground py-8">
-                  No influencers found
-                </div>
-              )}
+      {/* Influencers Section */}
+      <section className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm space-y-4">
+        <div>
+          <h2 className="text-base font-semibold text-gray-900">Registered Influencers</h2>
+          <p className="text-xs text-gray-400">Track influencer statistics, verifications, and platforms.</p>
+        </div>
+        
+        <div className="overflow-x-auto rounded-lg border border-gray-100 bg-white">
+          <Table>
+            <TableHeader className="bg-gray-50/50">
+              <TableRow className="border-b border-gray-100 hover:bg-transparent">
+                <TableHead className="py-3 px-4 font-semibold text-gray-600 text-xs">Name</TableHead>
+                <TableHead className="py-3 px-4 font-semibold text-gray-600 text-xs">Email</TableHead>
+                <TableHead className="py-3 px-4 font-semibold text-gray-600 text-xs">Verified Channels</TableHead>
+                <TableHead className="py-3 px-4 font-semibold text-gray-600 text-xs">Completed Tasks</TableHead>
+                <TableHead className="py-3 px-4 font-semibold text-gray-600 text-xs">Total Earnings</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {influencers.map((influencer) => (
+                <TableRow key={influencer.id} className="border-b border-gray-100 hover:bg-gray-50/30 transition-colors">
+                  <TableCell className="py-3.5 px-4">
+                    <div className="font-semibold text-sm text-gray-800">{influencer.name}</div>
+                  </TableCell>
+                  <TableCell className="py-3.5 px-4">
+                    <div className="text-xs text-gray-500">{influencer.email}</div>
+                  </TableCell>
+                  <TableCell className="py-3.5 px-4 text-xs font-medium text-gray-700">{influencer.verifiedProfiles}</TableCell>
+                  <TableCell className="py-3.5 px-4 text-xs font-medium text-gray-700">{influencer.completedTasks}</TableCell>
+                  <TableCell className="py-3.5 px-4 text-xs font-semibold text-emerald-600">Rs. {influencer.totalEarnings.toLocaleString()}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          
+          {influencers.length > 0 ? (
+            <PaginationControls 
+              currentPage={currentInfluencersPage}
+              totalPages={totalInfluencersPages}
+              onPageChange={setCurrentInfluencersPage}
+            />
+          ) : (
+            <div className="text-center text-gray-400 py-10 text-sm">
+              No influencers found
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          )}
+        </div>
+      </section>
     </div>
   );
 }

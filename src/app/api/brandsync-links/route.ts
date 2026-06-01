@@ -160,6 +160,16 @@ export async function GET(request: Request) {
       );
     }
 
+    const linkIds = (data ?? []).map(r => r.id);
+    
+    // Batch query slips and their statuses
+    const { data: slips } = linkIds.length
+      ? await (supabaseAdmin as any)
+          .from("bank_transfer_slip")
+          .select("id, brandsync_id, bank_transfer_status ( status )")
+          .in("brandsync_id", linkIds)
+      : { data: [] };
+
     const links = await Promise.all(
       (data ?? []).map(async (row) => {
         const thumbnailUrl = await getThumbnailUrl(row.thumbnail_path);
@@ -167,9 +177,34 @@ export async function GET(request: Request) {
           .from("brandsync_clicks")
           .select("id", { count: "exact", head: true })
           .eq("brandsync_id", row.id);
+        
+        const linkSlips = (slips || []).filter((s: any) => s.brandsync_id === row.id);
+        const latestSlip = linkSlips.length > 0 
+          ? linkSlips.reduce((prev: any, current: any) => (prev.id > current.id) ? prev : current)
+          : null;
+        
+        let paymentStatus: string | null = null;
+        if (latestSlip) {
+          const statusObj = latestSlip.bank_transfer_status;
+          const statusVal = Array.isArray(statusObj) 
+            ? statusObj[0]?.status 
+            : statusObj?.status;
+          paymentStatus = statusVal || "PENDING";
+        }
+
+        const rejectionCount = linkSlips.filter((s: any) => {
+          const statusObj = s.bank_transfer_status;
+          const statusVal = Array.isArray(statusObj) 
+            ? statusObj[0]?.status 
+            : statusObj?.status;
+          return statusVal === "REJECTED";
+        }).length;
+
         return {
           ...mapLink(row as BrandSyncLinkRow, origin, thumbnailUrl),
           clicks: count || 0,
+          paymentStatus,
+          rejectionCount,
         };
       })
     );

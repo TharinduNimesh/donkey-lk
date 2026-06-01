@@ -54,6 +54,8 @@ export function PaymentDetailsCard({
 }: PaymentDetailsCardProps) {
   // Check if PayHere is active from environment variable
   const isPayHereActive = process.env.NEXT_PUBLIC_PAYHERE_ACTIVE === "true";
+  const rejectionCount = bankSlips.filter(s => s.status?.status === "REJECTED").length;
+  const isBlocked = rejectionCount >= 3;
 
   return (
     <div className="bg-card rounded-2xl border border-border p-6 shadow-sm">
@@ -177,7 +179,7 @@ export function PaymentDetailsCard({
                           )}
                         </p>
                       </div>
-                      {slip.status?.status !== "ACCEPTED" && (
+                      {(!slip.status || slip.status?.status === "PENDING") && (
                         <Button
                           variant="outline"
                           size="sm"
@@ -190,9 +192,9 @@ export function PaymentDetailsCard({
                       )}
                     </div>
                     {slip.status?.status === "REJECTED" ? (
-                      <p className="text-sm text-red-700/80 dark:text-red-400/80">
+                      <p className="text-sm text-red-700/80 dark:text-red-400/80 font-medium">
                         Your payment was rejected. Please upload a new bank
-                        transfer slip or try a different payment method.
+                        transfer slip or try a different payment method. (Attempt {rejectionCount}/3)
                       </p>
                     ) : slip.status?.status === "ACCEPTED" ? (
                       <p className="text-sm text-emerald-700/80 dark:text-emerald-400/80">
@@ -214,28 +216,40 @@ export function PaymentDetailsCard({
                     slip.status?.status === "PENDING" ||
                     slip.status?.status === "ACCEPTED"
                 ) && (
-                  <div className="border border-border rounded-xl p-6 bg-muted/20">
-                    <h3 className="font-semibold mb-4 text-foreground flex items-center">
-                      <CreditCard className="h-5 w-5 mr-2 text-violet-600 dark:text-violet-400" />
-                      Select Payment Method
-                    </h3>
-                    <PaymentMethodSelect
-                      selectedMethod={payment.method}
-                      onMethodSelect={onMethodSelect}
-                      onSlipUpload={onSlipUpload}
-                      bankSlip={payment.bankSlip}
-                    />
-
-                    <div className="mt-6 flex justify-end">
-                      <Button
-                        onClick={onProceedToPayment}
-                        disabled={isLoading || !payment.method}
-                        className="bg-gradient-to-r from-pink-500 to-pink-600 hover:opacity-90 text-white shadow-md hover:shadow-lg transition-all duration-300"
-                      >
-                        {isLoading ? "Processing..." : "Complete Payment"}
-                      </Button>
+                  isBlocked ? (
+                    <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 p-5 rounded-xl text-center space-y-2">
+                      <AlertCircle className="h-8 w-8 text-red-600 dark:text-red-400 mx-auto animate-bounce" />
+                      <h3 className="text-base font-bold text-red-800 dark:text-red-300">
+                        Payment Suspended
+                      </h3>
+                      <p className="text-xs text-red-700/80 dark:text-red-400/80 max-w-md mx-auto">
+                        This task has been locked after 3 rejected payment attempts. Please contact accounts@brandsync.lk to resolve.
+                      </p>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="border border-border rounded-xl p-6 bg-muted/20">
+                      <h3 className="font-semibold mb-4 text-foreground flex items-center">
+                        <CreditCard className="h-5 w-5 mr-2 text-violet-600 dark:text-violet-400" />
+                        Select Payment Method
+                      </h3>
+                      <PaymentMethodSelect
+                        selectedMethod={payment.method}
+                        onMethodSelect={onMethodSelect}
+                        onSlipUpload={onSlipUpload}
+                        bankSlip={payment.bankSlip}
+                      />
+
+                      <div className="mt-6 flex justify-end">
+                        <Button
+                          onClick={onProceedToPayment}
+                          disabled={isLoading || !payment.method}
+                          className="bg-gradient-to-r from-pink-500 to-pink-600 hover:opacity-90 text-white shadow-md hover:shadow-lg transition-all duration-300"
+                        >
+                          {isLoading ? "Processing..." : "Complete Payment"}
+                        </Button>
+                      </div>
+                    </div>
+                  )
                 )}
               </div>
             ) : (
@@ -261,36 +275,48 @@ export function PaymentDetailsCard({
                 </div>
 
                 {/* Payment Method Selection */}
-                <div className="border border-border rounded-xl p-6 bg-muted/20">
-                  <h3 className="font-semibold mb-4 text-foreground flex items-center">
-                    <CreditCard className="h-5 w-5 mr-2 text-violet-600 dark:text-violet-400" />
-                    Select Payment Method
-                  </h3>
-                  <PaymentMethodSelect
-                    selectedMethod={payment.method}
-                    onMethodSelect={(method) => {
-                      // Only allow card payment if PayHere is active
-                      if (method === "card" && !isPayHereActive) return;
-                      onMethodSelect(method);
-                    }}
-                    onSlipUpload={onSlipUpload}
-                    bankSlip={payment.bankSlip}
-                  />
-
-                  <div className="mt-6 flex justify-end">
-                    <Button
-                      onClick={onProceedToPayment}
-                      disabled={
-                        isLoading ||
-                        !payment.method ||
-                        (payment.method === "card" && !isPayHereActive)
-                      }
-                      className="bg-gradient-to-r from-pink-500 to-pink-600 hover:opacity-90 text-white shadow-md hover:shadow-lg transition-all duration-300"
-                    >
-                      {isLoading ? "Processing..." : "Complete Payment"}
-                    </Button>
+                {isBlocked ? (
+                  <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 p-5 rounded-xl text-center space-y-2">
+                    <AlertCircle className="h-8 w-8 text-red-600 dark:text-red-400 mx-auto animate-bounce" />
+                    <h3 className="text-base font-bold text-red-800 dark:text-red-300">
+                      Payment Suspended
+                    </h3>
+                    <p className="text-xs text-red-700/80 dark:text-red-400/80 max-w-md mx-auto">
+                      This task has been locked after 3 rejected payment attempts. Please contact accounts@brandsync.lk to resolve.
+                    </p>
                   </div>
-                </div>
+                ) : (
+                  <div className="border border-border rounded-xl p-6 bg-muted/20">
+                    <h3 className="font-semibold mb-4 text-foreground flex items-center">
+                      <CreditCard className="h-5 w-5 mr-2 text-violet-600 dark:text-violet-400" />
+                      Select Payment Method
+                    </h3>
+                    <PaymentMethodSelect
+                      selectedMethod={payment.method}
+                      onMethodSelect={(method) => {
+                        // Only allow card payment if PayHere is active
+                        if (method === "card" && !isPayHereActive) return;
+                        onMethodSelect(method);
+                      }}
+                      onSlipUpload={onSlipUpload}
+                      bankSlip={payment.bankSlip}
+                    />
+
+                    <div className="mt-6 flex justify-end">
+                      <Button
+                        onClick={onProceedToPayment}
+                        disabled={
+                          isLoading ||
+                          !payment.method ||
+                          (payment.method === "card" && !isPayHereActive)
+                        }
+                        className="bg-gradient-to-r from-pink-500 to-pink-600 hover:opacity-90 text-white shadow-md hover:shadow-lg transition-all duration-300"
+                      >
+                        {isLoading ? "Processing..." : "Complete Payment"}
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </>
             )}
           </div>

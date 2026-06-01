@@ -277,6 +277,12 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
   };
 
   const handleDeleteSpecificSlip = async (slipId: number, slipName: string) => {
+    const slip = bankSlips.find(s => s.id === slipId);
+    if (slip && slip.status && slip.status.status !== "PENDING") {
+      toast.error("You can only delete pending slips");
+      return;
+    }
+
     setIsLoading(true);
     try {
       // Delete from storage

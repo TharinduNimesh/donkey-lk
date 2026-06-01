@@ -43,6 +43,31 @@ export async function uploadTaskContent(file: File) {
 
 export async function uploadBankTransferSlip(file: File, taskId: number) {
   try {
+    // Check existing rejections first
+    const { data: slipsData, error: slipsError } = await supabase
+      .from('bank_transfer_slip')
+      .select(`
+        id,
+        status:bank_transfer_status (
+          status
+        )
+      `)
+      .eq('task_id', taskId);
+
+    if (!slipsError && slipsData) {
+      const rejectionCount = slipsData.filter((s: any) => {
+        const statusObj = s.status;
+        const statusVal = Array.isArray(statusObj)
+          ? statusObj[0]?.status
+          : statusObj?.status;
+        return statusVal === 'REJECTED';
+      }).length;
+
+      if (rejectionCount >= 3) {
+        throw new Error('Upload blocked: This task is locked after 3 rejected attempts. Contact accounts@brandsync.lk.');
+      }
+    }
+
     const fileExt = file.name.split('.').pop();
     const fileName = `${uuidv4()}.${fileExt}`;
     const { data: { user } } = await supabase.auth.getUser();
