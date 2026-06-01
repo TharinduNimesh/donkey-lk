@@ -5,8 +5,8 @@ import Image from "next/image";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
-
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSetupStore } from "@/lib/store";
+import { Check } from "lucide-react";
 
 interface WelcomeScreenProps {
   onNext: () => void;
@@ -15,15 +15,16 @@ interface WelcomeScreenProps {
 
 export function WelcomeScreen({ onNext, onRoleSelect }: WelcomeScreenProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  const { userType, setUserType } = useSetupStore();
 
   const handleRoleClick = (role: "brand" | "influencer") => {
-    if (onRoleSelect) onRoleSelect(role);
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("step", "1");
-    params.set("role", role);
-    router.push(`/setup?${params.toString()}`);
+    if (userType === role) {
+      setUserType(null);
+      if (onRoleSelect) onRoleSelect(null as any);
+    } else {
+      setUserType(role);
+      if (onRoleSelect) onRoleSelect(role);
+    }
   };
 
   const handleGetStarted = () => {
@@ -60,59 +61,89 @@ export function WelcomeScreen({ onNext, onRoleSelect }: WelcomeScreenProps) {
             />
           </div>
           
-          <div className="text-center space-y-4 max-w-md">
+          <div className="text-center space-y-3 max-w-md">
             <h3 className="text-xl font-medium">Let's set up your BrandSync profile</h3>
             <p className="text-sm text-muted-foreground">
-              Complete this quick setup to customize your experience whether you're a brand looking 
-              to boost your reach or an influencer ready to monetize your content.
+              Choose your profile type to begin. You can change this later, or skip selecting a role now and choose during setup.
             </p>
           </div>
           
-          <div className="grid grid-cols-2 gap-6 w-full max-w-lg pt-4">
-  <div
-    className="text-center p-4 rounded-xl bg-pink-50 dark:bg-pink-900/20 border border-pink-200/30 dark:border-pink-800/30 cursor-pointer hover:shadow-lg transition"
-    onClick={() => handleRoleClick("brand")}
-    tabIndex={0}
-    role="button"
-    aria-label="Select Brand Role"
-  >
-    <div className="bg-pink-100 dark:bg-pink-800/30 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
-      <svg className="w-6 h-6 text-pink-600 dark:text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-      </svg>
-    </div>
-    <h4 className="font-medium">For Brands</h4>
-    <p className="text-xs text-muted-foreground mt-1">
-      Connect with influencers to grow your reach
-    </p>
-  </div>
-  <div
-    className="text-center p-4 rounded-xl bg-purple-50 dark:bg-purple-900/20 border border-purple-200/30 dark:border-purple-800/30 cursor-pointer hover:shadow-lg transition"
-    onClick={() => handleRoleClick("influencer")}
-    tabIndex={0}
-    role="button"
-    aria-label="Select Influencer Role"
-  >
-    <div className="bg-purple-100 dark:bg-purple-800/30 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
-      <svg className="w-6 h-6 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z" />
-      </svg>
-    </div>
-    <h4 className="font-medium">For Influencers</h4>
-    <p className="text-xs text-muted-foreground mt-1">
-      Monetize your content with brand collaborations
-    </p>
-  </div>
-</div>
+          <div className="grid grid-cols-2 gap-6 w-full max-w-lg pt-2">
+            {/* Brand Card Selector */}
+            <div
+              className={`relative text-center p-5 rounded-2xl cursor-pointer transition-all duration-300 border-2 select-none hover:shadow-md ${
+                userType === "brand"
+                  ? "bg-gradient-to-br from-pink-50/50 to-white dark:from-pink-950/20 dark:to-neutral-900 border-pink-500 shadow-md ring-2 ring-pink-500/10"
+                  : "bg-white dark:bg-neutral-900 border-gray-100 dark:border-neutral-800 hover:border-pink-200/50"
+              }`}
+              onClick={() => handleRoleClick("brand")}
+              tabIndex={0}
+              role="button"
+              aria-label="Select Brand Role"
+            >
+              {userType === "brand" && (
+                <div className="absolute top-2.5 right-2.5 bg-pink-500 text-white rounded-full p-0.5 shadow-sm">
+                  <Check className="h-3.5 w-3.5 stroke-[3]" />
+                </div>
+              )}
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 transition-colors ${
+                userType === "brand" ? "bg-pink-100 dark:bg-pink-850" : "bg-pink-50 dark:bg-neutral-800"
+              }`}>
+                <svg className={`w-6 h-6 transition-colors ${userType === "brand" ? "text-pink-600 dark:text-pink-400" : "text-pink-500"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <h4 className={`font-semibold text-sm ${userType === "brand" ? "text-pink-700 dark:text-pink-450" : ""}`}>For Brands</h4>
+              <p className="text-xs text-muted-foreground mt-1.5 leading-snug">
+                Connect with top creators to grow your business reach.
+              </p>
+            </div>
+
+            {/* Influencer Card Selector */}
+            <div
+              className={`relative text-center p-5 rounded-2xl cursor-pointer transition-all duration-300 border-2 select-none hover:shadow-md ${
+                userType === "influencer"
+                  ? "bg-gradient-to-br from-purple-50/50 to-white dark:from-purple-950/20 dark:to-neutral-900 border-purple-500 shadow-md ring-2 ring-purple-500/10"
+                  : "bg-white dark:bg-neutral-900 border-gray-100 dark:border-neutral-800 hover:border-purple-200/50"
+              }`}
+              onClick={() => handleRoleClick("influencer")}
+              tabIndex={0}
+              role="button"
+              aria-label="Select Influencer Role"
+            >
+              {userType === "influencer" && (
+                <div className="absolute top-2.5 right-2.5 bg-purple-500 text-white rounded-full p-0.5 shadow-sm">
+                  <Check className="h-3.5 w-3.5 stroke-[3]" />
+                </div>
+              )}
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 transition-colors ${
+                userType === "influencer" ? "bg-purple-100 dark:bg-purple-850" : "bg-purple-50 dark:bg-neutral-800"
+              }`}>
+                <svg className={`w-6 h-6 transition-colors ${userType === "influencer" ? "text-purple-600 dark:text-purple-400" : "text-purple-500"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z" />
+                </svg>
+              </div>
+              <h4 className={`font-semibold text-sm ${userType === "influencer" ? "text-purple-700 dark:text-purple-450" : ""}`}>For Influencers</h4>
+              <p className="text-xs text-muted-foreground mt-1.5 leading-snug">
+                Monetize your posts with paid brand campaigns.
+              </p>
+            </div>
+          </div>
 
           <motion.div 
-            className="w-full max-w-md"
+            className="w-full max-w-md pt-2"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
           >
             <Button 
-              className="w-full bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white"
+              className={`w-full text-white transition-all duration-300 font-semibold shadow-sm hover:shadow-md ${
+                userType === "brand"
+                  ? "bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700"
+                  : userType === "influencer"
+                  ? "bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700"
+                  : "bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-800 hover:to-gray-900"
+              }`}
               size="lg"
               onClick={handleGetStarted}
               disabled={isLoading}
@@ -125,6 +156,10 @@ export function WelcomeScreen({ onNext, onRoleSelect }: WelcomeScreenProps) {
                   </svg>
                   Setting things up...
                 </div>
+              ) : userType === "brand" ? (
+                "Continue as Brand"
+              ) : userType === "influencer" ? (
+                "Continue as Influencer"
               ) : (
                 "Get Started"
               )}

@@ -23,9 +23,10 @@ const formSchema = z.object({
 
 interface PersonalInfoFormProps {
   onNext: () => void;
+  onBack: () => void;
 }
 
-export function PersonalInfoForm({ onNext }: PersonalInfoFormProps) {
+export function PersonalInfoForm({ onNext, onBack }: PersonalInfoFormProps) {
   const { setPersonalInfo, personalInfo } = useSetupStore();
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -93,13 +94,23 @@ export function PersonalInfoForm({ onNext }: PersonalInfoFormProps) {
                   </FormItem>
                 )}
               />
-              <button
-                className="group/btn relative flex h-11 w-full items-center justify-center rounded-md bg-gradient-to-br from-pink-500 to-pink-600 font-medium text-white shadow-[0px_1px_0px_0px_#ffffff40_inset,0px_-1px_0px_0px_#ffffff40_inset]"
-                type="submit"
-              >
-                Continue
-                <BottomGradient />
-              </button>
+              <div className="flex gap-4 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={onBack}
+                  className="flex-1 h-11 border-pink-200 text-pink-700 hover:bg-pink-50 hover:text-pink-850 dark:border-pink-900/50 dark:text-pink-400 dark:hover:bg-pink-950 font-semibold"
+                >
+                  Back
+                </Button>
+                <button
+                  className="flex-1 group/btn relative flex h-11 items-center justify-center rounded-md bg-gradient-to-br from-pink-500 to-pink-600 font-semibold text-white shadow-[0px_1px_0px_0px_#ffffff40_inset,0px_-1px_0px_0px_#ffffff40_inset]"
+                  type="submit"
+                >
+                  Continue
+                  <BottomGradient />
+                </button>
+              </div>
             </form>
           </Form>
         </div>
