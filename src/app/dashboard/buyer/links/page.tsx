@@ -197,11 +197,10 @@ export default function AllLinksPage() {
                 <button
                   key={f}
                   onClick={() => setStatusFilter(f)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
-                    statusFilter === f
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${statusFilter === f
                       ? "text-white border-transparent shadow-sm"
                       : "bg-white text-gray-500 border-gray-200 hover:border-gray-300"
-                  }`}
+                    }`}
                   style={statusFilter === f ? { background: PINK } : {}}
                 >
                   {f === "ALL" ? "All" : f === "PAID" ? "Active" : "Pending"}
@@ -320,7 +319,7 @@ export default function AllLinksPage() {
                             onClick={e => e.stopPropagation()}
                           >
                             <ExternalLink className="h-3 w-3 flex-shrink-0" />
-                            <span className="truncate max-w-[80px]">Video</span>
+                            <span className="truncate max-w-[80px]">Watch</span>
                           </a>
                         </>
                       )}

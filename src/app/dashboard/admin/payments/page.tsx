@@ -444,6 +444,10 @@ export default function AdminPaymentsPage() {
                 <tbody>
                   {payments.map((payment) => {
                     const cost = payment.task?.cost;
+                    const isBrandSync = (payment as any).isBrandSync === true;
+                    const amount = isBrandSync
+                      ? (payment as any).brandsync?.amount
+                      : cost?.amount;
                     
                     return (
                       <tr key={payment.id} className="border-b">
@@ -468,7 +472,7 @@ export default function AdminPaymentsPage() {
                           </div>
                         </td>
                         <td className="py-3 px-4">
-                          Rs. {cost?.amount.toLocaleString()}
+                          Rs. {amount !== undefined && amount !== null ? amount.toLocaleString() : "0"}
                         </td>
                         <td className="py-3 px-4">
                           <span className={`
@@ -500,7 +504,7 @@ export default function AdminPaymentsPage() {
                                 View Slip
                               </a>
                             )}
-                            {payment.status?.status === "PENDING" && cost && (
+                            {payment.status?.status === "PENDING" && (cost || isBrandSync) && (
                               <>
                                 <Button
                                   size="sm"

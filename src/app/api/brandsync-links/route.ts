@@ -119,7 +119,7 @@ export async function GET(request: Request) {
       const links = await Promise.all(
         (data ?? []).map(async (row) => {
           const thumbnailUrl = await getThumbnailUrl(row.thumbnail_path);
-          const { count } = await supabaseAdmin
+          const { count } = await (supabaseAdmin as any)
             .from("brandsync_clicks")
             .select("id", { count: "exact", head: true })
             .eq("brandsync_id", row.id);
@@ -163,7 +163,7 @@ export async function GET(request: Request) {
     const links = await Promise.all(
       (data ?? []).map(async (row) => {
         const thumbnailUrl = await getThumbnailUrl(row.thumbnail_path);
-        const { count } = await supabaseAdmin
+        const { count } = await (supabaseAdmin as any)
           .from("brandsync_clicks")
           .select("id", { count: "exact", head: true })
           .eq("brandsync_id", row.id);
