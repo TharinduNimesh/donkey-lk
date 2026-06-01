@@ -27,7 +27,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const orderId = `BRANDSYNC:${id}`;
     const hash = generatePayHereHash(merchantId, orderId, formattedAmount, 'LKR', merchantSecret);
 
-    const userRes = await createServerComponentClient<Database>({ cookies }).auth.getUser();
+    const cookieStore = await cookies();
+    const userRes = await createServerComponentClient<Database>({ cookies: () => cookieStore as any }).auth.getUser();
     const user = userRes.data.user;
     const firstName = user?.user_metadata?.full_name?.split(' ')[0] || 'Buyer';
     const lastName = user?.user_metadata?.full_name?.split(' ').slice(1).join(' ') || firstName;

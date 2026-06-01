@@ -26,7 +26,8 @@ export async function POST(request: Request) {
       );
     }
 
-    const supabase = createRouteHandlerClient<Database>({ cookies });
+    const cookieStore = await cookies();
+    const supabase = createRouteHandlerClient<Database>({ cookies: () => cookieStore as any });
 
     // Get the current user
     const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -125,7 +126,8 @@ export async function POST(request: Request) {
 
 export async function GET(request: Request) {
   try {
-    const supabase = createRouteHandlerClient<Database>({ cookies });
+    const cookieStore = await cookies();
+    const supabase = createRouteHandlerClient<Database>({ cookies: () => cookieStore as any });
 
     // Get the current user
     const { data: { user }, error: userError } = await supabase.auth.getUser();

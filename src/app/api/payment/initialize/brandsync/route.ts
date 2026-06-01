@@ -22,12 +22,14 @@ export async function POST(req: NextRequest) {
 
     const amount = shares * 6; // LKR
 
+    const cookieStore = await cookies();
+
     // Create pending BrandSync row
     const { data: created, error: insertError } = await (supabaseAdmin as any)
       .from('brandsync_links')
       .insert({
         token: crypto.randomUUID().replace(/-/g, ''),
-        user_id: (await createServerComponentClient<Database>({ cookies }).auth.getUser()).data.user?.id,
+        user_id: (await createServerComponentClient<Database>({ cookies: () => cookieStore as any }).auth.getUser()).data.user?.id,
         title,
         platform,
         platform_url: videoUrl,
@@ -54,7 +56,7 @@ export async function POST(req: NextRequest) {
     const formattedAmount = Number(amount).toFixed(2);
     const hash = generatePayHereHash(merchantId, `BRANDSYNC:${brandsyncId}`, formattedAmount, 'LKR', merchantSecret);
 
-    const userRes = await createServerComponentClient<Database>({ cookies }).auth.getUser();
+    const userRes = await createServerComponentClient<Database>({ cookies: () => cookieStore as any }).auth.getUser();
     const user = userRes.data.user;
     const firstName = user?.user_metadata?.full_name?.split(' ')[0] || 'Buyer';
     const lastName = user?.user_metadata?.full_name?.split(' ').slice(1).join(' ') || firstName;

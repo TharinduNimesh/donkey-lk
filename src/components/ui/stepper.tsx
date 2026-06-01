@@ -20,9 +20,10 @@ export function Stepper({ steps, currentStep, className }: StepperProps) {
         {steps.map((step, index) => {
           const isCompleted = currentStep > index;
           const isCurrent = currentStep === index;
+          const isLast = index === steps.length - 1;
 
           return (
-            <div key={index} className="flex flex-1 items-center">
+            <div key={index} className={cn("flex items-center", !isLast && "flex-1")}>
               <div className="relative flex flex-col items-center">
                 <div
                   className={cn(

@@ -58,6 +58,7 @@ type BrandSyncLink = {
   shares?: number;
   isPaid?: boolean;
   amount?: number;
+  clicks?: number;
 };
 
 const PINK = "#C8185A";
@@ -89,36 +90,31 @@ export default function BuyerDashboardPage() {
   }, [searchParams, router]);
 
   useEffect(() => {
-    const fetchTasks = async () => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      setIsLoadingLinks(true);
+      
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { router.push('/auth'); return; }
 
-      const { data, error } = await supabase
-        .from('task_details_view')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+      // Fetch Tasks and Links in parallel for better performance
+      const [tasksResult, linksResult] = await Promise.all([
+        supabase
+          .from('task_details_view')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false }),
+        fetch('/api/brandsync-links', { credentials: 'include' }).then(res => res.ok ? res.json() : { links: [] })
+      ]);
 
-      if (!error) setTasks(data || []);
+      if (!tasksResult.error) setTasks(tasksResult.data || []);
+      setBrandSyncLinks(linksResult.links ?? []);
+      
       setIsLoading(false);
+      setIsLoadingLinks(false);
     };
 
-    const loadLinks = async () => {
-      setIsLoadingLinks(true);
-      try {
-        const res = await fetch('/api/brandsync-links', { credentials: 'include' });
-        if (!res.ok) return;
-        const data = await res.json();
-        setBrandSyncLinks(data.links ?? []);
-      } catch (err) {
-        console.error('Failed to load BrandSync links', err);
-      } finally {
-        setIsLoadingLinks(false);
-      }
-    };
-
-    fetchTasks();
-    loadLinks();
+    fetchData();
   }, [supabase, router]);
 
   const handleLogout = async () => {
@@ -196,8 +192,8 @@ export default function BuyerDashboardPage() {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest px-2 mb-2">Main Menu</p>
+      <nav className="flex-1 px-3 py-4 flex flex-col gap-1 overflow-y-auto">
+        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest px-2 mb-1">Main Menu</p>
 
         {navItems.map(({ icon: Icon, label, active }) => (
           <button
@@ -218,7 +214,7 @@ export default function BuyerDashboardPage() {
           </button>
         ))}
 
-        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest px-2 mt-5 mb-2">Management</p>
+        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest px-2 mt-4 mb-1">Management</p>
 
         <button
           onClick={() => { router.push('/dashboard/buyer/links'); onNavigate?.(); }}
@@ -491,7 +487,7 @@ export default function BuyerDashboardPage() {
                       )}
                       <div className="min-w-0 flex-1">
                         <p className="text-xs text-gray-600 font-medium">
-                          Shares: {link.shares ?? 0} • LKR {Number(link.amount ?? 0).toLocaleString()}
+                          Clicks: {link.clicks ?? 0} / {link.shares ?? 100} • LKR {Number(link.amount ?? 0).toLocaleString()}
                         </p>
                         {link.platformUrl && (
                           <a

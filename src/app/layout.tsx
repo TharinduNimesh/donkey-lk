@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/sonner";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://brandsync.lk"),
   title: "BrandSync - Connect Influencers with Brands",
   description: "BrandSync is a social media monetization platform connecting influencers with brands for authentic content promotion and growth.",
   openGraph: {
@@ -35,8 +36,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className={inter.className}>
+    <html lang="en" suppressHydrationWarning>
+      <body className={inter.className} suppressHydrationWarning>
         {children}
         <Toaster />
       </body>

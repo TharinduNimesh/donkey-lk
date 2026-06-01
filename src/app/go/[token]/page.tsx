@@ -8,15 +8,15 @@ export const dynamic = "force-dynamic";
 export default async function BrandSyncRedirectPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
 
-  const hdrs: any = headers();
-  const forwarded = (typeof hdrs.get === 'function' ? hdrs.get('x-forwarded-for') : hdrs['x-forwarded-for']) || (typeof hdrs.get === 'function' ? hdrs.get('x-real-ip') : hdrs['x-real-ip']) || '';
+  const hdrs = await headers();
+  const forwarded = hdrs.get('x-forwarded-for') || hdrs.get('x-real-ip') || '';
   const ip = String(forwarded).split(',')[0]?.trim() || 'unknown';
 
   // --- Step 1: Check per-influencer sub-token table first ---
   try {
     const { data: subToken } = await (supabaseAdmin as any)
       .from('brandsync_influencer_tokens')
-      .select('id, brandsync_id, influencer_user_id, clicked_at')
+      .select('id, brandsync_id, influencer_user_id')
       .eq('token', token)
       .maybeSingle();
 
@@ -33,20 +33,55 @@ export default async function BrandSyncRedirectPage({ params }: { params: Promis
         return;
       }
 
-      if (parent?.platform_url && /^https?:\/\//i.test(parent.platform_url)) {
-        // Record the click if not already recorded
-        if (!subToken.clicked_at) {
+      if (parent?.platform_url) {
+        let finalUrl = parent.platform_url;
+        if (!/^https?:\/\//i.test(finalUrl)) finalUrl = "https://" + finalUrl;
+        
+        // Record the click in a safe block
+        try {
+          // 1. Check if this IP has already clicked this influencer's link
+          const { data: existingClick } = await (supabaseAdmin as any)
+            .from('brandsync_clicks')
+            .select('id')
+            .eq('influencer_token_id', subToken.id)
+            .eq('ip_address', ip)
+            .maybeSingle();
+
+          if (existingClick) {
+            redirect('/brandsync/error?code=already_clicked');
+            return;
+          }
+
+          // 2. Record click in brandsync_clicks
+          await (supabaseAdmin as any)
+            .from('brandsync_clicks')
+            .insert({
+              brandsync_id: subToken.brandsync_id,
+              ip_address: ip,
+              influencer_token_id: subToken.id
+            });
+
+          // 3. For backwards compatibility, update clicked_at in brandsync_influencer_tokens
           await (supabaseAdmin as any)
             .from('brandsync_influencer_tokens')
             .update({ clicked_at: new Date().toISOString(), ip_address: ip })
             .eq('id', subToken.id);
+        } catch (clickErr) {
+          // If it was a redirect, we must re-throw it so Next.js handles the redirect correctly
+          if (clickErr && typeof clickErr === 'object' && 'digest' in clickErr) {
+            throw clickErr;
+          }
+          console.error('Failed to record influencer sub-token click:', clickErr);
         }
 
-        redirect(parent.platform_url);
+        redirect(finalUrl);
         return;
       }
     }
   } catch (err) {
+    if (err && typeof err === 'object' && 'digest' in err) {
+      throw err;
+    }
     console.error('Error checking influencer sub-token:', err);
   }
 
@@ -57,7 +92,9 @@ export default async function BrandSyncRedirectPage({ params }: { params: Promis
     .eq("token", token)
     .maybeSingle();
 
-  if (data && data.platform_url && /^https?:\/\//i.test(data.platform_url)) {
+  if (data && data.platform_url) {
+    let finalUrl = data.platform_url;
+    if (!/^https?:\/\//i.test(finalUrl)) finalUrl = "https://" + finalUrl;
     if (!data.is_paid) {
       redirect('/brandsync/error?code=not_available');
       return;
@@ -83,7 +120,7 @@ export default async function BrandSyncRedirectPage({ params }: { params: Promis
       console.error('Error recording BrandSync click', err);
     }
 
-    redirect(data.platform_url);
+    redirect(finalUrl);
   }
 
   // --- Step 3: Fallback to legacy encoded token ---

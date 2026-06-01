@@ -8,6 +8,7 @@ interface FileUploadProps extends Omit<React.InputHTMLAttributes<HTMLInputElemen
   onFileSelect: (file: File | null) => void
   selectedFile?: File | null
   maxSize?: number // in bytes
+  disabled?: boolean
 }
 
 const DEFAULT_MAX_SIZE = 50 * 1024 * 1024; // 50MB in bytes
@@ -17,6 +18,7 @@ export function FileUpload({
   onFileSelect,
   selectedFile,
   maxSize = DEFAULT_MAX_SIZE,
+  disabled,
   ...props
 }: FileUploadProps) {
   const inputRef = React.useRef<HTMLInputElement>(null)
@@ -32,11 +34,13 @@ export function FileUpload({
   }
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    if (disabled) return
     e.preventDefault()
     e.stopPropagation()
   }
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    if (disabled) return
     e.preventDefault()
     e.stopPropagation()
     
@@ -75,13 +79,15 @@ export function FileUpload({
     <div className="space-y-2">
       <div
         className={cn(
-          "relative flex flex-col items-center justify-center w-full min-h-[150px] border-2 border-dashed rounded-lg cursor-pointer bg-background/50 hover:bg-background/80 transition-colors",
+          "relative flex flex-col items-center justify-center w-full min-h-[150px] border-2 border-dashed rounded-lg bg-background/50 hover:bg-background/80 transition-colors",
+          !disabled && "cursor-pointer",
+          disabled && "opacity-50 cursor-not-allowed",
           error && "border-red-500",
           className
         )}
         onDragOver={handleDragOver}
         onDrop={handleDrop}
-        onClick={() => !selectedFile && inputRef.current?.click()}
+        onClick={() => !selectedFile && !disabled && inputRef.current?.click()}
       >
         <input
           ref={inputRef}

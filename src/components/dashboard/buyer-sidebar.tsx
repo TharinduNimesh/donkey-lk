@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter, usePathname } from "next/navigation";
+import Link from "next/link";
 import { useState } from "react";
 import {
   LayoutDashboard,
@@ -51,8 +52,9 @@ const SidebarNav = ({ activePage, linksCount, onNavigate }: SidebarProps) => {
   const NavBtn = ({ icon: Icon, label, page, path, badge }: { icon: any; label: string; page: string; path: string; badge?: number }) => {
     const isActive = activePage === page;
     return (
-      <button
-        onClick={() => go(path)}
+      <Link
+        href={path}
+        onClick={onNavigate}
         className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
           isActive ? "text-white shadow-sm" : "text-gray-500 hover:bg-gray-50 hover:text-gray-800"
         }`}
@@ -68,7 +70,7 @@ const SidebarNav = ({ activePage, linksCount, onNavigate }: SidebarProps) => {
             {badge}
           </span>
         )}
-      </button>
+      </Link>
     );
   };
 
@@ -88,11 +90,11 @@ const SidebarNav = ({ activePage, linksCount, onNavigate }: SidebarProps) => {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest px-2 mb-2">Main Menu</p>
+      <nav className="flex-1 px-3 py-4 flex flex-col gap-1 overflow-y-auto">
+        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest px-2 mb-1">Main Menu</p>
         {mainNav.map(item => <NavBtn key={item.label} {...item} />)}
 
-        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest px-2 mt-5 mb-2">Management</p>
+        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest px-2 mt-4 mb-1">Management</p>
         {mgmtNav.map(item => <NavBtn key={item.label} {...item} />)}
       </nav>
 

@@ -29,8 +29,8 @@ function getPublicOrigin(request: Request) {
 }
 
 async function getCurrentUser() {
-  const cookieStore = cookies();
-  const supabase = createRouteHandlerClient<Database>({ cookies: () => cookieStore });
+  const cookieStore = await cookies();
+  const supabase = createRouteHandlerClient<Database>({ cookies: () => cookieStore as any });
   const { data: { user }, error } = await supabase.auth.getUser();
 
   if (error || !user) {
@@ -119,7 +119,14 @@ export async function GET(request: Request) {
       const links = await Promise.all(
         (data ?? []).map(async (row) => {
           const thumbnailUrl = await getThumbnailUrl(row.thumbnail_path);
-          return mapLink(row as BrandSyncLinkRow, origin, thumbnailUrl);
+          const { count } = await (supabaseAdmin as any)
+            .from("brandsync_clicks")
+            .select("id", { count: "exact", head: true })
+            .eq("brandsync_id", row.id);
+          return {
+            ...mapLink(row as BrandSyncLinkRow, origin, thumbnailUrl),
+            clicks: count || 0,
+          };
         })
       );
 
@@ -156,7 +163,14 @@ export async function GET(request: Request) {
     const links = await Promise.all(
       (data ?? []).map(async (row) => {
         const thumbnailUrl = await getThumbnailUrl(row.thumbnail_path);
-        return mapLink(row as BrandSyncLinkRow, origin, thumbnailUrl);
+        const { count } = await (supabaseAdmin as any)
+          .from("brandsync_clicks")
+          .select("id", { count: "exact", head: true })
+          .eq("brandsync_id", row.id);
+        return {
+          ...mapLink(row as BrandSyncLinkRow, origin, thumbnailUrl),
+          clicks: count || 0,
+        };
       })
     );
 

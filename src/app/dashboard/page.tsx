@@ -4,7 +4,8 @@ import { cookies } from "next/headers";
 import { Database } from "@/types/database.types";
 
 export default async function DashboardPage() {
-  const supabase = createServerComponentClient<Database>({ cookies });
+  const cookieStore = await cookies();
+  const supabase = createServerComponentClient<Database>({ cookies: () => cookieStore as any });
 
   // Get authenticated user
   const { data: { user } } = await supabase.auth.getUser();

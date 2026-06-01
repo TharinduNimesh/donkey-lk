@@ -53,7 +53,8 @@ export async function POST(req: NextRequest) {
     }
 
     // Initialize Supabase client
-    const supabase = createServerComponentClient<Database>({ cookies });
+    const cookieStore = await cookies();
+    const supabase = createServerComponentClient<Database>({ cookies: () => cookieStore as any });
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {

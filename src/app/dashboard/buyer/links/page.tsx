@@ -33,6 +33,7 @@ type BrandSyncLink = {
   shares?: number;
   isPaid?: boolean;
   amount?: number;
+  clicks?: number;
 };
 
 type FilterStatus = "ALL" | "PAID" | "PENDING";
@@ -196,11 +197,10 @@ export default function AllLinksPage() {
                 <button
                   key={f}
                   onClick={() => setStatusFilter(f)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
-                    statusFilter === f
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${statusFilter === f
                       ? "text-white border-transparent shadow-sm"
                       : "bg-white text-gray-500 border-gray-200 hover:border-gray-300"
-                  }`}
+                    }`}
                   style={statusFilter === f ? { background: PINK } : {}}
                 >
                   {f === "ALL" ? "All" : f === "PAID" ? "Active" : "Pending"}
@@ -300,8 +300,8 @@ export default function AllLinksPage() {
                     {/* Stats row */}
                     <div className="flex items-center gap-3 text-xs text-gray-500 mb-3 bg-gray-50 rounded-lg px-3 py-2">
                       <div className="flex flex-col">
-                        <span className="text-[10px] text-gray-400">Shares</span>
-                        <span className="font-semibold text-gray-700">{link.shares ?? 0}</span>
+                        <span className="text-[10px] text-gray-400">Progress (Clicks)</span>
+                        <span className="font-semibold text-gray-700">{link.clicks ?? 0} / {link.shares ?? 100}</span>
                       </div>
                       <div className="w-px h-6 bg-gray-200" />
                       <div className="flex flex-col">
@@ -319,7 +319,7 @@ export default function AllLinksPage() {
                             onClick={e => e.stopPropagation()}
                           >
                             <ExternalLink className="h-3 w-3 flex-shrink-0" />
-                            <span className="truncate max-w-[80px]">Video</span>
+                            <span className="truncate max-w-[80px]">Watch</span>
                           </a>
                         </>
                       )}

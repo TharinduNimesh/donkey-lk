@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { uploadBankTransferSlip } from "@/lib/utils/storage";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import { AlertCircle } from "lucide-react";
 
 import { TaskDetailsHeader } from "@/components/dashboard/task-details/task-details-header";
 import { PlatformTargetsCard } from "@/components/dashboard/task-details/platform-targets-card";
@@ -404,12 +405,25 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
 
   if (isLoading) {
     return (
-      <div className="min-h-screen w-full bg-white dark:bg-gray-950 font-['Roboto']">
-        <div className="container mx-auto py-8 px-4">
-          <div className="h-8 w-48 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse mb-8" />
-          <div className="space-y-8">
+      <div className="min-h-screen w-full bg-background font-['Inter']">
+        <div className="container max-w-5xl mx-auto py-8 px-4">
+          {/* Skeleton header */}
+          <div className="bg-card rounded-2xl border border-border p-8 mb-8">
+            <div className="h-5 w-32 bg-muted rounded-lg animate-pulse mb-6" />
+            <div className="h-8 w-72 bg-muted rounded-lg animate-pulse mb-3" />
+            <div className="h-4 w-96 bg-muted rounded-lg animate-pulse mb-6" />
+            <div className="h-2 w-full bg-muted rounded-full animate-pulse" />
+          </div>
+          {/* Skeleton stat cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="h-20 bg-muted rounded-xl border border-border animate-pulse" />
+            ))}
+          </div>
+          {/* Skeleton content cards */}
+          <div className="space-y-6">
             {[...Array(3)].map((_, i) => (
-              <div key={i} className="w-full h-[300px] bg-gray-100 dark:bg-gray-800 rounded-xl animate-pulse" />
+              <div key={i} className="h-[250px] bg-muted rounded-2xl border border-border animate-pulse" />
             ))}
           </div>
         </div>
@@ -419,15 +433,18 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
 
   if (!task) {
     return (
-      <div className="min-h-screen w-full bg-white dark:bg-gray-950 font-['Roboto']">
+      <div className="min-h-screen w-full bg-background font-['Inter']">
         <div className="container mx-auto py-16 px-4 flex items-center justify-center">
           <motion.div 
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.5 }}
-            className="max-w-md w-full text-center space-y-6 p-8 bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-gray-100 dark:border-gray-800"
+            className="max-w-md w-full text-center space-y-6 p-8 bg-card rounded-2xl shadow-lg border border-border"
           >
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Task not found</h2>
+            <div className="w-16 h-16 mx-auto rounded-full bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center">
+              <AlertCircle className="w-8 h-8 text-violet-500" />
+            </div>
+            <h2 className="text-2xl font-bold text-foreground">Task not found</h2>
             <p className="text-muted-foreground">The task you're looking for doesn't exist or has been removed.</p>
             <Button 
               onClick={() => router.push('/dashboard/buyer')} 
@@ -460,7 +477,7 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
   }, "");
 
   return (
-    <div className="min-h-screen w-full bg-white dark:bg-gray-950 font-['Roboto']">
+    <div className="min-h-screen w-full bg-background font-['Inter']">
       <div className="container max-w-5xl mx-auto py-8 px-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -470,7 +487,7 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
           <TaskDetailsHeader task={task} />
         </motion.div>
         
-        <div className="space-y-8 mt-8">
+        <div className="space-y-6 mt-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}

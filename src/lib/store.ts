@@ -12,7 +12,7 @@ interface SetupStore {
     facebook: boolean
     tiktok: boolean
   }
-  setUserType: (type: 'brand' | 'influencer') => void
+  setUserType: (type: 'brand' | 'influencer' | null) => void
   setPersonalInfo: (info: { name: string; mobile: string }) => void
   connectPlatform: (platform: 'youtube' | 'facebook' | 'tiktok') => void
   reset: () => void
