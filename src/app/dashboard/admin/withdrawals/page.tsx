@@ -290,29 +290,42 @@ export default function AdminWithdrawalsPage() {
         date: format(new Date(), 'MMMM d, yyyy')
       };
 
-      if (isAccepted) {
-        await sendMail({
-          to: selectedWithdrawal.profile.email,
-          subject: 'Withdrawal Request Approved - BrandSync',
-          template: 'payment-accepted',
-          context: emailContext,
-          from: 'accounts@brandsync.lk'
-        });
-      } else {
-        await sendMail({
-          to: selectedWithdrawal.profile.email,
-          subject: 'Withdrawal Request Update - BrandSync',
-          template: 'payment-rejected',
-          context: {
-            ...emailContext,
-            reason: withdrawalRejectionReasons.find(r => r.value === rejectionReason)?.label || 'Request Rejected',
-            message: 'Your funds have been returned to your BrandSync account balance.'
-          },
-          from: 'accounts@brandsync.lk'
-        });
+      let emailSent = false;
+      let emailErrorMsg = '';
+
+      try {
+        if (isAccepted) {
+          await sendMail({
+            to: selectedWithdrawal.profile.email,
+            subject: 'Withdrawal Request Approved - BrandSync',
+            template: 'payment-accepted',
+            context: emailContext,
+            from: 'accounts@brandsync.lk'
+          });
+        } else {
+          await sendMail({
+            to: selectedWithdrawal.profile.email,
+            subject: 'Withdrawal Request Update - BrandSync',
+            template: 'payment-rejected',
+            context: {
+              ...emailContext,
+              reason: withdrawalRejectionReasons.find(r => r.value === rejectionReason)?.label || 'Request Rejected',
+              message: 'Your funds have been returned to your BrandSync account balance.'
+            },
+            from: 'accounts@brandsync.lk'
+          });
+        }
+        emailSent = true;
+      } catch (emailError: any) {
+        console.error('Failed to send withdrawal notification email:', emailError);
+        emailErrorMsg = emailError?.message || 'SMTP error';
       }
 
-      toast.success(`Withdrawal request ${isAccepted ? 'accepted' : 'rejected'} successfully`);
+      if (emailSent) {
+        toast.success(`Withdrawal request ${isAccepted ? 'accepted' : 'rejected'} successfully and email notification sent.`);
+      } else {
+        toast.warning(`Withdrawal request ${isAccepted ? 'accepted' : 'rejected'} successfully, but email notification failed: ${emailErrorMsg}`);
+      }
       loadWithdrawals();
     }
 
