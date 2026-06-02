@@ -359,7 +359,8 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
       }
     } catch (error) {
       console.error('Error submitting proofs:', error);
-      toast.error("Failed to submit proofs. Please try again.");
+      const message = error instanceof Error ? error.message : (typeof error === 'string' ? error : JSON.stringify(error));
+      toast.error(message || "Failed to submit proofs. Please try again.");
     } finally {
       setIsLoading(false);
     }

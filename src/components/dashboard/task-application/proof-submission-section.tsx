@@ -48,7 +48,7 @@ export function ProofSubmissionSection({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.2 }}
     >
-      <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden shadow-sm relative">
+      <Card className="mt-4 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden shadow-sm relative">
         <div className="absolute top-0 left-0 right-0 h-[2.5px] bg-gradient-to-r from-pink-500 to-purple-600" />
         
         <CardHeader className="py-3 px-4 border-b border-gray-100 dark:border-gray-800/80 bg-gray-50/20 dark:bg-gray-900/10">

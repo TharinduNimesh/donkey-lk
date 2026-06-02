@@ -69,31 +69,97 @@ export function ProofUpload({
     }
 
     if (file.size > maxSize) {
-      setError(`Image size should be less than ${Math.floor(maxSize / (1024 * 1024))}MB`);
-      return;
-    }
+      // Try to compress the image to fit under the maxSize before rejecting
+      try {
+        const compressed = await compressImage(file, maxSize);
+        if (compressed.size > maxSize) {
+          setError(`Image size should be less than ${Math.floor(maxSize / (1024 * 1024))}MB`);
+          return;
+        }
 
+        const reader = new FileReader();
+        reader.onload = () => {
+          if (typeof reader.result === 'string') {
+            onProofAdd('IMAGE', reader.result);
+            setError(null);
+          }
+        };
+        reader.readAsDataURL(compressed);
+        return;
+      } catch (err) {
+        console.error('Image compression failed:', err);
+        setError(`Image is too large and could not be compressed. Please upload a smaller image (< ${Math.floor(maxSize / (1024 * 1024))}MB).`);
+        return;
+      }
+    }
+    // If file size is within limits, just read it
     try {
       const reader = new FileReader();
       reader.onload = () => {
         if (typeof reader.result === 'string') {
-          try {
-            onProofAdd('IMAGE', reader.result);
-            setError(null);
-          } catch (supabaseError: any) {
-            // Handle Supabase error for file size limit
-            if (supabaseError?.message?.toLowerCase().includes('file size')) {
-              setError('Image upload failed: Image exceeds 1MB limit.');
-            } else {
-              setError('Image upload failed.');
-            }
-          }
+          onProofAdd('IMAGE', reader.result);
+          setError(null);
         }
       };
       reader.readAsDataURL(file);
     } catch (error) {
       setError("Failed to process image");
     }
+  };
+
+  // Compress an image file to be under targetSize (bytes). Returns a Blob.
+  const compressImage = async (file: File, targetSize: number): Promise<Blob> => {
+    // Create an image bitmap for efficient rendering
+    const imgBitmap = await createImageBitmap(file);
+    const canvas = document.createElement('canvas');
+
+    // Start with original dimensions, but cap max width/height to reduce size
+    const MAX_DIM = 1920;
+    let { width, height } = imgBitmap;
+    if (width > MAX_DIM || height > MAX_DIM) {
+      const ratio = Math.min(MAX_DIM / width, MAX_DIM / height);
+      width = Math.round(width * ratio);
+      height = Math.round(height * ratio);
+    }
+
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Canvas not supported');
+    ctx.drawImage(imgBitmap, 0, 0, width, height);
+
+    // Try different quality levels until under target size
+    let quality = 0.9;
+    const MIN_QUALITY = 0.4;
+    while (quality >= MIN_QUALITY) {
+      const blob: Blob | null = await new Promise(resolve => canvas.toBlob(resolve as any, 'image/jpeg', quality));
+      if (!blob) break;
+      if (blob.size <= targetSize) return blob;
+      quality -= 0.1;
+    }
+
+    // If still too large, try reducing dimensions further
+    let scale = 0.9;
+    while (scale > 0.3) {
+      const w = Math.round(width * scale);
+      const h = Math.round(height * scale);
+      canvas.width = w;
+      canvas.height = h;
+      ctx.drawImage(imgBitmap, 0, 0, w, h);
+      let q = 0.85;
+      while (q >= MIN_QUALITY) {
+        const blob: Blob | null = await new Promise(resolve => canvas.toBlob(resolve as any, 'image/jpeg', q));
+        if (!blob) break;
+        if (blob.size <= targetSize) return blob;
+        q -= 0.1;
+      }
+      scale -= 0.1;
+    }
+
+    // Return the last generated blob (may still be larger than target)
+    const finalBlob: Blob | null = await new Promise(resolve => canvas.toBlob(resolve as any, 'image/jpeg', MIN_QUALITY));
+    if (!finalBlob) throw new Error('Failed to compress image');
+    return finalBlob;
   };
 
   return (
