@@ -31,6 +31,7 @@ import { toast } from "sonner";
 import { InfluencerSidebar, InfluencerTopbar } from "@/components/dashboard/influencer-sidebar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { PlatformIcon } from "@/components/dashboard/task-application/platform-icon";
 
 const PINK = "#C8185A";
 const ITEMS_PER_PAGE = 6;
@@ -260,6 +261,15 @@ export default function InfluencerDashboardPage() {
     return colors[platform] || "bg-gray-500";
   };
 
+  const formatFollowers = (followers: string | null | undefined) => {
+    if (!followers) return '0';
+    if (/[a-zA-Z]/.test(followers)) {
+      return followers;
+    }
+    const num = Number(followers);
+    return isNaN(num) ? followers : num.toLocaleString();
+  };
+
   const handleWithdrawal = () => router.push("/withdraw");
 
   return (
@@ -421,13 +431,29 @@ export default function InfluencerDashboardPage() {
                 </div>
                 <div className="p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {connectedPlatforms.map((platform) => (
-                    <div key={`${platform.type}-${platform.id}`} className="flex items-center gap-3 p-3 rounded-lg border border-gray-100 bg-white shadow-sm">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-xs overflow-hidden ${!platform.profile_pic ? getPlatformColor(platform.platform) : ""}`}>
-                        {platform.profile_pic ? <img src={platform.profile_pic} alt={platform.name || 'Profile'} className="w-full h-full object-cover" /> : platform.platform.charAt(0)}
+                    <div key={`${platform.type}-${platform.id}`} className="flex items-center gap-3 p-3 rounded-lg border border-gray-100 bg-white shadow-sm hover:border-pink-100 transition-colors">
+                      <div className="relative shrink-0">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-xs overflow-hidden ${!platform.profile_pic ? getPlatformColor(platform.platform) : ""}`}>
+                          {platform.profile_pic ? (
+                            <img src={platform.profile_pic} alt={platform.name || 'Profile'} className="w-full h-full object-cover" />
+                          ) : (
+                            <span>{platform.platform.charAt(0)}</span>
+                          )}
+                        </div>
+                        <div className="absolute -bottom-1 -right-1 rounded-full border border-white dark:border-gray-900 shadow-3xs overflow-hidden">
+                          <PlatformIcon platform={platform.platform} size="xs" />
+                        </div>
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-semibold text-gray-900 truncate">{platform.name || 'Unknown'}</p>
-                        <p className="text-[10px] text-gray-500">{platform.followers ? `${platform.followers} followers` : 'Pending'}</p>
+                        <div className="flex flex-wrap items-center gap-1 mt-0.5">
+                          <span className={`text-[8px] font-bold px-1.5 py-0.25 rounded text-white ${getPlatformColor(platform.platform)}`}>
+                            {platform.platform}
+                          </span>
+                          <span className="text-[10px] text-gray-500">
+                            {platform.followers ? `${formatFollowers(platform.followers)} followers` : 'Pending'}
+                          </span>
+                        </div>
                       </div>
                       <div className="shrink-0">
                         {platform.type === 'pending' ? (

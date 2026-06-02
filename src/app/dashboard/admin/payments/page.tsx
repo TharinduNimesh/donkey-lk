@@ -531,8 +531,19 @@ export default function AdminPaymentsPage() {
                           )}
                         </TableCell>
                         <TableCell className="py-3.5 px-4">
-                          <div className="max-w-[200px]">
-                            <div className="font-semibold text-sm text-gray-800 truncate">{payment.task?.title}</div>
+                          <div className="max-w-[240px] space-y-0.5">
+                            <div className="font-semibold text-sm text-gray-800 flex items-center gap-1.5 flex-wrap">
+                              <span className="truncate max-w-[150px]">{payment.task?.title}</span>
+                              {isBrandSync ? (
+                                <span className="px-1.5 py-0.25 text-[9px] font-semibold bg-purple-50 text-purple-700 rounded-md border border-purple-100 shrink-0">
+                                  BrandSync Link
+                                </span>
+                              ) : (
+                                <span className="px-1.5 py-0.25 text-[9px] font-semibold bg-pink-50 text-pink-700 rounded-md border border-pink-100 shrink-0">
+                                  BrandSync Task
+                                </span>
+                              )}
+                            </div>
                             <div className="text-xs text-gray-500 line-clamp-1">{payment.task?.description}</div>
                           </div>
                         </TableCell>

@@ -128,6 +128,32 @@ const getStatusConfig = (status: string | null) => {
 export function TaskDetailsHeader({ task }: TaskDetailsHeaderProps) {
   const router = useRouter();
   const [fileUrl, setFileUrl] = useState<string>("");
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const handleDownload = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!fileUrl || isDownloading) return;
+
+    setIsDownloading(true);
+    try {
+      const response = await fetch(fileUrl);
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      const fileName = task.source?.split("/").pop() || "attachment";
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      console.error("Error downloading file:", error);
+      window.open(fileUrl, "_blank");
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   useEffect(() => {
     const fetchUrl = async () => {
@@ -238,7 +264,7 @@ export function TaskDetailsHeader({ task }: TaskDetailsHeaderProps) {
                   : "N/A"}
               </span>
             </div>
-            {task.source && (
+            {task.source && task.source !== "DIRECT" && (
               <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
                 <span className="text-xs font-medium">
                   Source: {task.source.split("/").pop()}
@@ -266,7 +292,7 @@ export function TaskDetailsHeader({ task }: TaskDetailsHeaderProps) {
           </div>
 
           {/* Task Attachment */}
-          {task.source && (
+          {task.source && task.source !== "DIRECT" && (
             <div className="mt-6 pt-5 border-t border-border">
               <h3 className="text-sm font-medium text-foreground flex items-center mb-3">
                 <Paperclip className="h-4 w-4 mr-2 text-gray-500" />
@@ -316,17 +342,18 @@ export function TaskDetailsHeader({ task }: TaskDetailsHeaderProps) {
                         <Button
                           variant="outline"
                           size="sm"
-                          asChild
-                          className="border-border bg-muted/50 text-foreground hover:bg-muted hover:text-foreground"
+                          className="border-border bg-muted/50 text-foreground hover:bg-muted hover:text-foreground disabled:opacity-55"
+                          onClick={handleDownload}
+                          disabled={isDownloading}
                         >
-                          <a
-                            href={fileUrl}
-                            download={fileName}
-                            className="flex items-center space-x-1"
-                          >
-                            <Download className="h-3.5 w-3.5" />
-                            <span>Download</span>
-                          </a>
+                          {isDownloading ? (
+                            <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                          ) : (
+                            <>
+                              <Download className="h-3.5 w-3.5" />
+                              <span>Download</span>
+                            </>
+                          )}
                         </Button>
                       </div>
                     </div>

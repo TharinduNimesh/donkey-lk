@@ -12,6 +12,32 @@ interface TaskAttachmentsProps {
 
 export function TaskAttachments({ task }: TaskAttachmentsProps) {
   const [fileUrl, setFileUrl] = useState<string>("");
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const handleDownload = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!fileUrl || isDownloading) return;
+
+    setIsDownloading(true);
+    try {
+      const response = await fetch(fileUrl);
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      const fileName = task.source?.split('/').pop() || 'attachment';
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      console.error('Error downloading file:', error);
+      window.open(fileUrl, '_blank');
+    } finally {
+      setIsDownloading(false);
+    }
+  };
   const getFileTypeInfo = (filename: string) => {
     if (!filename) return { icon: File, type: "Unknown", previewable: false };
     
@@ -53,7 +79,7 @@ export function TaskAttachments({ task }: TaskAttachmentsProps) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: 0.2 }}
     >
-      {task.source && (
+      {task.source && task.source !== "DIRECT" && (
         <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
           <CardHeader className="pb-4 border-b border-gray-100 dark:border-gray-800">
             <CardTitle className="text-xl font-medium text-gray-900 dark:text-gray-100">Task Attachments</CardTitle>
@@ -67,7 +93,7 @@ export function TaskAttachments({ task }: TaskAttachmentsProps) {
                 // Fetch the URL when the component mounts or task.source changes
                 useEffect(() => {
                   const fetchUrl = async () => {
-                    if (task.source) {
+                    if (task.source && task.source !== "DIRECT") {
                       const url = await getStorageUrl('task-content', task.source);
                       if (url) setFileUrl(url);
                     }
@@ -106,16 +132,18 @@ export function TaskAttachments({ task }: TaskAttachmentsProps) {
                         <Button 
                           variant="outline" 
                           size="sm"
-                          asChild
+                          onClick={handleDownload}
+                          disabled={isDownloading}
+                          className="disabled:opacity-55"
                         >
-                          <a 
-                            href={fileUrl} 
-                            download={fileName}
-                            className="flex items-center space-x-1"
-                          >
-                            <Download className="h-4 w-4" />
-                            <span>Download</span>
-                          </a>
+                          {isDownloading ? (
+                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                          ) : (
+                            <span className="flex items-center space-x-1">
+                              <Download className="h-4 w-4" />
+                              <span>Download</span>
+                            </span>
+                          )}
                         </Button>
                       </div>
                     </div>

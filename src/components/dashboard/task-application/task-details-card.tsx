@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { format } from "date-fns";
-import { Clock, Users, FileText, Image as ImageIcon, Video, FileAudio, Download, ExternalLink } from "lucide-react";
+import { Clock, Users, FileText, Image as ImageIcon, Video, FileAudio, Download, ExternalLink, Calendar } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
@@ -51,14 +51,40 @@ export function TaskDetailsCard({ task }: TaskDetailsCardProps) {
 
   const [attachmentUrl, setAttachmentUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const handleDownload = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!attachmentUrl || isDownloading) return;
+
+    setIsDownloading(true);
+    try {
+      const response = await fetch(attachmentUrl);
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      const fileName = task?.source?.split('/').pop() || 'attachment';
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      console.error('Error downloading file:', error);
+      // Fallback: open in new tab
+      window.open(attachmentUrl, '_blank');
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   useEffect(() => {
     const fetchAttachmentUrl = async () => {
-      if (task?.source) {
+      if (task?.source && task.source !== "DIRECT") {
         setIsLoading(true);
         try {
           const url = await getStorageUrl('task-content', task.source);
-          console.log(url);
           setAttachmentUrl(url);
         } catch (error) {
           console.error('Error fetching attachment URL:', error);
@@ -71,114 +97,149 @@ export function TaskDetailsCard({ task }: TaskDetailsCardProps) {
     fetchAttachmentUrl();
   }, [task?.source]);
 
-  const fileInfo = task?.source ? getFileTypeInfo(task.source) : null;
+  const fileInfo = task?.source && task.source !== "DIRECT" ? getFileTypeInfo(task.source) : null;
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      className="mb-8"
+      className="mb-0"
     >
-      <Card className="overflow-hidden border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-        <CardHeader className="pb-4 border-b border-gray-100 dark:border-gray-800">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-xl font-bold text-gray-900 dark:text-gray-100">
-              {task?.title}
-            </CardTitle>
-            <Badge className={`
-              px-3 py-1 rounded-full text-sm pointer-events-none select-none
-              ${task?.status === 'ACTIVE' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : ''}
-              ${task?.status === 'DRAFT' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' : ''}
-            `}>
-              {task?.status}
-            </Badge>
+      <Card className="overflow-hidden border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm relative">
+        <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500" />
+        
+        <CardHeader className="pb-3 pt-4 border-b border-gray-100 dark:border-gray-800/80">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div className="space-y-0.5 min-w-0">
+              <CardTitle className="text-xl font-bold text-gray-900 dark:text-gray-100 tracking-tight leading-tight truncate">
+                {task?.title}
+              </CardTitle>
+              <CardDescription className="text-gray-650 dark:text-gray-405 text-xs line-clamp-1 md:line-clamp-none max-w-3xl">
+                {task?.description}
+              </CardDescription>
+            </div>
+            <div className="shrink-0 flex items-start md:items-center">
+              <Badge className={`
+                px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider pointer-events-none select-none shadow-3xs
+                ${task?.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30' : ''}
+                ${task?.status === 'DRAFT' ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400 border border-amber-100 dark:border-amber-900/30' : ''}
+              `}>
+                {task?.status}
+              </Badge>
+            </div>
           </div>
-          <CardDescription className="mt-2 text-gray-600 dark:text-gray-400">
-            {task?.description}
-          </CardDescription>
         </CardHeader>
-        <CardContent className="py-4">
-          <div className="grid gap-6 md:grid-cols-3">
-            {/* Task metrics */}
-            <div className="space-y-1.5">
-              <h3 className="text-sm font-medium text-muted-foreground">Created</h3>
-              <p className="font-medium flex items-center">
-                <Clock className="mr-1.5 h-4 w-4 text-gray-500" />
-                {format(new Date(task?.created_at || new Date()), 'MMM dd, yyyy')}
-              </p>
-            </div>
-            <div className="space-y-1.5">
-              <h3 className="text-sm font-medium text-muted-foreground">Target Influencers</h3>
-              <p className="font-medium flex items-center">
-                <Users className="mr-1.5 h-4 w-4 text-gray-500" />
-                {task?.total_influencers || 0} influencers
-              </p>
-            </div>
-            <div className="space-y-1.5">
-              <h3 className="text-sm font-medium text-muted-foreground">Campaign Status</h3>
-              <div className="w-full h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-pink-500 rounded-full transition-all duration-300"
-                  style={{ width: `${progressPercentage}%` }}
-                />
+        <CardContent className="py-4 space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {/* Created Box */}
+            <div className="p-3 rounded-lg border border-gray-100 dark:border-gray-800 bg-gray-50/40 dark:bg-gray-900/20 flex items-start space-x-2.5 shadow-3xs">
+              <div className="p-1.5 rounded-lg bg-pink-50 dark:bg-pink-950/20 text-pink-600 dark:text-pink-400 shrink-0">
+                <Calendar className="h-4.5 w-4.5" />
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {progressPercentage}% of target views promised
-              </p>
+              <div className="min-w-0">
+                <h3 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Created On</h3>
+                <p className="font-bold text-gray-900 dark:text-gray-100 text-xs mt-0.5">
+                  {format(new Date(task?.created_at || new Date()), 'MMM dd, yyyy')}
+                </p>
+              </div>
+            </div>
+
+            {/* Target Influencers Box */}
+            <div className="p-3 rounded-lg border border-gray-100 dark:border-gray-800 bg-gray-50/40 dark:bg-gray-900/20 flex items-start space-x-2.5 shadow-3xs">
+              <div className="p-1.5 rounded-lg bg-pink-50 dark:bg-pink-950/20 text-pink-600 dark:text-pink-400 shrink-0">
+                <Users className="h-4.5 w-4.5" />
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Target Influencers</h3>
+                <p className="font-bold text-gray-900 dark:text-gray-100 text-xs mt-0.5">
+                  {task?.total_influencers || 0} slots
+                </p>
+              </div>
+            </div>
+
+            {/* Progress Box */}
+            <div className="p-3 rounded-lg border border-gray-100 dark:border-gray-800 bg-gray-50/40 dark:bg-gray-900/20 flex flex-col justify-between shadow-3xs sm:col-span-2 lg:col-span-1">
+              <div className="flex items-center justify-between mb-1.5">
+                <h3 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Progress</h3>
+                <span className="text-[10px] font-bold text-pink-600 dark:text-pink-400 bg-pink-50 dark:bg-pink-950/20 px-2 py-0.5 rounded-full">
+                  {progressPercentage}%
+                </span>
+              </div>
+              <div className="space-y-1">
+                <div className="w-full h-1.5 bg-gray-200/60 dark:bg-gray-800 rounded-full overflow-hidden shadow-inner">
+                  <div 
+                    className="h-full bg-gradient-to-r from-pink-500 via-pink-600 to-purple-600 rounded-full transition-all duration-500 ease-out shadow-[0_0_8px_rgba(236,72,153,0.3)]"
+                    style={{ width: `${progressPercentage}%` }}
+                  />
+                </div>
+                <p className="text-[9px] text-muted-foreground leading-none">
+                  {progressPercentage}% views promised
+                </p>
+              </div>
             </div>
           </div>
           
           {/* Task attachment section */}
-          {task?.source && (
-            <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-800">
-              <h3 className="text-sm font-medium text-muted-foreground mb-3">Task Attachment</h3>
-              <div className="flex items-center p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+          {task?.source && task.source !== "DIRECT" && (
+            <div className="pt-4 border-t border-gray-100 dark:border-gray-800/80 space-y-2">
+              <h3 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Campaign Material & Guidelines</h3>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-lg border border-gray-100 dark:border-gray-800 bg-gray-50/30 dark:bg-gray-900/10 hover:border-pink-200 dark:hover:border-pink-900/30 transition-all duration-300 gap-3 shadow-3xs">
                 {fileInfo && (
                   <>
-                    <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center mr-3">
-                      {React.createElement(fileInfo.icon, { className: "h-5 w-5 text-gray-500 dark:text-gray-400" })}
+                    <div className="flex items-center space-x-2.5 min-w-0">
+                      <div className="w-8 h-8 rounded-lg bg-pink-50 dark:bg-pink-950/20 flex items-center justify-center text-pink-600 dark:text-pink-400 shrink-0 shadow-3xs">
+                        {React.createElement(fileInfo.icon, { className: "h-4 w-4" })}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-gray-900 dark:text-gray-100 truncate pr-2">
+                          {task.source.split('/').pop() || 'Attachment'}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground">
+                          {fileInfo.type.toUpperCase()} file
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                        {task.source.split('/').pop() || 'Attachment'}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {fileInfo.type.charAt(0).toUpperCase() + fileInfo.type.slice(1)} file
-                      </p>
-                    </div>
-                    <div className="flex space-x-2">
+                    <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
                       {attachmentUrl && (
                         <>
-                          {fileInfo.canPreview ? (
+                          {fileInfo.canPreview && (
                             <Button 
                               size="sm" 
                               variant="outline" 
-                              className="flex items-center" 
+                              className="border-gray-200 dark:border-gray-800 hover:border-pink-200 dark:hover:border-pink-800 hover:text-pink-600 dark:hover:text-pink-400 hover:bg-pink-50/35 dark:hover:bg-pink-950/10 text-[10px] font-semibold shadow-3xs rounded-md transition-colors h-8 px-2.5" 
                               asChild
                             >
                               <a href={attachmentUrl} target="_blank" rel="noopener noreferrer">
-                                <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+                                <ExternalLink className="mr-1 h-3.5 w-3.5" />
                                 View
                               </a>
                             </Button>
-                          ) : null}
+                          )}
                           <Button 
                             size="sm" 
                             variant="outline" 
-                            className="flex items-center" 
-                            asChild
+                            className="bg-pink-600 border-pink-600 text-white hover:bg-pink-700 hover:border-pink-700 text-[10px] font-semibold shadow-3xs rounded-md transition-colors h-8 px-2.5 disabled:opacity-55" 
+                            onClick={handleDownload}
+                            disabled={isDownloading}
                           >
-                            <a href={attachmentUrl} download>
-                              <Download className="mr-1.5 h-3.5 w-3.5" />
-                              Download
-                            </a>
+                            {isDownloading ? (
+                              <>
+                                <div className="mr-1.5 h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                                Loading...
+                              </>
+                            ) : (
+                              <>
+                                <Download className="mr-1.5 h-3.5 w-3.5" />
+                                Download
+                              </>
+                            )}
                           </Button>
                         </>
                       )}
                       {isLoading && (
-                        <div className="text-xs text-gray-500 dark:text-gray-400 animate-pulse">
-                          Loading...
+                        <div className="text-xs text-muted-foreground animate-pulse">
+                          Loading files...
                         </div>
                       )}
                     </div>
@@ -192,3 +253,4 @@ export function TaskDetailsCard({ task }: TaskDetailsCardProps) {
     </motion.div>
   );
 }
+

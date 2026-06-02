@@ -142,13 +142,16 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
                 return { ...application, influencer: null, proofs: [] };
               }
 
-              // Fetch influencer profile
-              const { data: profileData } = await supabase
+              // Fetch influencer profile (handling multiple accounts of the same platform)
+              const { data: profilesData } = await supabase
                 .from('influencer_profile')
                 .select('*')
                 .eq('user_id', application.user_id)
-                .eq('platform', platform)
-                .single();
+                .eq('platform', platform);
+              
+              const profileData = profilesData && profilesData.length > 0
+                ? (profilesData.find(p => p.is_verified) || profilesData[0])
+                : null;
               
               // Fetch proofs with their status
               const { data: proofsData, error: proofsError } = await supabase

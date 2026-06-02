@@ -251,6 +251,15 @@ const ProofItem = ({
 export function ApplicationsListCard({
   applications,
 }: ApplicationsListCardProps) {
+  const formatFollowers = (followers: string | null | undefined) => {
+    if (!followers) return '0';
+    if (/[a-zA-Z]/.test(followers)) {
+      return followers;
+    }
+    const num = Number(followers);
+    return isNaN(num) ? followers : num.toLocaleString();
+  };
+
   return (
     <div className="bg-card rounded-2xl border border-border p-6 shadow-sm">
       <div className="flex items-center gap-3 mb-6">
@@ -332,7 +341,7 @@ export function ApplicationsListCard({
                       <div className="flex items-center gap-1.5">
                         <Users className="h-3.5 w-3.5 text-muted-foreground" />
                         <span className="text-muted-foreground">
-                          {application.influencer.followers.toLocaleString()}{" "}
+                          {formatFollowers(application.influencer.followers)}{" "}
                           followers
                         </span>
                       </div>
