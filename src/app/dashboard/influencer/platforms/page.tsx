@@ -10,6 +10,12 @@ import type { Database } from "@/types/database.types";
 import { SocialVerification } from "@/components/ui/social-verification";
 import { InfluencerSidebar, InfluencerTopbar } from "@/components/dashboard/influencer-sidebar";
 import { Plus, Users } from "lucide-react";
+import { 
+  IconBrandYoutube, 
+  IconBrandFacebook, 
+  IconBrandTiktok, 
+  IconBrandInstagram 
+} from "@tabler/icons-react";
 
 type InfluencerProfile = Database["public"]["Tables"]["influencer_profile"]["Row"];
 type ContactDetail = {
@@ -61,6 +67,17 @@ export default function PlatformsPage() {
     return colors[platform] || "bg-gray-500";
   };
 
+  const getPlatformIcon = (platform: Database["public"]["Enums"]["Platforms"], className = "w-2.5 h-2.5 text-white") => {
+    const icons = {
+      YOUTUBE: IconBrandYoutube,
+      FACEBOOK: IconBrandFacebook,
+      INSTAGRAM: IconBrandInstagram,
+      TIKTOK: IconBrandTiktok,
+    };
+    const IconComponent = icons[platform];
+    return IconComponent ? <IconComponent className={className} /> : null;
+  };
+
   const handleConnect = (platform: Database["public"]["Enums"]["Platforms"]) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set("platform", platform);
@@ -105,10 +122,16 @@ export default function PlatformsPage() {
                     {profiles.map((profile) => (
                       <div key={profile.id} className="bg-white rounded-lg border border-gray-200 p-4 hover:border-pink-200 transition-colors shadow-sm relative overflow-hidden">
                         <div className="flex items-center space-x-3">
-                          <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white text-lg font-bold overflow-hidden ${!profile.profile_pic ? getPlatformColor(profile.platform) : ""}`}>
-                            {profile.profile_pic ? (
-                              <img src={profile.profile_pic} alt={profile.name} className="w-full h-full object-cover" />
-                            ) : profile.platform.charAt(0)}
+                          <div className="relative">
+                            <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white text-lg font-bold overflow-hidden border border-gray-100 ${!profile.profile_pic ? getPlatformColor(profile.platform) : ""}`}>
+                              {profile.profile_pic ? (
+                                <img src={profile.profile_pic} alt={profile.name} className="w-full h-full object-cover" />
+                              ) : profile.platform.charAt(0)}
+                            </div>
+                            {/* Platform badge overlay */}
+                            <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-white dark:border-gray-900 flex items-center justify-center ${getPlatformColor(profile.platform)} shadow-sm`}>
+                              {getPlatformIcon(profile.platform)}
+                            </div>
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between mb-0.5">
@@ -117,9 +140,14 @@ export default function PlatformsPage() {
                                 {profile.is_verified ? "Verified" : "Pending"}
                               </Badge>
                             </div>
-                            <p className="text-xs text-gray-500">
-                              {profile.followers?.toLocaleString()} followers
-                            </p>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded text-white ${getPlatformColor(profile.platform)}`}>
+                                {profile.platform}
+                              </span>
+                              <span className="text-xs text-gray-500">
+                                {profile.followers?.toLocaleString()} followers
+                              </span>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -159,7 +187,7 @@ export default function PlatformsPage() {
                       >
                         <div className="flex items-center space-x-3 mb-3">
                           <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white ${getPlatformColor(platform as Database["public"]["Enums"]["Platforms"])} shadow-sm`}>
-                            {platform.charAt(0)}
+                            {getPlatformIcon(platform as Database["public"]["Enums"]["Platforms"], "w-5 h-5 text-white")}
                           </div>
                           <div>
                             <div className="font-semibold text-sm text-gray-900">{platform}</div>
@@ -183,7 +211,7 @@ export default function PlatformsPage() {
             </>
           ) : (
             /* Verification Flow */
-            <div className="max-w-2xl mx-auto">
+            <div className="max-w-4xl mx-auto">
               <div className="bg-white rounded-xl border border-gray-100 overflow-hidden shadow-sm">
                 <div className="px-5 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
                   <div>

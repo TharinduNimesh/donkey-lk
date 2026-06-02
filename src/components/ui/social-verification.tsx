@@ -19,6 +19,24 @@ import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import type { Database } from "@/types/database.types";
+import { 
+  Mail, 
+  Smartphone, 
+  MessageSquare, 
+  CheckCircle2, 
+  AlertCircle, 
+  Link2, 
+  Lock, 
+  ShieldCheck, 
+  ShieldAlert, 
+  ArrowRight
+} from "lucide-react";
+import {
+  IconBrandYoutube,
+  IconBrandFacebook,
+  IconBrandTiktok,
+  IconBrandInstagram
+} from "@tabler/icons-react";
 
 interface ContactDetail {
   id: number;
@@ -38,6 +56,58 @@ interface SocialVerificationProps {
   platform?: Database["public"]["Enums"]["Platforms"];
 }
 
+const platformConfigs: Record<string, {
+  name: string;
+  color: string;
+  gradient: string;
+  textColor: string;
+  borderColor: string;
+  placeholder: string;
+  helpText: string;
+  Icon: React.ComponentType<{ className?: string }>;
+}> = {
+  YOUTUBE: {
+    name: "YouTube",
+    color: "bg-red-500",
+    gradient: "from-red-600 to-red-500",
+    textColor: "text-red-600 dark:text-red-400",
+    borderColor: "focus-visible:ring-red-500 border-red-200 dark:border-red-900/30",
+    placeholder: "https://www.youtube.com/@yourchannel",
+    helpText: "Enter your full YouTube channel URL (e.g., https://www.youtube.com/@username)",
+    Icon: IconBrandYoutube
+  },
+  FACEBOOK: {
+    name: "Facebook",
+    color: "bg-blue-600",
+    gradient: "from-blue-600 to-blue-500",
+    textColor: "text-blue-600 dark:text-blue-400",
+    borderColor: "focus-visible:ring-blue-500 border-blue-200 dark:border-blue-900/30",
+    placeholder: "https://www.facebook.com/yourpage",
+    helpText: "Enter your public Facebook page or profile link (e.g., https://www.facebook.com/pagename)",
+    Icon: IconBrandFacebook
+  },
+  INSTAGRAM: {
+    name: "Instagram",
+    color: "bg-pink-500",
+    gradient: "from-purple-600 via-pink-500 to-orange-500",
+    textColor: "text-pink-600 dark:text-pink-400",
+    borderColor: "focus-visible:ring-pink-500 border-pink-200 dark:border-pink-900/30",
+    placeholder: "https://www.instagram.com/yourprofile",
+    helpText: "Enter your Instagram profile URL (e.g., https://www.instagram.com/username)",
+    Icon: IconBrandInstagram
+  },
+  TIKTOK: {
+    name: "TikTok",
+    color: "bg-black",
+    gradient: "from-gray-900 to-black dark:from-gray-800 dark:to-black",
+    textColor: "text-gray-950 dark:text-gray-100",
+    borderColor: "focus-visible:ring-black border-gray-200 dark:border-gray-800",
+    placeholder: "https://www.tiktok.com/@yourprofile",
+    helpText: "Enter your TikTok profile link (e.g., https://www.tiktok.com/@username)",
+    Icon: IconBrandTiktok
+  }
+};
+
 export function SocialVerification({
   verifiedEmail,
   contactDetails = [],
@@ -51,6 +121,8 @@ export function SocialVerification({
   const [verificationCode, setVerificationCode] = useState("");
   const [sendingCode, setSendingCode] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const config = platform ? platformConfigs[platform] : null;
 
   const hasVerifiedNonEmailContact = useMemo(() => {
     return contactDetails.some(
@@ -145,13 +217,11 @@ export function SocialVerification({
     try {
       setIsSubmitting(true);
       
-      // Get current user
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       if (authError || !user) {
         throw new Error("Authentication error. Please try logging in again.");
       }
 
-      // Create verification request
       const { error: requestError } = await supabase
         .from('influencer_profile_verification_requests')
         .insert({
@@ -175,38 +245,129 @@ export function SocialVerification({
 
   return (
     <div className="space-y-6">
-      <Card>
-        <div className="p-6">
-          <h3 className="text-lg font-semibold mb-4">Contact Details</h3>
-
-          {/* Verified Email */}
-          {verifiedEmail && (
-            <div className="mb-4">
-              <Label>Verified Email</Label>
-              <div className="flex items-center gap-2 mt-1">
-                <span>{verifiedEmail}</span>
-                <span className="inline-flex items-center rounded-full bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
-                  Verified
-                </span>
-              </div>
+      {/* Platform Banner */}
+      {config && (
+        <div className={`p-6 rounded-2xl bg-gradient-to-r ${config.gradient} text-white shadow-md relative overflow-hidden`}>
+          <div className="absolute right-0 bottom-0 opacity-10 transform translate-x-6 translate-y-6 shrink-0 pointer-events-none">
+            <config.Icon className="w-40 h-40" />
+          </div>
+          <div className="relative z-10 space-y-2">
+            <div className="flex items-center gap-2">
+              <config.Icon className="w-5 h-5 shrink-0" />
+              <span className="text-[10px] font-bold uppercase tracking-wider bg-white/20 px-2.5 py-1 rounded-full backdrop-blur-sm">
+                Link Account Flow
+              </span>
             </div>
-          )}
+            <h2 className="text-2xl font-bold">Connect your {config.name} Profile</h2>
+            <p className="text-xs text-white/80 max-w-lg">
+              Follow the simple 2-step verification process to link your account securely.
+            </p>
+          </div>
+        </div>
+      )}
 
-          {/* Other Contact Details */}
-          {contactDetails.length > 0 && (
-            <div className="space-y-4">
-              {contactDetails.map((contact) => (
-                <div
-                  key={contact.id}
-                  className="flex items-center justify-between"
-                >
-                  <div>
-                    <Label>{contact.type}</Label>
-                    <div className="mt-1">{contact.detail}</div>
+      {/* Verification Steps Indicator */}
+      <div className="grid grid-cols-2 gap-4 bg-white dark:bg-gray-900 p-4 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${
+            hasVerifiedNonEmailContact 
+              ? "bg-green-50 text-green-600 dark:bg-green-950/30 dark:text-green-400" 
+              : "bg-pink-50 text-pink-600 dark:bg-pink-950/30 dark:text-pink-400 animate-pulse border border-pink-200 dark:border-pink-900/30"
+          }`}>
+            {hasVerifiedNonEmailContact ? <CheckCircle2 className="w-4 h-4" /> : "1"}
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-gray-900 dark:text-gray-100">Step 1: Contact Details</p>
+            <p className="text-[10px] text-gray-500">
+              {hasVerifiedNonEmailContact ? "Completed" : "Action Required"}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 border-l border-gray-100 dark:border-gray-800 pl-4">
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${
+            hasVerifiedNonEmailContact 
+              ? "bg-violet-50 text-violet-600 dark:bg-violet-950/30 dark:text-violet-400 border border-violet-200 dark:border-violet-900/30" 
+              : "bg-gray-50 text-gray-400 dark:bg-gray-800 dark:text-gray-600"
+          }`}>
+            2
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-gray-900 dark:text-gray-100">Step 2: Profile Submission</p>
+            <p className="text-[10px] text-gray-500">
+              {hasVerifiedNonEmailContact ? "Unlocked" : "Locked"}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Step 1 Card: Contact Details */}
+      <Card className="border border-gray-150 dark:border-gray-800/80 shadow-sm rounded-2xl overflow-hidden">
+        <div className="p-6 space-y-4">
+          <div className="flex items-center justify-between border-b border-gray-50 dark:border-gray-800/40 pb-4">
+            <div>
+              <h3 className="text-sm font-bold text-gray-950 dark:text-gray-100 flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-green-500" />
+                Step 1: Contact Details
+              </h3>
+              <p className="text-[11px] text-gray-500 mt-0.5">Please verify a phone or WhatsApp contact to proceed</p>
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            {/* Verified Email */}
+            {verifiedEmail && (
+              <div className="p-4 rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/30">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                  <div className="space-y-1 min-w-0">
+                    <div className="flex items-center gap-1.5 text-[10px] font-medium text-gray-500">
+                      <Mail className="w-3.5 h-3.5 text-gray-400" />
+                      <span>Email Address</span>
+                    </div>
+                    <p className="text-xs font-semibold text-gray-900 dark:text-gray-100 break-all">
+                      {verifiedEmail}
+                    </p>
                   </div>
-                  <div>
-                    {contact.contactStatus?.is_verified ? (
-                      <span className="inline-flex items-center rounded-full bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-green-50 dark:bg-green-950/20 px-2.5 py-0.5 text-[10px] font-semibold text-green-700 dark:text-green-400 ring-1 ring-inset ring-green-600/20 shrink-0 self-start sm:self-auto">
+                    <CheckCircle2 className="w-3 h-3" />
+                    Verified
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Other Contacts */}
+            {contactDetails.map((contact) => {
+              const isVerified = contact.contactStatus?.is_verified;
+              const isWhatsApp = contact.type === "WHATSAPP";
+              
+              return (
+                <div 
+                  key={contact.id} 
+                  className={`p-4 rounded-xl border transition-all duration-300 ${
+                    isVerified 
+                      ? "border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/30" 
+                      : "border-pink-100 dark:border-pink-900/25 bg-pink-50/10 dark:bg-pink-950/5 hover:border-pink-200"
+                  }`}
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                    <div className="space-y-1 min-w-0">
+                      <div className="flex items-center gap-1.5 text-[10px] font-medium text-gray-500">
+                        {isWhatsApp ? (
+                          <MessageSquare className="w-3.5 h-3.5 text-green-500 dark:text-green-400" />
+                        ) : (
+                          <Smartphone className="w-3.5 h-3.5 text-blue-500 dark:text-blue-400" />
+                        )}
+                        <span>{contact.type}</span>
+                      </div>
+                      <p className="text-xs font-semibold text-gray-900 dark:text-gray-100 break-all">
+                        {contact.detail}
+                      </p>
+                    </div>
+
+                    {isVerified ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-green-50 dark:bg-green-950/20 px-2.5 py-0.5 text-[10px] font-semibold text-green-700 dark:text-green-400 ring-1 ring-inset ring-green-600/20 shrink-0 self-start sm:self-auto">
+                        <CheckCircle2 className="w-3 h-3" />
                         Verified
                       </span>
                     ) : (
@@ -215,6 +376,7 @@ export function SocialVerification({
                         size="sm"
                         onClick={() => handleVerifyClick(contact.id)}
                         disabled={sendingCode || (verifyingContactId === contact.id && isVerifyingContact)}
+                        className="h-7 text-[10px] border-pink-200 hover:border-pink-500 text-pink-600 hover:bg-pink-50/40 dark:border-pink-900/30 dark:hover:border-pink-600 hover:text-pink-700 transition-colors shadow-sm font-semibold cursor-pointer shrink-0 self-start sm:self-auto"
                       >
                         {sendingCode && verifyingContactId === contact.id ? (
                           <>
@@ -222,63 +384,107 @@ export function SocialVerification({
                             Sending...
                           </>
                         ) : (
-                          "Verify"
+                          "Verify now"
                         )}
                       </Button>
                     )}
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </Card>
-
-      {/* Administrative Verification */}
-      <Card>
-        <div className="p-6">
-          <h3 className="text-lg font-semibold mb-4">
-            Administrative Verification
-          </h3>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="pageUrl">Page/Channel URL</Label>
-              <Input
-                id="pageUrl"
-                type="url"
-                placeholder="Enter your page or channel URL"
-                className="mt-1"
-                value={pageUrl}
-                onChange={(e) => setPageUrl(e.target.value)}
-              />
-              {!hasVerifiedNonEmailContact && (
-                <p className="text-sm text-yellow-600 dark:text-yellow-500 mt-2">
-                  Please verify at least one phone number or WhatsApp contact before submitting
-                </p>
-              )}
-              {!pageUrl && (
-                <p className="text-sm text-muted-foreground mt-2">
-                  Enter the URL of your social media page or channel
-                </p>
-              )}
-            </div>
-            <Button 
-              onClick={handleSubmit}
-              disabled={!canSubmit || isSubmitting}
-            >
-              {isSubmitting ? (
-                <>
-                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-background border-t-foreground"/>
-                  Submitting...
-                </>
-              ) : (
-                "Submit for Verification"
-              )}
-            </Button>
+              );
+            })}
           </div>
         </div>
       </Card>
 
+      {/* Step 2 Card: URL Submission */}
+      <Card className={`border shadow-sm rounded-2xl overflow-hidden transition-all duration-300 ${
+        !hasVerifiedNonEmailContact 
+          ? "border-gray-100 bg-gray-50/30 dark:border-gray-800 dark:bg-gray-900/5 opacity-75 animate-pulse-slow" 
+          : "border-gray-150 dark:border-gray-800 bg-white dark:bg-gray-900"
+      }`}>
+        <div className="p-6 space-y-6">
+          <div className="flex items-center justify-between border-b border-gray-50 dark:border-gray-800/40 pb-4">
+            <div>
+              <h3 className="text-sm font-bold text-gray-950 dark:text-gray-100 flex items-center gap-2">
+                <Link2 className="w-4 h-4 text-violet-500" />
+                Step 2: Profile Submission
+              </h3>
+              <p className="text-[11px] text-gray-500 mt-0.5">Submit your public profile URL for administrative approval</p>
+            </div>
+            {!hasVerifiedNonEmailContact && (
+              <span className="flex items-center gap-1 text-[9px] font-bold bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-450 border border-amber-200 dark:border-amber-900/30 px-2.5 py-1 rounded-full uppercase tracking-wider">
+                <Lock className="w-3 h-3" />
+                Locked
+              </span>
+            )}
+          </div>
+
+          {!hasVerifiedNonEmailContact ? (
+            <div className="bg-amber-50/50 dark:bg-amber-950/10 border border-amber-100 dark:border-amber-900/20 rounded-xl p-4 flex gap-3">
+              <ShieldAlert className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+              <div className="space-y-0.5">
+                <h4 className="text-xs font-semibold text-amber-800 dark:text-amber-400">Step 1 Verification Required</h4>
+                <p className="text-[11px] text-amber-750/90 dark:text-amber-500/85">
+                  Please verify at least one Phone number or WhatsApp contact above to unlock Step 2.
+                </p>
+              </div>
+            </div>
+          ) : null}
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="pageUrl" className="text-xs font-semibold text-gray-705 dark:text-gray-300">
+                {config ? `${config.name} Channel URL / Profile Link` : "Page/Channel URL"}
+              </Label>
+              <div className="relative rounded-lg shadow-sm">
+                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                  <Link2 className="h-4 h-4 text-gray-400" aria-hidden="true" />
+                </div>
+                <Input
+                  id="pageUrl"
+                  type="url"
+                  placeholder={config ? config.placeholder : "Enter page or channel URL"}
+                  disabled={!hasVerifiedNonEmailContact}
+                  className={`pl-9 py-5 rounded-lg border-gray-250 transition-shadow ${
+                    config ? config.borderColor : "focus-visible:ring-violet-500"
+                  }`}
+                  value={pageUrl}
+                  onChange={(e) => setPageUrl(e.target.value)}
+                />
+              </div>
+              <p className="text-[10px] text-gray-500 dark:text-gray-400">
+                {config ? config.helpText : "Enter the URL of your social media page or channel"}
+              </p>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <Button 
+                onClick={handleSubmit}
+                disabled={!canSubmit || isSubmitting}
+                className={`py-5 px-6 rounded-lg text-white font-semibold transition-all duration-300 shadow-md ${
+                  canSubmit && config
+                    ? `bg-gradient-to-r ${config.gradient} hover:opacity-95 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 cursor-pointer`
+                    : "bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-550 border border-gray-200 dark:border-gray-800 cursor-not-allowed"
+                }`}
+              >
+                {isSubmitting ? (
+                  <>
+                    <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-background border-t-foreground"/>
+                    Submitting...
+                  </>
+                ) : (
+                  <span className="flex items-center gap-1.5">
+                    Submit for Approval
+                    <ArrowRight className="w-4 h-4" />
+                  </span>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      {/* OTP Verification Dialog */}
       <Dialog open={isVerifyingContact} onOpenChange={(open) => {
         if (!open) {
           setIsVerifyingContact(false);
@@ -286,14 +492,14 @@ export function SocialVerification({
           setVerificationCode("");
         }
       }}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md rounded-2xl">
           <DialogHeader>
-            <DialogTitle>Enter Verification Code</DialogTitle>
-            <DialogDescription>
-              We've sent a 6-digit verification code to your phone. Please enter it below.
+            <DialogTitle className="text-lg font-bold">Enter Verification Code</DialogTitle>
+            <DialogDescription className="text-xs">
+              We've sent a 6-digit verification code to your phone. Please enter it below to complete verification.
             </DialogDescription>
           </DialogHeader>
-          <div className="flex flex-col items-center space-y-4">
+          <div className="flex flex-col items-center space-y-5 pt-3">
             <InputOTP 
               maxLength={6}
               value={verificationCode}
@@ -314,7 +520,7 @@ export function SocialVerification({
             <Button 
               onClick={handleVerifyCode} 
               disabled={verificationCode.length !== 6}
-              className="w-full"
+              className="w-full py-5 bg-gradient-to-r from-pink-500 to-pink-600 text-white font-semibold shadow-md hover:shadow-lg hover:opacity-95 transition-all cursor-pointer"
             >
               Verify Code
             </Button>
@@ -322,11 +528,11 @@ export function SocialVerification({
               variant="ghost" 
               onClick={() => handleVerifyClick(verifyingContactId!)}
               disabled={sendingCode}
-              className="w-full"
+              className="w-full text-xs text-gray-500 hover:text-gray-850 hover:bg-gray-50 cursor-pointer"
             >
               {sendingCode ? (
                 <>
-                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-background border-t-foreground"/>
+                  <div className="mr-2 h-3 w-3 animate-spin rounded-full border-2 border-muted border-t-foreground"/>
                   Sending...
                 </>
               ) : (
