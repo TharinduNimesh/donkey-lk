@@ -359,7 +359,8 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
       }
     } catch (error) {
       console.error('Error submitting proofs:', error);
-      toast.error("Failed to submit proofs. Please try again.");
+      const message = error instanceof Error ? error.message : (typeof error === 'string' ? error : JSON.stringify(error));
+      toast.error(message || "Failed to submit proofs. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -489,15 +490,15 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
   const isTaskFull = progress === 100;
 
   return (
-    <div className="min-h-screen w-full bg-white dark:bg-gray-950">
+    <div className="min-h-screen w-full bg-[#fafafa] dark:bg-gray-950 font-sans">
       <div className="container max-w-5xl mx-auto py-8 px-4">
         {(!existingApplication && hasIncompleteTask) && (
           <div className="mb-6">
-            <Alert variant="destructive" className="bg-pink-50 dark:bg-pink-900/20 border-pink-200 dark:border-pink-900 flex items-center">
-              <AlertCircle className="h-6 w-6 text-pink-600 dark:text-pink-400" />
+            <Alert variant="destructive" className="bg-pink-50/80 dark:bg-pink-950/15 border-pink-200 dark:border-pink-900/40 flex items-center gap-3 rounded-xl shadow-3xs p-4">
+              <AlertCircle className="h-6 w-6 text-pink-600 dark:text-pink-400 shrink-0" />
               <div>
-                <AlertTitle className="text-pink-700 dark:text-pink-300">Complete Your Current Task</AlertTitle>
-                <AlertDescription>
+                <AlertTitle className="text-sm font-bold text-pink-700 dark:text-pink-300">Complete Your Current Task</AlertTitle>
+                <AlertDescription className="text-xs text-pink-600 dark:text-pink-400 mt-1 leading-relaxed">
                   You must complete your already applied task before applying for new tasks. As your profile grows, you can handle more tasks at once.
                 </AlertDescription>
               </div>
@@ -505,112 +506,120 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
           </div>
         )}
         {isTaskFull && (
-          <div className="mb-6 p-4 rounded-lg bg-red-100 border border-red-300 text-red-800 dark:bg-red-900/20 dark:text-red-200 dark:border-red-800 flex items-center gap-3">
-            <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-            <span>This task is already full and cannot accept more applications.</span>
+          <div className="mb-6 p-4 rounded-xl bg-amber-50 dark:bg-amber-950/10 border border-amber-200/60 dark:border-amber-900/20 text-amber-800 dark:text-amber-300 flex items-center gap-3 shadow-3xs">
+            <svg className="w-5 h-5 text-amber-500 shrink-0" fill="none" stroke="currentColor" strokeWidth="2.3" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+            </svg>
+            <span className="text-xs font-semibold">This campaign has reached its max capacity and cannot accept new applications.</span>
           </div>
         )}
+        
         {/* Header with back button */}
         <motion.div 
-          initial={{ opacity: 0, y: -20 }}
+          initial={{ opacity: 0, y: -15 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
-          className="flex items-center mb-6"
+          className="flex items-center mb-8 gap-4"
         >
           <Button
-            variant="ghost"
+            variant="outline"
             onClick={() => router.push("/dashboard/influencer")}
-            className="mr-4 p-2 h-10 w-10 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
+            className="p-0 h-10 w-10 rounded-full hover:bg-pink-50 dark:hover:bg-pink-950/20 hover:text-pink-600 border-gray-200 dark:border-gray-800 transition-colors shadow-3xs flex items-center justify-center shrink-0"
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            <h1 className="text-2xl font-black text-gray-900 dark:text-gray-100 tracking-tight">
               Task Application
             </h1>
-            <p className="text-sm text-muted-foreground">
-              Apply to this task or manage your existing application
+            <p className="text-xs text-muted-foreground mt-0.5 font-medium">
+              Submit your reach promises to start campaign execution or manage details
             </p>
           </div>
         </motion.div>
 
-        {/* Task details card */}
-        <TaskDetailsCard task={task} />
+        <div className="grid gap-6 lg:grid-cols-3 items-start">
+          {/* Main Column */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Task details card */}
+            <TaskDetailsCard task={task} />
 
-        {existingApplication ? (
-          <ExistingApplicationCard application={existingApplication} />
-        ) : (
-          <>
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="space-y-8"
-            >
-              <PlatformRequirementsCard 
-                targets={targets} 
-                verifiedProfiles={verifiedProfiles} 
-                selectedViews={selectedViews} 
-                earnings={earnings}
-                onViewsChange={handleViewsChange} 
-                getAvailableViewOptions={getAvailableViewOptions}
+            {existingApplication ? (
+              <ProofSubmissionSection
+                application={existingApplication}
+                existingProofs={existingProofs}
+                selectedProofs={selectedProofs}
+                proofUrls={proofUrls}
+                onProofAdd={handleProofAdd}
+                onProofRemove={handleProofRemove}
+                onProofSubmit={handleProofSubmit}
+                isLoading={isLoading}
               />
+            ) : (
+              <div className="space-y-6">
+                <PlatformRequirementsCard 
+                  targets={targets} 
+                  verifiedProfiles={verifiedProfiles} 
+                  selectedViews={selectedViews} 
+                  earnings={earnings}
+                  onViewsChange={handleViewsChange} 
+                  getAvailableViewOptions={getAvailableViewOptions}
+                />
 
-              {existingApplication ? null : (
                 <motion.div 
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: 0.2 }}
-                  className="p-4 rounded-lg bg-blue-50 border border-blue-200 dark:bg-blue-900/20 dark:border-blue-800"
+                  transition={{ duration: 0.3, delay: 0.15 }}
+                  className="p-4 rounded-xl bg-blue-50/50 border border-blue-150/40 dark:bg-blue-950/10 dark:border-blue-900/20 shadow-3xs"
                 >
                   <div className="flex items-start gap-3">
-                    <div className="shrink-0">
-                      <svg className="w-5 h-5 text-blue-500 mt-0.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <div className="shrink-0 p-1 bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 rounded-lg">
+                      <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" strokeWidth="2.3" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                     </div>
                     <div>
-                      <p className="text-sm text-blue-800 dark:text-blue-200">
-                        <span className="font-medium">Growth Opportunity Note:</span> While we initially limit the promised reach to 20,000 views per platform, this threshold increases as you build your track record. Successfully completing tasks unlocks opportunities to handle larger view counts, enabling you to maximize your earning potential on our platform.
+                      <span className="text-xs font-bold text-blue-900 dark:text-blue-300">Platform Limit Info:</span>
+                      <p className="text-xs text-blue-700/95 dark:text-blue-300/80 mt-0.5 leading-relaxed font-medium">
+                        Promises are initially capped at 20,000 views per campaign target to ensure fair distribution. As you complete more campaigns successfully, your limits will scale up, letting you promise larger numbers and boost your profits.
                       </p>
                     </div>
                   </div>
                 </motion.div>
-              )}
+              </div>
+            )}
+          </div>
 
+          {/* Sidebar Summary/Status Column */}
+          <div className="lg:col-span-1 space-y-6 lg:sticky lg:top-6">
+            {existingApplication ? (
+              <ExistingApplicationCard 
+                application={existingApplication} 
+                existingProofs={existingProofs}
+                proofUrls={proofUrls}
+                verifiedProfiles={verifiedProfiles}
+              />
+            ) : (
               <ApplicationSummaryCard 
                 targets={targets}
                 selectedViews={selectedViews}
                 earnings={earnings}
                 calculateTotalViews={calculateTotalViews}
               />
-            </motion.div>
-          </>
-        )}
-
-        {existingApplication && (
-          <ProofSubmissionSection
-            application={existingApplication}
-            existingProofs={existingProofs}
-            selectedProofs={selectedProofs}
-            proofUrls={proofUrls}
-            onProofAdd={handleProofAdd}
-            onProofRemove={handleProofRemove}
-            onProofSubmit={handleProofSubmit}
-            isLoading={isLoading}
-          />
-        )}
+            )}
+          </div>
+        </div>
 
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.3, delay: 0.4 }}
-          className="flex justify-between mt-5"
+          transition={{ duration: 0.3, delay: 0.35 }}
+          className="flex justify-between items-center mt-8 pt-4 border-t border-gray-200/50 dark:border-gray-800/50"
         >
           <Button
             variant="outline"
             onClick={() => router.push("/dashboard/influencer")}
-            className="border-pink-200 dark:border-pink-800 hover:bg-pink-50 dark:hover:bg-pink-900/20"
+            className="border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-900/60 font-semibold h-10 px-5 rounded-lg text-sm shadow-3xs"
           >
             Back
           </Button>
@@ -619,12 +628,12 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
             <Button
               onClick={handleSubmitApplication}
               disabled={isLoading || !Object.values(selectedViews).some(views => parseViewCount(views) > 0) || hasIncompleteTask}
-              className="bg-gradient-to-r from-pink-500 to-pink-600 hover:opacity-90 text-white"
+              className="bg-gradient-to-r from-pink-500 via-pink-600 to-purple-600 hover:opacity-95 text-white font-bold transition-all duration-300 shadow-[0_4px_12px_rgba(236,72,153,0.35)] disabled:opacity-50 h-10 px-6 rounded-lg text-sm"
             >
               {isLoading ? (
                 <>
                   <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"/>
-                  Submitting...
+                  Submitting Application...
                 </>
               ) : 'Submit Application'}
             </Button>

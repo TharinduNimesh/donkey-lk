@@ -17,10 +17,14 @@ export async function submitApplicationProofs(applicationId: number, proofs: Arr
         content: proof.content
       })));
 
-    if (error) throw error;
+    if (error) {
+      console.error('Supabase insert error (application_proofs):', error);
+      throw new Error(error.message || JSON.stringify(error));
+    }
   } catch (error) {
     console.error('Error submitting proofs:', error);
-    throw error;
+    if (error instanceof Error) throw error;
+    throw new Error(JSON.stringify(error));
   }
 }
 

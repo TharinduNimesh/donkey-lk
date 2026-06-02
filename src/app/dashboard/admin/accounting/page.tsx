@@ -473,7 +473,7 @@ export default function AdminAccountingPage() {
                             <div className="space-y-0.5">
                               <div className="font-semibold text-sm text-gray-800 flex items-center gap-1.5">
                                 {transaction.taskTitle}
-                                <span className="px-1.5 py-0.25 text-[9px] font-semibold bg-purple-50 text-purple-700 rounded-md border border-purple-100">
+                                <span className="px-1.5 py-0.25 text-[9px] font-semibold bg-purple-50 text-purple-700 rounded-md border border-purple-100 shrink-0">
                                   BrandSync Link
                                 </span>
                               </div>
@@ -481,7 +481,12 @@ export default function AdminAccountingPage() {
                             </div>
                           ) : (
                             <div className="space-y-0.5">
-                              <div className="font-semibold text-sm text-gray-800">{transaction.taskTitle}</div>
+                              <div className="font-semibold text-sm text-gray-800 flex items-center gap-1.5">
+                                {transaction.taskTitle}
+                                <span className="px-1.5 py-0.25 text-[9px] font-semibold bg-pink-50 text-pink-700 rounded-md border border-pink-100 shrink-0">
+                                  BrandSync Task
+                                </span>
+                              </div>
                               <div className="text-[10px] text-gray-400 font-medium">Task ID: {transaction.taskId} • Buyer: {transaction.buyerName}</div>
                             </div>
                           )

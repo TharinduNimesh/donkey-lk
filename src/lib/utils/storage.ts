@@ -118,12 +118,16 @@ export async function uploadProofImage(file: File) {
       .upload(filePath, file);
 
     if (uploadError) {
-      throw uploadError;
+      console.error('Supabase upload error (proof-images):', uploadError);
+      // Normalize to Error with useful message
+      throw new Error(uploadError.message || JSON.stringify(uploadError));
     }
 
     return filePath;
   } catch (error) {
+    // Log full error for debugging and rethrow a normalized Error
     console.error('Error uploading proof image:', error);
-    throw error;
+    if (error instanceof Error) throw error;
+    throw new Error(JSON.stringify(error));
   }
 }

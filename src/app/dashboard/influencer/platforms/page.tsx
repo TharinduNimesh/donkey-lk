@@ -67,6 +67,15 @@ export default function PlatformsPage() {
     return colors[platform] || "bg-gray-500";
   };
 
+  const formatFollowers = (followers: string | null | undefined) => {
+    if (!followers) return '0';
+    if (/[a-zA-Z]/.test(followers)) {
+      return followers;
+    }
+    const num = Number(followers);
+    return isNaN(num) ? followers : num.toLocaleString();
+  };
+
   const getPlatformIcon = (platform: Database["public"]["Enums"]["Platforms"], className = "w-2.5 h-2.5 text-white") => {
     const icons = {
       YOUTUBE: IconBrandYoutube,
@@ -145,7 +154,7 @@ export default function PlatformsPage() {
                                 {profile.platform}
                               </span>
                               <span className="text-xs text-gray-500">
-                                {profile.followers?.toLocaleString()} followers
+                                {formatFollowers(profile.followers)} followers
                               </span>
                             </div>
                           </div>
