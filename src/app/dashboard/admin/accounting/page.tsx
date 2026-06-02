@@ -34,6 +34,7 @@ type Transaction = {
   userName?: string; // For withdrawal requests
   paidAt: string;
   description?: string; // For withdrawal requests
+  isBrandSync?: boolean;
 };
 
 export default function AdminAccountingPage() {
@@ -83,6 +84,18 @@ export default function AdminAccountingPage() {
       const currentDate = new Date();
       const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
 
+      // Fetch BrandSync links
+      let bsLinks: any[] = [];
+      try {
+        const bsResp = await fetch('/api/admin/brandsync-links');
+        if (bsResp.ok) {
+          const bsData = await bsResp.json();
+          bsLinks = bsData.links || [];
+        }
+      } catch (err) {
+        console.error('Error fetching BrandSync links:', err);
+      }
+
       // Calculate income
       const { data: monthlyIncomeData, error: monthlyIncomeError } = await supabase
         .from('task_cost')
@@ -91,8 +104,11 @@ export default function AdminAccountingPage() {
         .gte('paid_at', firstDayOfMonth.toISOString());
 
       if (!monthlyIncomeError) {
-        const monthlyTotal = monthlyIncomeData.reduce((sum, item) => sum + item.amount, 0);
-        setMonthlyIncome(monthlyTotal);
+        const taskMonthlyTotal = monthlyIncomeData ? monthlyIncomeData.reduce((sum, item) => sum + item.amount, 0) : 0;
+        const bsMonthlyTotal = bsLinks
+          .filter((link: any) => link.paidAt && new Date(link.paidAt) >= firstDayOfMonth)
+          .reduce((sum: number, link: any) => sum + link.amount, 0);
+        setMonthlyIncome(taskMonthlyTotal + bsMonthlyTotal);
       }
 
       const { data: totalIncomeData, error: totalIncomeError } = await supabase
@@ -101,8 +117,9 @@ export default function AdminAccountingPage() {
         .eq('is_paid', true);
 
       if (!totalIncomeError) {
-        const total = totalIncomeData.reduce((sum, item) => sum + item.amount, 0);
-        setTotalIncome(total);
+        const taskTotal = totalIncomeData ? totalIncomeData.reduce((sum, item) => sum + item.amount, 0) : 0;
+        const bsTotal = bsLinks.reduce((sum: number, link: any) => sum + link.amount, 0);
+        setTotalIncome(taskTotal + bsTotal);
       }
 
       // Calculate expenses (from withdrawal requests)
@@ -216,8 +233,30 @@ export default function AdminAccountingPage() {
         description: `Withdrawal to ${item.withdrawal_request.withdrawal_option.bank_name} - ${item.withdrawal_request.withdrawal_option.account_number}`
       })) : [];
 
+      // Filter and format BrandSync link transactions
+      let filteredBsLinks = bsLinks;
+      if (searchQuery) {
+        const queryLower = searchQuery.toLowerCase();
+        filteredBsLinks = bsLinks.filter((link: any) => 
+          (link.title && link.title.toLowerCase().includes(queryLower)) ||
+          (link.buyer?.name && link.buyer.name.toLowerCase().includes(queryLower))
+        );
+      }
+
+      const formattedBsTransactions: Transaction[] = filteredBsLinks.map((link: any) => ({
+        id: link.id,
+        amount: link.amount,
+        type: 'income',
+        paymentMethod: link.paymentMethod,
+        taskId: link.id,
+        taskTitle: link.title || 'BrandSync Link',
+        buyerName: link.buyer?.name || 'Unknown Buyer',
+        paidAt: link.paidAt,
+        isBrandSync: true
+      }));
+
       // Combine both transaction types
-      const allTransactions = [...formattedIncomeTransactions, ...formattedExpenseTransactions];
+      const allTransactions = [...formattedIncomeTransactions, ...formattedExpenseTransactions, ...formattedBsTransactions];
       
       // Sort combined transactions
       const sortedTransactions = allTransactions.sort((a, b) => {
@@ -430,10 +469,22 @@ export default function AdminAccountingPage() {
                       </TableCell>
                       <TableCell className="py-3.5 px-4">
                         {transaction.type === 'income' ? (
-                          <div className="space-y-0.5">
-                            <div className="font-semibold text-sm text-gray-800">{transaction.taskTitle}</div>
-                            <div className="text-[10px] text-gray-400 font-medium">Task ID: {transaction.taskId} • Buyer: {transaction.buyerName}</div>
-                          </div>
+                          transaction.isBrandSync ? (
+                            <div className="space-y-0.5">
+                              <div className="font-semibold text-sm text-gray-800 flex items-center gap-1.5">
+                                {transaction.taskTitle}
+                                <span className="px-1.5 py-0.25 text-[9px] font-semibold bg-purple-50 text-purple-700 rounded-md border border-purple-100">
+                                  BrandSync Link
+                                </span>
+                              </div>
+                              <div className="text-[10px] text-gray-400 font-medium">Link ID: {transaction.taskId} • Buyer: {transaction.buyerName}</div>
+                            </div>
+                          ) : (
+                            <div className="space-y-0.5">
+                              <div className="font-semibold text-sm text-gray-800">{transaction.taskTitle}</div>
+                              <div className="text-[10px] text-gray-400 font-medium">Task ID: {transaction.taskId} • Buyer: {transaction.buyerName}</div>
+                            </div>
+                          )
                         ) : (
                           <div className="space-y-0.5">
                             <div className="font-semibold text-sm text-gray-800">Withdrawal</div>

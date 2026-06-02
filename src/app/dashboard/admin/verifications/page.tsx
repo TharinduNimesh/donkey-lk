@@ -123,6 +123,9 @@ export default function AdminVerificationsPage() {
     if (!request) return;
 
     try {
+      let emailSent = false;
+      let emailErrorMsg = '';
+
       if (isAccepted && verificationDetails) {
         const { error } = await supabase
           .rpc('accept_influencer_verification', {
@@ -134,19 +137,25 @@ export default function AdminVerificationsPage() {
 
         if (error) throw error;
 
-        await sendMail({
-          to: request.profile.email,
-          subject: 'Account Verification Approved - BrandSync',
-          template: 'verification-accepted',
-          context: {
-            name: request.profile.name,
-            platform: request.platform,
-            profileName: verificationDetails.profileName,
-            followerCount: verificationDetails.followerCount,
-            date: format(new Date(), 'MMMM d, yyyy')
-          },
-          from: 'verify@brandsync.lk'
-        });
+        try {
+          await sendMail({
+            to: request.profile.email,
+            subject: 'Account Verification Approved - BrandSync',
+            template: 'verification-accepted',
+            context: {
+              name: request.profile.name,
+              platform: request.platform,
+              profileName: verificationDetails.profileName,
+              followerCount: verificationDetails.followerCount,
+              date: format(new Date(), 'MMMM d, yyyy')
+            },
+            from: 'verify@brandsync.lk'
+          });
+          emailSent = true;
+        } catch (emailError: any) {
+          console.error('Failed to send verification approval email:', emailError);
+          emailErrorMsg = emailError?.message || 'SMTP error';
+        }
       } else if (!isAccepted && rejectionReason) {
         const { error } = await supabase
           .from('influencer_profile_verification_requests')
@@ -159,24 +168,34 @@ export default function AdminVerificationsPage() {
           (r) => r.value === rejectionReason
         )?.label || 'Verification Rejected';
 
-        await sendMail({
-          to: request.profile.email,
-          subject: 'Account Verification Update - BrandSync',
-          template: 'verification-rejected',
-          context: {
-            name: request.profile.name,
-            platform: request.platform,
-            profileUrl: request.profile_url,
-            date: format(new Date(), 'MMMM d, yyyy'),
-            rejectionReason: rejectionLabel,
-            actionRequired: getActionRequired(rejectionReason, customReason || '')
-          },
-          from: 'verify@brandsync.lk'
-        });
+        try {
+          await sendMail({
+            to: request.profile.email,
+            subject: 'Account Verification Update - BrandSync',
+            template: 'verification-rejected',
+            context: {
+              name: request.profile.name,
+              platform: request.platform,
+              profileUrl: request.profile_url,
+              date: format(new Date(), 'MMMM d, yyyy'),
+              rejectionReason: rejectionLabel,
+              actionRequired: getActionRequired(rejectionReason, customReason || '')
+            },
+            from: 'verify@brandsync.lk'
+          });
+          emailSent = true;
+        } catch (emailError: any) {
+          console.error('Failed to send verification rejection email:', emailError);
+          emailErrorMsg = emailError?.message || 'SMTP error';
+        }
       }
 
       setRequests(prev => prev.filter(r => r.id !== request.id));
-      toast.success(`Verification request ${isAccepted ? 'accepted' : 'rejected'} successfully`);
+      if (emailSent) {
+        toast.success(`Verification request ${isAccepted ? 'accepted' : 'rejected'} successfully and email notification sent.`);
+      } else {
+        toast.warning(`Verification request ${isAccepted ? 'accepted' : 'rejected'} successfully, but email notification failed: ${emailErrorMsg}`);
+      }
     } catch (error) {
       console.error('Error updating verification request:', error);
       toast.error(`Failed to ${isAccepted ? 'accept' : 'reject'} verification request`);

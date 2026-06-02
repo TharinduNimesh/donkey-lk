@@ -333,30 +333,39 @@ export default function AdminProofsPage() {
         earnings: parseFloat(promiseDetails.est_profit).toFixed(2)
       };
 
-      if (status === 'ACCEPTED') {
-        await sendMail({
-          to: proof.task_application.user.email,
-          subject: 'Proof Accepted - BrandSync',
-          template: 'proof-accepted',
-          context: emailContext,
-          from: 'verify@brandsync.lk'
-        });
-      } else if (rejectionReason) {
-        const rejectionLabel = proofRejectionReasons.find(
-          (r) => r.value === rejectionReason
-        )?.label || 'Proof Rejected';
+      let emailSent = false;
+      let emailErrorMsg = '';
 
-        await sendMail({
-          to: proof.task_application.user.email,
-          subject: 'Proof Rejected - BrandSync',
-          template: 'proof-rejected',
-          context: {
-            ...emailContext,
-            rejectionReason: rejectionLabel,
-            actionRequired: getActionRequired(rejectionReason, customReason || '')
-          },
-          from: 'verify@brandsync.lk'
-        });
+      try {
+        if (status === 'ACCEPTED') {
+          await sendMail({
+            to: proof.task_application.user.email,
+            subject: 'Proof Accepted - BrandSync',
+            template: 'proof-accepted',
+            context: emailContext,
+            from: 'verify@brandsync.lk'
+          });
+        } else if (rejectionReason) {
+          const rejectionLabel = proofRejectionReasons.find(
+            (r) => r.value === rejectionReason
+          )?.label || 'Proof Rejected';
+
+          await sendMail({
+            to: proof.task_application.user.email,
+            subject: 'Proof Rejected - BrandSync',
+            template: 'proof-rejected',
+            context: {
+              ...emailContext,
+              rejectionReason: rejectionLabel,
+              actionRequired: getActionRequired(rejectionReason, customReason || '')
+            },
+            from: 'verify@brandsync.lk'
+          });
+        }
+        emailSent = true;
+      } catch (emailError: any) {
+        console.error('Failed to send proof notification email:', emailError);
+        emailErrorMsg = emailError?.message || 'SMTP error';
       }
 
       setGroupedProofs(prevGroups => {
@@ -381,7 +390,11 @@ export default function AdminProofsPage() {
         }));
       });
 
-      toast.success(`Proof ${status.toLowerCase()} successfully`);
+      if (emailSent) {
+        toast.success(`Proof ${status.toLowerCase()} successfully and email notification sent.`);
+      } else {
+        toast.warning(`Proof ${status.toLowerCase()} successfully, but email notification failed: ${emailErrorMsg}`);
+      }
     } catch (error) {
       console.error('Error updating proof status:', error);
       toast.error('Failed to update proof status');

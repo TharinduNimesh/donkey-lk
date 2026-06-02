@@ -332,7 +332,12 @@ export default function AdminPaymentsPage() {
 
         if (!resp.ok) throw new Error('Failed to update BrandSync payment');
 
-        toast.success(`Payment ${isAccepted ? 'accepted' : 'rejected'} successfully`);
+        const result = await resp.json().catch(() => ({}));
+        if (result.emailSent) {
+          toast.success(`Payment ${isAccepted ? 'accepted' : 'rejected'} successfully and email notification sent.`);
+        } else {
+          toast.warning(`Payment ${isAccepted ? 'accepted' : 'rejected'} successfully, but email notification failed: ${result.emailError || 'SMTP error'}`);
+        }
       } else {
         const { error } = await supabase.rpc('update_bank_transfer_payment', {
           transfer_id_param: payment.id,
@@ -351,37 +356,50 @@ export default function AdminPaymentsPage() {
           date: format(new Date(), 'MMMM d, yyyy'),
         };
 
-        if (isAccepted) {
-          await sendMail({
-            to: payment.buyer?.email || '',
-            subject: 'Payment Accepted - BrandSync',
-            template: 'payment-accepted',
-            context: emailContext,
-            from: 'accounts@brandsync.lk'
-          });
-        } else if (rejectionReason) {
-          const rejectionLabel = rejectionReasonsList.find(
-            (r) => r.value === rejectionReason
-          )?.label || 'Payment Rejected';
+        let emailSent = false;
+        let emailErrorMsg = '';
 
-          await sendMail({
-            to: payment.buyer?.email || '',
-            subject: 'Payment Rejected - BrandSync',
-            template: 'payment-rejected',
-            context: {
-              ...emailContext,
-              reason: rejectionLabel,
-              actionRequired: getActionRequired(
-                rejectionReason,
-                customReason || '',
-                payment.task.cost.amount.toString()
-              )
-            },
-            from: 'accounts@brandsync.lk'
-          });
+        try {
+          if (isAccepted) {
+            await sendMail({
+              to: payment.buyer?.email || '',
+              subject: 'Payment Accepted - BrandSync',
+              template: 'payment-accepted',
+              context: emailContext,
+              from: 'accounts@brandsync.lk'
+            });
+          } else if (rejectionReason) {
+            const rejectionLabel = rejectionReasonsList.find(
+              (r) => r.value === rejectionReason
+            )?.label || 'Payment Rejected';
+
+            await sendMail({
+              to: payment.buyer?.email || '',
+              subject: 'Payment Rejected - BrandSync',
+              template: 'payment-rejected',
+              context: {
+                ...emailContext,
+                reason: rejectionLabel,
+                actionRequired: getActionRequired(
+                  rejectionReason,
+                  customReason || '',
+                  payment.task.cost.amount.toString()
+                )
+              },
+              from: 'accounts@brandsync.lk'
+            });
+          }
+          emailSent = true;
+        } catch (emailError: any) {
+          console.error('Failed to send payment notification email:', emailError);
+          emailErrorMsg = emailError?.message || 'SMTP error';
         }
 
-        toast.success(`Payment ${isAccepted ? 'accepted' : 'rejected'} successfully`);
+        if (emailSent) {
+          toast.success(`Payment ${isAccepted ? 'accepted' : 'rejected'} successfully and email notification sent.`);
+        } else {
+          toast.warning(`Payment ${isAccepted ? 'accepted' : 'rejected'} successfully, but email notification failed: ${emailErrorMsg}`);
+        }
       }
 
       router.refresh();
