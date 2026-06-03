@@ -5,9 +5,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Stepper } from "@/components/ui/stepper";
 import { Card } from "@/components/ui/card";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   PersonalInfoForm,
-  UserTypeForm,
   SocialConnectForm,
   FinalStep,
   WelcomeScreen,
@@ -15,6 +15,7 @@ import {
 import { useSetupStore } from "@/lib/store";
 
 function SetupContent() {
+  const router = useRouter();
   const [mounted, setMounted] = useState(false);
   
   // --- Guard: if user already has a profile, redirect to dashboard ---
@@ -30,16 +31,16 @@ function SetupContent() {
         .from('profile')
         .select('id')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
 
       if (profile) {
         // User already has a profile — send them to the dashboard
-        window.location.replace('/dashboard');
+        router.replace('/dashboard');
       }
     };
 
     checkExistingProfile();
-  }, []);
+  }, [router]);
 
   // --- Referral code storage after sign-in ---
   useEffect(() => {
@@ -62,28 +63,18 @@ function SetupContent() {
     storeReferralForUser();
   }, []);
 
-  const router = useRouter();
   const searchParams = useSearchParams();
   const { userType, setUserType } = useSetupStore();
 
   // Always use a fixed 3-step flow:
-  // Step 0: Welcome (user picks role here, optional)
+  // Step 0: Choose Role (mandatory selection on Welcome screen)
   // Step 1: Personal Info
-  // Step 2: Account Type (shown only if no role selected in Welcome)
-  //         OR: Connect Socials / Complete (if role was selected in Welcome)
+  // Step 2: Complete Setup (Connect Socials for influencer, review/complete for brand)
   const getSteps = () => {
-    if (userType) {
-      return [
-        { title: "Welcome" },
-        { title: "Personal Info" },
-        { title: userType === "influencer" ? "Connect Socials" : "Complete" },
-      ];
-    }
     return [
-      { title: "Welcome" },
+      { title: "Choose Role" },
       { title: "Personal Info" },
-      { title: "Account Type" },
-      { title: "Complete" },
+      { title: userType === "influencer" ? "Connect Socials" : "Complete" },
     ];
   };
 
@@ -108,12 +99,12 @@ function SetupContent() {
     const step = searchParams.get("step");
     if (step !== null) {
       const stepNumber = parseInt(step);
-      const maxStep = userType ? 2 : 3;
+      const maxStep = 2;
       if (stepNumber >= 0 && stepNumber <= maxStep && stepNumber !== currentStep) {
         setCurrentStep(stepNumber);
       }
     }
-  }, [searchParams, currentStep, userType]);
+  }, [searchParams, currentStep]);
 
   const handleNext = () => {
     const maxStep = steps.length - 1;
@@ -128,17 +119,6 @@ function SetupContent() {
     }
   };
 
-  // Called when user selects role in UserTypeForm (step 2 of 4-step flow)
-  // After selecting, we go to step 2 of the new 3-step flow
-  const handleUserTypeSelect = (type: "brand" | "influencer") => {
-    setUserType(type);
-    // After selection, steps array becomes 3-item, and we navigate to step 2
-    // which is now the final step
-    setTimeout(() => {
-      updateStep(2);
-    }, 50);
-  };
-
   if (!mounted) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-background to-pink-50/30">
@@ -148,7 +128,7 @@ function SetupContent() {
   }
 
   const renderStep = () => {
-    // Step 0: Welcome screen (allows optional role selection)
+    // Step 0: Choose Role Screen
     if (currentStep === 0) {
       return <WelcomeScreen onNext={handleNext} />;
     }
@@ -158,37 +138,41 @@ function SetupContent() {
       return <PersonalInfoForm onNext={handleNext} onBack={handleBack} />;
     }
 
-    // Step 2:
-    // If no role selected yet → show Account Type selection
-    if (currentStep === 2 && !userType) {
-      return (
-        <UserTypeForm
-          onNext={handleNext}
-          onBack={handleBack}
-          onSelect={handleUserTypeSelect}
-        />
-      );
-    }
-
-    // If role is brand at step 2 → show Final Step
-    if (currentStep === 2 && userType === "brand") {
-      return <FinalStep onBack={handleBack} />;
-    }
-
-    // If role is influencer at step 2 → show Social Connect
-    if (currentStep === 2 && userType === "influencer") {
-      return <SocialConnectForm onBack={handleBack} />;
+    // Step 2: Complete Setup
+    if (currentStep === 2) {
+      if (userType === "brand") {
+        return <FinalStep onBack={handleBack} />;
+      }
+      if (userType === "influencer") {
+        return <SocialConnectForm onBack={handleBack} />;
+      }
     }
 
     return null;
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-pink-50/30 dark:to-pink-950/10 py-20 px-4">
-      <div className="max-w-4xl mx-auto space-y-8">
+    <div className="min-h-screen bg-[#fafafa] dark:bg-zinc-950 py-20 px-4 relative overflow-hidden flex items-center justify-center font-sans">
+      {/* Decorative Aurora background blobs */}
+      <div className="absolute -top-40 -left-40 w-[500px] h-[500px] rounded-full bg-pink-400/10 dark:bg-pink-900/5 blur-3xl opacity-75 pointer-events-none" />
+      <div className="absolute -bottom-40 -right-40 w-[600px] h-[600px] rounded-full bg-purple-400/15 dark:bg-purple-900/5 blur-3xl opacity-75 pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full bg-blue-100/5 dark:bg-blue-900/5 blur-3xl opacity-50 pointer-events-none" />
+
+      <div className="max-w-2xl w-full space-y-8 relative z-10">
         <Stepper steps={steps} currentStep={Math.min(currentStep, steps.length - 1)} />
-        <Card className="p-6 border border-pink-100/50 dark:border-pink-900/50 shadow-sm">
-          {renderStep()}
+        <Card className="p-8 border border-white/20 dark:border-zinc-900/30 bg-white/60 dark:bg-zinc-950/60 backdrop-blur-xl shadow-md rounded-3xl overflow-hidden min-h-[400px] flex flex-col justify-center">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentStep}
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={{ duration: 0.25, ease: "easeInOut" }}
+              className="w-full h-full"
+            >
+              {renderStep()}
+            </motion.div>
+          </AnimatePresence>
         </Card>
       </div>
     </div>

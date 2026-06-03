@@ -46,7 +46,7 @@ export default function PlatformsPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { router.push("/auth"); return; }
 
-      const { data: profileData } = await supabase.from("profile").select("*").eq("id", user.id).single();
+      const { data: profileData } = await supabase.from("profile").select("*").eq("id", user.id).maybeSingle();
       if (profileData) setUserProfile(profileData);
 
       const { data: profilesData } = await supabase.from("influencer_profile").select("*").eq("user_id", user.id);

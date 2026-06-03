@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,8 @@ import { useSetupStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 import { setupUserProfile } from "@/lib/utils/user";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+import { MultiStepLoader } from "@/components/ui/multi-step-loader";
 
 interface FinalStepProps {
   onBack: () => void;
@@ -20,9 +22,36 @@ export function FinalStep({ onBack }: FinalStepProps) {
   const { personalInfo, userType } = useSetupStore();
   const [isLoading, setIsLoading] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
+  const [showLoader, setShowLoader] = useState(false);
+
+  const [apiCompleted, setApiCompleted] = useState(false);
+  const [loaderCompleted, setLoaderCompleted] = useState(false);
+
+  const phases = [
+    { text: "Validating profile details" },
+    { text: "Configuring database settings" },
+    { text: "Finalizing dashboard setup" }
+  ];
+
+  useEffect(() => {
+    if (apiCompleted && loaderCompleted) {
+      setIsNavigating(true);
+      
+      const destination = userType === "influencer"
+        ? "/dashboard/influencer"
+        : "/dashboard/buyer";
+
+      router.refresh();
+      router.push(destination);
+    }
+  }, [apiCompleted, loaderCompleted, userType, router]);
 
   const handleComplete = async () => {
+    setShowLoader(true);
     setIsLoading(true);
+    setApiCompleted(false);
+    setLoaderCompleted(false);
+
     const toastId = toast.loading("Setting up your account...");
 
     try {
@@ -34,6 +63,7 @@ export function FinalStep({ onBack }: FinalStepProps) {
         toast.error("Authentication error. Please sign in again.", {
           id: toastId
         });
+        setShowLoader(false);
         setIsLoading(false);
         router.push('/auth');
         return;
@@ -43,14 +73,10 @@ export function FinalStep({ onBack }: FinalStepProps) {
         toast.error("Required information is missing. Please complete all fields.", {
           id: toastId
         });
+        setShowLoader(false);
         setIsLoading(false);
         return;
       }
-
-      // Determine destination based on user type
-      const destination = userType === "influencer"
-        ? "/dashboard/influencer"
-        : "/dashboard/buyer";
 
       // Create profile
       const { error } = await setupUserProfile({
@@ -68,31 +94,24 @@ export function FinalStep({ onBack }: FinalStepProps) {
       });
 
       if (error) {
-        toast.error("Failed to setup profile. Please try again.", {
-          id: toastId,
-          description: (error as any).message || "Unknown error",
-          richColors: true,
-        });
+        setShowLoader(false);
         setIsLoading(false);
         return;
       }
       
-      // Success - show toast and navigate to dashboard
+      // Success - show toast
       toast.success("Account setup completed successfully!", {
         id: toastId,
       });
 
-      // Force navigation to dashboard
-      setIsNavigating(true);
-      setTimeout(() => {
-        window.location.href = destination;
-      }, 500);
+      setApiCompleted(true);
       
     } catch (error) {
       console.error("Error saving profile:", error);
       toast.error("An unexpected error occurred. Please try again.", {
         id: toastId,
       });
+      setShowLoader(false);
       setIsLoading(false);
     }
   };
@@ -110,27 +129,24 @@ export function FinalStep({ onBack }: FinalStepProps) {
     );
   }
 
-  // If already navigating or loading, show loading state
-  if (isNavigating || (isLoading && (!personalInfo || !userType))) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-pink-500 rounded-full mb-4"></div>
-        <p className="text-muted-foreground">Redirecting to your dashboard...</p>
-      </div>
-    );
-  }
-
   const cardVariants = {
     hover: {
-      scale: 1.02,
+      scale: 1.01,
       borderColor: "rgba(236, 72, 153, 0.3)",
       boxShadow: "0 4px 12px -2px rgba(236, 72, 153, 0.1)",
     },
   };
 
-  // The rest of the component remains the same
   return (
     <div className="space-y-6">
+      <MultiStepLoader 
+        loadingStates={phases} 
+        loading={showLoader} 
+        duration={900} 
+        loop={false} 
+        theme="pink" 
+        onComplete={() => setLoaderCompleted(true)}
+      />
       <motion.div 
         className="space-y-2"
         initial={{ opacity: 0, y: -10 }}
@@ -140,7 +156,7 @@ export function FinalStep({ onBack }: FinalStepProps) {
         <h2 className="text-2xl font-semibold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-pink-600 font-display">
           Review & Complete
         </h2>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-xs text-gray-500 dark:text-zinc-400 font-medium">
           Review your information before completing your setup
         </p>
       </motion.div>
@@ -152,29 +168,29 @@ export function FinalStep({ onBack }: FinalStepProps) {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <Card className="overflow-hidden border border-pink-100/50 dark:border-pink-900/50 transition-all duration-200">
+        <Card className="overflow-hidden border border-pink-100/50 dark:border-pink-900/50 transition-all duration-200 bg-white/40 dark:bg-zinc-900/40 backdrop-blur-xs">
           <div className="p-6">
-            <h3 className="text-lg font-medium">Profile Summary</h3>
+            <h3 className="text-sm font-bold text-gray-800 dark:text-zinc-200 uppercase tracking-wider">Profile Summary</h3>
             
             <div className="mt-4 space-y-4">
-              <div>
-                <span className="text-sm text-muted-foreground">Name</span>
-                <p className="font-medium">{personalInfo?.name}</p>
+              <div className="grid grid-cols-2 py-2 border-b border-gray-50 dark:border-zinc-800">
+                <span className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-zinc-500">Name</span>
+                <span className="text-sm font-semibold text-gray-800 dark:text-zinc-200 text-right">{personalInfo?.name}</span>
               </div>
               
-              <div>
-                <span className="text-sm text-muted-foreground">Mobile</span>
-                <p className="font-medium">{personalInfo?.mobile}</p>
+              <div className="grid grid-cols-2 py-2 border-b border-gray-50 dark:border-zinc-800">
+                <span className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-zinc-500">Mobile</span>
+                <span className="text-sm font-semibold text-gray-800 dark:text-zinc-200 text-right">{personalInfo?.mobile}</span>
               </div>
               
-              <div>
-                <span className="text-sm text-muted-foreground">Account Type</span>
-                <div className="flex items-center mt-1">
+              <div className="grid grid-cols-2 py-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-zinc-500">Account Type</span>
+                <div className="flex justify-end items-center">
                   <Badge 
                     className={
                       userType === "brand"
-                        ? "bg-pink-100 text-pink-800 hover:bg-pink-200 dark:bg-pink-900/40 dark:text-pink-300 dark:hover:bg-pink-900/60"
-                        : "bg-purple-100 text-purple-800 hover:bg-purple-200 dark:bg-purple-900/40 dark:text-purple-300 dark:hover:bg-purple-900/60"
+                        ? "bg-pink-100 text-pink-800 hover:bg-pink-200 dark:bg-pink-900/45 dark:text-pink-300 dark:hover:bg-pink-900/60 font-bold uppercase text-[9px] tracking-wider"
+                        : "bg-purple-100 text-purple-800 hover:bg-purple-200 dark:bg-purple-900/45 dark:text-purple-300 dark:hover:bg-purple-900/60 font-bold uppercase text-[9px] tracking-wider"
                     }
                   >
                     {userType === "brand" ? "Brand" : "Influencer"}
@@ -184,13 +200,13 @@ export function FinalStep({ onBack }: FinalStepProps) {
             </div>
           </div>
           
-          <div className="bg-pink-50/50 dark:bg-pink-950/20 border-t border-pink-100/50 dark:border-pink-900/50 p-6">
+          <div className="bg-pink-50/20 dark:bg-pink-950/10 border-t border-pink-100/50 dark:border-pink-900/50 p-6">
             <div className="flex flex-col space-y-3">
-              <h4 className="font-medium">Next Steps</h4>
-              <ul className="space-y-2 text-sm">
-                <li className="flex items-start">
-                  <svg className="w-5 h-5 text-pink-500 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              <h4 className="text-xs font-bold text-gray-800 dark:text-zinc-300 uppercase tracking-wider">Next Steps</h4>
+              <ul className="space-y-2 text-xs">
+                <li className="flex items-start text-gray-550 dark:text-zinc-400">
+                  <svg className="w-4 h-4 text-pink-500 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   <span>
                     {userType === "brand" 
@@ -199,22 +215,11 @@ export function FinalStep({ onBack }: FinalStepProps) {
                     }
                   </span>
                 </li>
-                <li className="flex items-start">
-                  <svg className="w-5 h-5 text-pink-500 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <li className="flex items-start text-gray-550 dark:text-zinc-400">
+                  <svg className="w-4 h-4 text-pink-500 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   <span>Complete your profile details for better visibility</span>
-                </li>
-                <li className="flex items-start">
-                  <svg className="w-5 h-5 text-pink-500 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span>
-                    {userType === "brand" 
-                      ? "Set up payment methods for smooth transactions" 
-                      : "Add portfolio items to showcase your work"
-                    }
-                  </span>
                 </li>
               </ul>
             </div>
@@ -232,7 +237,7 @@ export function FinalStep({ onBack }: FinalStepProps) {
           variant="ghost"
           onClick={onBack}
           disabled={isLoading || isNavigating}
-          className="text-muted-foreground hover:text-foreground"
+          className="text-muted-foreground hover:text-foreground font-semibold text-xs uppercase tracking-wider"
         >
           <svg
             className="mr-2 w-4 h-4"
@@ -243,7 +248,7 @@ export function FinalStep({ onBack }: FinalStepProps) {
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
-              strokeWidth={2}
+              strokeWidth={2.5}
               d="M15 19l-7-7 7-7"
             />
           </svg>
@@ -252,17 +257,9 @@ export function FinalStep({ onBack }: FinalStepProps) {
         <Button 
           onClick={handleComplete} 
           disabled={isLoading || isNavigating}
-          className="bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white"
+          className="bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white font-bold text-xs uppercase tracking-wider h-10 px-6"
         >
-          {isLoading || isNavigating ? (
-            <span className="flex items-center">
-              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              {isNavigating ? "Redirecting..." : "Setting up..."}
-            </span>
-          ) : "Complete Setup"}
+          Complete Setup
         </Button>
       </motion.div>
     </div>
