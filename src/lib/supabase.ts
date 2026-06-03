@@ -28,7 +28,7 @@ export const signIn = async (email: string, password: string): Promise<AuthRespo
       .from('profile')
       .select('*')
       .eq('id', authData.user.id)
-      .single()
+      .maybeSingle()
 
     return { 
       data: { hasProfile: !!profile },
