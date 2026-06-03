@@ -122,119 +122,124 @@ export default function TiktokVerificationPage() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-b from-pink-50/30 to-white dark:from-gray-900 dark:to-gray-950">
-      <div className="container max-w-4xl mx-auto py-8 px-4 space-y-8">
+    <div className="min-h-screen bg-[#fafafa] dark:bg-zinc-950 py-12 px-4 relative overflow-hidden flex items-center justify-center font-sans">
+      {/* Decorative Aurora background blobs */}
+      <div className="absolute -top-40 -left-40 w-[500px] h-[500px] rounded-full bg-pink-400/10 dark:bg-pink-900/5 blur-3xl opacity-75 pointer-events-none" />
+      <div className="absolute -bottom-40 -right-40 w-[600px] h-[600px] rounded-full bg-purple-400/15 dark:bg-purple-900/5 blur-3xl opacity-75 pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full bg-blue-100/5 dark:bg-blue-900/5 blur-3xl opacity-50 pointer-events-none" />
+
+      <div className="max-w-2xl w-full space-y-8 relative z-10">
         <div className="text-center space-y-3">
-          <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-pink-600">
+          <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-500 to-purple-600 font-display">
             Verify Your TikTok Account
           </h1>
-          <p className="text-muted-foreground max-w-xl mx-auto">
+          <p className="text-xs text-gray-500 dark:text-zinc-400 font-medium max-w-md mx-auto">
             Connect your TikTok presence to BrandSync and unlock collaboration opportunities
           </p>
         </div>
 
-        <Card className="p-6 md:p-8 border border-pink-100 dark:border-pink-900/20 shadow-md bg-white dark:bg-gray-900 rounded-lg">
-          <div className="space-y-6">
+        <Card className="p-8 border border-white/20 dark:border-zinc-900/30 bg-white/60 dark:bg-zinc-950/60 backdrop-blur-xl shadow-md rounded-3xl overflow-hidden">
+          <div className="space-y-5">
             {verificationStep === "initial" && (
               <div className="grid gap-6 md:grid-cols-2">
-                <Card className="p-5 border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/50 rounded-lg h-full flex flex-col">
-                  <div className="space-y-4 h-full">
+                <Card className="p-6 border border-gray-150 dark:border-zinc-800/80 bg-white/40 dark:bg-zinc-900/40 rounded-2xl h-full flex flex-col justify-between">
+                  <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <h3 className="font-semibold text-lg">Quick Verification</h3>
-                      <span className="text-xs font-medium px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
+                      <h3 className="font-bold text-sm text-gray-900 dark:text-zinc-150">Quick Verification</h3>
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400 border border-blue-200/30">
                         Coming Soon
                       </span>
                     </div>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-xs text-muted-foreground leading-normal">
                       Connect with TikTok to verify your account ownership instantly
                     </p>
-                    <ul className="space-y-2 mt-2 text-sm">
+                    <ul className="space-y-2 mt-2 text-xs">
                       <li className="flex items-center gap-2">
-                        <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        <svg className="w-4 h-4 text-green-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                         </svg>
-                        <span>Instant verification</span>
+                        <span className="text-gray-600 dark:text-zinc-350">Instant verification</span>
                       </li>
                       <li className="flex items-center gap-2">
-                        <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        <svg className="w-4 h-4 text-green-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                         </svg>
-                        <span>No manual steps required</span>
+                        <span className="text-gray-600 dark:text-zinc-350">No manual steps required</span>
                       </li>
                       <li className="flex items-center gap-2">
-                        <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        <svg className="w-4 h-4 text-green-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                         </svg>
-                        <span>Secure login with TikTok</span>
+                        <span className="text-gray-600 dark:text-zinc-350">Secure login with TikTok</span>
                       </li>
                     </ul>
-                    <div className="mt-auto pt-4">
-                      <Button 
-                        className="w-full bg-black hover:bg-black/90 relative overflow-hidden"
-                        disabled
-                      >
-                        <div className="absolute left-0 top-0 h-full w-8 bg-gradient-to-r from-[#25F4EE] to-transparent opacity-40"></div>
-                        <div className="absolute right-0 top-0 h-full w-8 bg-gradient-to-l from-[#FE2C55] to-transparent opacity-40"></div>
-                        <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-5.2 1.74 2.89 2.89 0 015.2-2.32V6.54a7.93 7.93 0 006.59 7.23l.63.13V9.4a6.84 6.84 0 01-4.76-2.71z"/>
-                        </svg>
-                        Continue with TikTok
-                      </Button>
-                    </div>
+                  </div>
+                  <div className="pt-4">
+                    <Button 
+                      className="w-full bg-black hover:bg-black/90 text-white font-bold text-xs uppercase tracking-wider h-10 relative overflow-hidden"
+                      disabled
+                    >
+                      <div className="absolute left-0 top-0 h-full w-8 bg-gradient-to-r from-[#25F4EE] to-transparent opacity-40"></div>
+                      <div className="absolute right-0 top-0 h-full w-8 bg-gradient-to-l from-[#FE2C55] to-transparent opacity-40"></div>
+                      <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-5.2 1.74 2.89 2.89 0 015.2-2.32V6.54a7.93 7.93 0 006.59 7.23l.63.13V9.4a6.84 6.84 0 01-4.76-2.71z"/>
+                      </svg>
+                      Continue with TikTok
+                    </Button>
                   </div>
                 </Card>
 
                 <Card 
-                  className="p-5 border border-pink-200 dark:border-pink-900/30 bg-pink-50/50 dark:bg-pink-950/10 rounded-lg cursor-pointer hover:shadow-md transition-shadow h-full flex flex-col"
+                  className="p-6 border border-purple-100 dark:border-purple-900/20 bg-purple-50/10 dark:bg-purple-950/5 rounded-2xl cursor-pointer hover:shadow-md transition-all duration-200 hover:border-purple-350/50 h-full flex flex-col justify-between"
                   onClick={handleManualVerification}
                 >
-                  <div className="space-y-4 h-full">
+                  <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <h3 className="font-semibold text-lg text-pink-600 dark:text-pink-400">
+                      <h3 className="font-bold text-sm text-purple-650 dark:text-purple-400">
                         Administrative Verification
                       </h3>
-                      <span className="text-xs font-medium px-2.5 py-0.5 rounded-full bg-pink-100 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400">
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400">
                         Recommended
                       </span>
                     </div>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-xs text-muted-foreground leading-normal">
                       Quick verification through our admin team
                     </p>
-                    <ul className="space-y-2 mt-2 text-sm">
+                    <ul className="space-y-2 mt-2 text-xs">
                       <li className="flex items-center gap-2">
-                        <svg className="w-4 h-4 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        <svg className="w-4 h-4 text-purple-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                         </svg>
-                        <span>Personal assistance</span>
+                        <span className="text-gray-600 dark:text-zinc-350">Personal assistance</span>
                       </li>
                       <li className="flex items-center gap-2">
-                        <svg className="w-4 h-4 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        <svg className="w-4 h-4 text-purple-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                         </svg>
-                        <span>24-48 hour response time</span>
+                        <span className="text-gray-600 dark:text-zinc-350">24-48 hour response time</span>
                       </li>
                       <li className="flex items-center gap-2">
-                        <svg className="w-4 h-4 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        <svg className="w-4 h-4 text-purple-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                         </svg>
-                        <span>Step-by-step guidance</span>
+                        <span className="text-gray-600 dark:text-zinc-350">Step-by-step guidance</span>
                       </li>
                     </ul>
-                    <div className="mt-auto pt-4">
-                      <Button 
-                        className="w-full bg-pink-600 hover:bg-pink-700 text-white"
-                        disabled={isSettingUpProfile}
-                      >
-                        {isSettingUpProfile ? (
-                          <>
-                            <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"/>
-                            Setting Up...
-                          </>
-                        ) : (
-                          <>Start Verification</>
-                        )}
-                      </Button>
-                    </div>
+                  </div>
+                  <div className="pt-4">
+                    <Button 
+                      className="w-full bg-purple-50/40 text-purple-650 border border-purple-150 hover:bg-purple-50/80 hover:text-purple-700 dark:bg-purple-950/10 dark:text-purple-400 dark:border-purple-900/30 dark:hover:bg-purple-950/20 text-xs font-bold uppercase tracking-wider h-10 transition-all duration-200"
+                      disabled={isSettingUpProfile}
+                    >
+                      {isSettingUpProfile ? (
+                        <>
+                          <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"/>
+                          Setting Up...
+                        </>
+                      ) : (
+                        <>Start Verification</>
+                      )}
+                    </Button>
                   </div>
                 </Card>
               </div>
@@ -248,8 +253,8 @@ export default function TiktokVerificationPage() {
               >
                 {loadingContacts ? (
                   <div className="text-center p-6">
-                    <div className="animate-spin w-10 h-10 border-3 border-pink-500 border-t-transparent rounded-full mx-auto"></div>
-                    <p className="mt-4 text-sm text-muted-foreground">Loading your contact details...</p>
+                    <div className="animate-spin w-10 h-10 border-3 border-purple-500 border-t-transparent rounded-full mx-auto"></div>
+                    <p className="mt-4 text-xs text-muted-foreground">Loading your contact details...</p>
                   </div>
                 ) : (
                   <SocialVerification 
@@ -270,9 +275,9 @@ export default function TiktokVerificationPage() {
                 transition={{ duration: 0.3 }}
                 className="text-center p-8 space-y-4"
               >
-                <div className="animate-spin w-16 h-16 border-4 border-pink-500 border-t-transparent rounded-full mx-auto"></div>
-                <h3 className="text-xl font-medium text-pink-600">Processing your request...</h3>
-                <p className="text-muted-foreground">Setting up admin verification</p>
+                <div className="animate-spin w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full mx-auto"></div>
+                <h3 className="text-lg font-bold text-purple-650 dark:text-purple-400">Processing your request...</h3>
+                <p className="text-xs text-muted-foreground">Setting up admin verification</p>
               </motion.div>
             )}
 
@@ -283,16 +288,16 @@ export default function TiktokVerificationPage() {
                 transition={{ duration: 0.3 }}
                 className="text-center p-8 space-y-4"
               >
-                <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto">
-                  <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                <div className="w-16 h-16 bg-green-50 dark:bg-green-955/20 rounded-full flex items-center justify-center mx-auto">
+                  <svg className="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
-                <h3 className="text-xl font-medium text-green-600">Request Submitted!</h3>
-                <p className="text-muted-foreground max-w-md mx-auto">Our team will contact you within 24-48 hours to verify your TikTok account.</p>
+                <h3 className="text-lg font-bold text-green-655 dark:text-green-400">Request Submitted!</h3>
+                <p className="text-xs text-muted-foreground max-w-md mx-auto">Our team will contact you within 24-48 hours to verify your TikTok account.</p>
                 <Button 
                   onClick={() => router.push("/dashboard")} 
-                  className="mt-2 bg-pink-600 hover:bg-pink-700"
+                  className="mt-4 bg-purple-50/40 text-purple-650 border border-purple-150 hover:bg-purple-50/80 hover:text-purple-700 dark:bg-purple-950/10 dark:text-purple-400 dark:border-purple-900/30 dark:hover:bg-purple-950/20 text-xs font-bold uppercase tracking-wider h-11 px-6 transition-all duration-200"
                 >
                   Go to Dashboard
                 </Button>
@@ -306,10 +311,10 @@ export default function TiktokVerificationPage() {
             <Button 
               variant="ghost" 
               onClick={() => verificationStep === "administrative" ? setVerificationStep("initial") : router.back()}
-              className="text-muted-foreground"
+              className="text-muted-foreground hover:text-foreground font-semibold text-xs uppercase tracking-wider"
             >
-              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
               </svg>
               Back
             </Button>

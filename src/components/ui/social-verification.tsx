@@ -2,6 +2,7 @@ import { Button } from "./button";
 import { Card } from "./card";
 import { Input } from "./input";
 import { Label } from "./label";
+import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -68,10 +69,10 @@ const platformConfigs: Record<string, {
 }> = {
   YOUTUBE: {
     name: "YouTube",
-    color: "bg-red-500",
-    gradient: "from-red-600 to-red-500",
-    textColor: "text-red-600 dark:text-red-400",
-    borderColor: "focus-visible:ring-red-500 border-red-200 dark:border-red-900/30",
+    color: "bg-black",
+    gradient: "from-gray-900 to-black dark:from-zinc-900 dark:to-black",
+    textColor: "text-gray-950 dark:text-gray-100",
+    borderColor: "focus-visible:ring-black/10 dark:focus-visible:ring-white/10",
     placeholder: "https://www.youtube.com/@yourchannel",
     helpText: "Enter your full YouTube channel URL (e.g., https://www.youtube.com/@username)",
     Icon: IconBrandYoutube
@@ -81,7 +82,7 @@ const platformConfigs: Record<string, {
     color: "bg-blue-600",
     gradient: "from-blue-600 to-blue-500",
     textColor: "text-blue-600 dark:text-blue-400",
-    borderColor: "focus-visible:ring-blue-500 border-blue-200 dark:border-blue-900/30",
+    borderColor: "focus-visible:ring-blue-500/20",
     placeholder: "https://www.facebook.com/yourpage",
     helpText: "Enter your public Facebook page or profile link (e.g., https://www.facebook.com/pagename)",
     Icon: IconBrandFacebook
@@ -91,7 +92,7 @@ const platformConfigs: Record<string, {
     color: "bg-pink-500",
     gradient: "from-purple-600 via-pink-500 to-orange-500",
     textColor: "text-pink-600 dark:text-pink-400",
-    borderColor: "focus-visible:ring-pink-500 border-pink-200 dark:border-pink-900/30",
+    borderColor: "focus-visible:ring-pink-500/20",
     placeholder: "https://www.instagram.com/yourprofile",
     helpText: "Enter your Instagram profile URL (e.g., https://www.instagram.com/username)",
     Icon: IconBrandInstagram
@@ -101,7 +102,7 @@ const platformConfigs: Record<string, {
     color: "bg-black",
     gradient: "from-gray-900 to-black dark:from-gray-800 dark:to-black",
     textColor: "text-gray-950 dark:text-gray-100",
-    borderColor: "focus-visible:ring-black border-gray-200 dark:border-gray-800",
+    borderColor: "focus-visible:ring-black/10 dark:focus-visible:ring-white/10",
     placeholder: "https://www.tiktok.com/@yourprofile",
     helpText: "Enter your TikTok profile link (e.g., https://www.tiktok.com/@username)",
     Icon: IconBrandTiktok
@@ -272,7 +273,7 @@ export function SocialVerification({
           <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${
             hasVerifiedNonEmailContact 
               ? "bg-green-50 text-green-600 dark:bg-green-950/30 dark:text-green-400" 
-              : "bg-pink-50 text-pink-600 dark:bg-pink-950/30 dark:text-pink-400 animate-pulse border border-pink-200 dark:border-pink-900/30"
+              : "bg-purple-50 text-purple-650 dark:bg-purple-950/30 dark:text-purple-400 animate-pulse border border-purple-200 dark:border-purple-900/30"
           }`}>
             {hasVerifiedNonEmailContact ? <CheckCircle2 className="w-4 h-4" /> : "1"}
           </div>
@@ -347,7 +348,7 @@ export function SocialVerification({
                   className={`p-4 rounded-xl border transition-all duration-300 ${
                     isVerified 
                       ? "border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/30" 
-                      : "border-pink-100 dark:border-pink-900/25 bg-pink-50/10 dark:bg-pink-950/5 hover:border-pink-200"
+                      : "border-purple-100 dark:border-purple-900/25 bg-purple-50/10 dark:bg-purple-950/5 hover:border-purple-200"
                   }`}
                 >
                   <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
@@ -376,7 +377,7 @@ export function SocialVerification({
                         size="sm"
                         onClick={() => handleVerifyClick(contact.id)}
                         disabled={sendingCode || (verifyingContactId === contact.id && isVerifyingContact)}
-                        className="h-7 text-[10px] border-pink-200 hover:border-pink-500 text-pink-600 hover:bg-pink-50/40 dark:border-pink-900/30 dark:hover:border-pink-600 hover:text-pink-700 transition-colors shadow-sm font-semibold cursor-pointer shrink-0 self-start sm:self-auto"
+                        className="h-7 text-[10px] border-purple-200 hover:border-purple-500 text-purple-650 hover:bg-purple-50/40 dark:border-purple-900/30 dark:hover:border-purple-600 hover:text-purple-700 transition-colors shadow-sm font-semibold cursor-pointer shrink-0 self-start sm:self-auto"
                       >
                         {sendingCode && verifyingContactId === contact.id ? (
                           <>
@@ -440,14 +441,26 @@ export function SocialVerification({
                 <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                   <Link2 className="h-4 h-4 text-gray-400" aria-hidden="true" />
                 </div>
-                <Input
+                 <Input
                   id="pageUrl"
                   type="url"
                   placeholder={config ? config.placeholder : "Enter page or channel URL"}
                   disabled={!hasVerifiedNonEmailContact}
-                  className={`pl-9 py-5 rounded-lg border-gray-250 transition-shadow ${
-                    config ? config.borderColor : "focus-visible:ring-violet-500"
-                  }`}
+                  hoverColor={
+                    platform === "YOUTUBE"
+                      ? "#000000"
+                      : platform === "FACEBOOK"
+                      ? "#1877F2"
+                      : platform === "INSTAGRAM"
+                      ? "#E91E63"
+                      : platform === "TIKTOK"
+                      ? "#000000"
+                      : "#8b5cf6"
+                  }
+                  className={cn(
+                    "pl-9 py-5 rounded-lg bg-white dark:bg-zinc-900 transition-shadow focus-visible:ring-2",
+                    config ? config.borderColor : "focus-visible:ring-purple-500/20"
+                  )}
                   value={pageUrl}
                   onChange={(e) => setPageUrl(e.target.value)}
                 />
@@ -520,7 +533,7 @@ export function SocialVerification({
             <Button 
               onClick={handleVerifyCode} 
               disabled={verificationCode.length !== 6}
-              className="w-full py-5 bg-gradient-to-r from-pink-500 to-pink-600 text-white font-semibold shadow-md hover:shadow-lg hover:opacity-95 transition-all cursor-pointer"
+              className="w-full py-5 bg-gradient-to-r from-purple-500 to-purple-600 text-white font-semibold shadow-md hover:shadow-lg hover:opacity-95 transition-all cursor-pointer"
             >
               Verify Code
             </Button>
