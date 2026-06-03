@@ -111,7 +111,7 @@ export function TaskDetailsCard({ task }: TaskDetailsCardProps) {
         
         <CardHeader className="pb-3 pt-4 border-b border-gray-100 dark:border-gray-800/80">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-            <div className="space-y-0.5 min-w-0">
+            <div className="space-y-0.5 min-w-0 flex-1">
               <CardTitle className="text-xl font-bold text-gray-900 dark:text-gray-100 tracking-tight leading-tight truncate">
                 {task?.title}
               </CardTitle>
@@ -184,7 +184,7 @@ export function TaskDetailsCard({ task }: TaskDetailsCardProps) {
           {task?.source && task.source !== "DIRECT" && (
             <div className="pt-4 border-t border-gray-100 dark:border-gray-800/80 space-y-2">
               <h3 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Campaign Material & Guidelines</h3>
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-lg border border-gray-100 dark:border-gray-800 bg-gray-50/30 dark:bg-gray-900/10 hover:border-pink-200 dark:hover:border-pink-900/30 transition-all duration-300 gap-3 shadow-3xs">
+              <div className="flex flex-col md:flex-row md:items-center justify-between p-3 rounded-lg border border-gray-100 dark:border-gray-800 bg-gray-50/30 dark:bg-gray-900/10 hover:border-pink-200 dark:hover:border-pink-900/30 transition-all duration-300 gap-3 shadow-3xs">
                 {fileInfo && (
                   <>
                     <div className="flex items-center space-x-2.5 min-w-0">
@@ -200,7 +200,7 @@ export function TaskDetailsCard({ task }: TaskDetailsCardProps) {
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
+                    <div className="flex items-center gap-1.5 shrink-0 self-start md:self-auto mt-1 md:mt-0">
                       {attachmentUrl && (
                         <>
                           {fileInfo.canPreview && (

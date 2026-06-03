@@ -57,6 +57,11 @@ const PaginationControls = ({
 type TaskDetail = Database["public"]["Views"]["task_details_view"]["Row"];
 type TaskApplication = Database["public"]["Tables"]["task_applications"]["Row"] & {
   application_promises: Database["public"]["Tables"]["application_promises"]["Row"][];
+  application_proofs?: (Database["public"]["Tables"]["application_proofs"]["Row"] & {
+    proof_status?: {
+      status: Database["public"]["Enums"]["ProofStatus"];
+    } | null;
+  })[];
 };
 
 export default function InfluencerTasksPage() {
@@ -65,11 +70,33 @@ export default function InfluencerTasksPage() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [availableTasks, setAvailableTasks] = useState<(TaskDetail & { application?: TaskApplication })[]>([]);
+  const [appliedTasks, setAppliedTasks] = useState<(TaskDetail & { application?: TaskApplication })[]>([]);
+  const [activeTab, setActiveTab] = useState<"available" | "active">("available");
   const [searchQuery, setSearchQuery] = useState("");
   const [platformFilter, setPlatformFilter] = useState<string>("ALL");
   const [currentPage, setCurrentPage] = useState(1);
   const [filteredTasks, setFilteredTasks] = useState<(TaskDetail & { application?: TaskApplication })[]>([]);
   const [hasIncompleteTask, setHasIncompleteTask] = useState(false);
+
+  // Sync tab status with URL query parameter on mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get("tab");
+      if (tab === "active" || tab === "available") {
+        setActiveTab(tab as "available" | "active");
+      }
+    }
+  }, []);
+
+  const handleTabChange = (tab: "available" | "active") => {
+    setActiveTab(tab);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.set("tab", tab);
+      window.history.pushState({}, "", url.toString());
+    }
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -85,18 +112,30 @@ export default function InfluencerTasksPage() {
           *,
           applications:task_applications(
             id, created_at, is_cancelled,
-            application_promises(platform, promised_reach, est_profit)
+            application_promises(platform, promised_reach, est_profit),
+            application_proofs(
+              id, platform, proof_type, content,
+              proof_status(status)
+            )
           )
         `).eq("status", "ACTIVE");
 
         if (tasksData) {
           const available: typeof availableTasks = [];
+          const applied: typeof appliedTasks = [];
+
           tasksData.forEach((task) => {
             const applications = task.applications as TaskApplication[];
             const userApplication = applications?.find(app => !app.is_cancelled);
-            if (!userApplication) available.push({ ...task, application: userApplication });
+            const taskWithApp = { ...task, application: userApplication };
+            if (userApplication) {
+              applied.push(taskWithApp);
+            } else {
+              available.push(taskWithApp);
+            }
           });
           setAvailableTasks(available);
+          setAppliedTasks(applied);
         }
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -108,7 +147,8 @@ export default function InfluencerTasksPage() {
   }, [supabase, router]);
 
   useEffect(() => {
-    let filtered = [...availableTasks];
+    const sourceList = activeTab === "available" ? availableTasks : appliedTasks;
+    let filtered = [...sourceList];
     if (searchQuery) {
       filtered = filtered.filter(task =>
         task.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -121,11 +161,21 @@ export default function InfluencerTasksPage() {
         return targets?.some(t => t.platform === platformFilter);
       });
     }
-    // Default sort by newest
-    filtered.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+    
+    if (activeTab === "active") {
+      // Sort applied tasks by application creation time descending
+      filtered.sort((a, b) => {
+        const dateA = a.application?.created_at ? new Date(a.application.created_at).getTime() : 0;
+        const dateB = b.application?.created_at ? new Date(b.application.created_at).getTime() : 0;
+        return dateB - dateA;
+      });
+    } else {
+      // Default sort by newest task creation time
+      filtered.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+    }
     setFilteredTasks(filtered);
     setCurrentPage(1);
-  }, [availableTasks, searchQuery, platformFilter]);
+  }, [activeTab, availableTasks, appliedTasks, searchQuery, platformFilter]);
 
   const totalPages = Math.ceil(filteredTasks.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -137,14 +187,54 @@ export default function InfluencerTasksPage() {
       <InfluencerSidebar activePage="tasks" />
       
       <div className="flex-1 flex flex-col overflow-hidden">
-        <InfluencerTopbar title="Available Tasks" />
+        <InfluencerTopbar title={activeTab === "available" ? "Available Tasks" : "Active Applications"} />
         
         <main className="flex-1 overflow-y-auto p-4 lg:p-6 space-y-6">
           <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+            {/* Tabs */}
+            <div className="flex border-b border-gray-100 px-5 bg-white">
+              <button
+                onClick={() => handleTabChange("available")}
+                className={`py-3 px-4 text-sm font-semibold border-b-2 transition-colors relative flex items-center gap-2 ${
+                  activeTab === "available"
+                    ? "border-pink-600 text-pink-600"
+                    : "border-transparent text-gray-500 hover:text-gray-900"
+                }`}
+              >
+                Available Tasks
+                <span className={`text-[10px] px-1.5 py-0.25 rounded-full font-bold ${
+                  activeTab === "available" ? "bg-pink-100 text-pink-600" : "bg-gray-100 text-gray-500"
+                }`}>
+                  {availableTasks.length}
+                </span>
+              </button>
+              <button
+                onClick={() => handleTabChange("active")}
+                className={`py-3 px-4 text-sm font-semibold border-b-2 transition-colors relative flex items-center gap-2 ${
+                  activeTab === "active"
+                    ? "border-pink-600 text-pink-600"
+                    : "border-transparent text-gray-500 hover:text-gray-900"
+                }`}
+              >
+                Active Applications
+                <span className={`text-[10px] px-1.5 py-0.25 rounded-full font-bold ${
+                  activeTab === "active" ? "bg-pink-100 text-pink-600" : "bg-gray-100 text-gray-500"
+                }`}>
+                  {appliedTasks.length}
+                </span>
+              </button>
+            </div>
+
             <div className="px-5 py-4 border-b border-gray-100 bg-gray-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <h2 className="text-base font-semibold text-gray-900">Available Tasks</h2>
-                <p className="text-xs text-gray-500 mt-0.5">Find opportunities that match your profile.</p>
+                <h2 className="text-base font-semibold text-gray-900">
+                  {activeTab === "available" ? "Available Tasks" : "Active Applications"}
+                </h2>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {activeTab === "available" 
+                    ? "Find opportunities that match your profile." 
+                    : "Track and submit proofs for your ongoing campaigns."}
+                </p>
               </div>
               
               <div className="flex items-center gap-2">
@@ -171,7 +261,7 @@ export default function InfluencerTasksPage() {
                 </div>
               ) : (
                 <>
-                  {hasIncompleteTask && (
+                  {hasIncompleteTask && activeTab === "available" && (
                     <div className="mb-5 bg-pink-50 border border-pink-100 rounded-lg p-3 flex gap-3 items-start">
                       <AlertCircle className="h-5 w-5 text-pink-600 shrink-0" />
                       <div>
@@ -183,12 +273,14 @@ export default function InfluencerTasksPage() {
                   
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {currentTasks.map((task) => (
-                      <InfluencerTaskCard key={task.task_id} task={task} />
+                      <InfluencerTaskCard key={task.task_id} task={task} application={task.application} />
                     ))}
                     {filteredTasks.length === 0 && (
                       <div className="col-span-full text-center py-12 border border-dashed border-gray-200 rounded-lg">
                         <p className="text-sm text-gray-500">
-                          {availableTasks.length === 0 ? "No tasks available at the moment." : "No tasks match your search criteria."}
+                          {activeTab === "available"
+                            ? (availableTasks.length === 0 ? "No tasks available at the moment." : "No tasks match your search criteria.")
+                            : (appliedTasks.length === 0 ? "No active applications found." : "No active applications match your search criteria.")}
                         </p>
                       </div>
                     )}

@@ -82,7 +82,7 @@ export function PlatformRequirementsCard({
             <ArrowUpRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
           </Link>
         </div>
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="flex flex-col md:grid md:grid-cols-2 gap-4">
           {targets?.map((target, index) => {
             const platformProfiles = verifiedProfiles.filter(p => p.platform === target.platform);
             const isVerified = platformProfiles.length > 0;

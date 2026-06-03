@@ -56,7 +56,7 @@ export async function POST(request: Request) {
             .maybeSingle();
 
           if (existingClick) {
-            return NextResponse.json({ error: "already_clicked" }, { status: 409 });
+            return NextResponse.json({ finalUrl });
           }
 
           // Record click
@@ -135,7 +135,7 @@ export async function POST(request: Request) {
           .maybeSingle();
 
         if (existing) {
-          return NextResponse.json({ error: "already_clicked" }, { status: 409 });
+          return NextResponse.json({ finalUrl });
         }
 
         await (supabaseAdmin as any)

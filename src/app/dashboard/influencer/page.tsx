@@ -75,6 +75,11 @@ const PaginationControls = ({
 type TaskDetail = Database["public"]["Views"]["task_details_view"]["Row"];
 type TaskApplication = Database["public"]["Tables"]["task_applications"]["Row"] & {
   application_promises: Database["public"]["Tables"]["application_promises"]["Row"][];
+  application_proofs?: (Database["public"]["Tables"]["application_proofs"]["Row"] & {
+    proof_status?: {
+      status: Database["public"]["Enums"]["ProofStatus"];
+    } | null;
+  })[];
 };
 type AccountBalance = Database["public"]["Tables"]["account_balance"]["Row"];
 type ConnectedPlatform = {
@@ -163,7 +168,11 @@ export default function InfluencerDashboardPage() {
             *,
             applications:task_applications(
               id, created_at, is_cancelled,
-              application_promises(platform, promised_reach, est_profit)
+              application_promises(platform, promised_reach, est_profit),
+              application_proofs(
+                id, platform, proof_type, content,
+                proof_status(status)
+              )
             )
           `).eq("status", "ACTIVE"),
           (async () => {
@@ -213,6 +222,12 @@ export default function InfluencerDashboardPage() {
             const taskWithApp = { ...task, application: userApplication };
             if (userApplication) applied.push(taskWithApp);
             else available.push(taskWithApp);
+          });
+          // Sort applied tasks by application creation time descending
+          applied.sort((a, b) => {
+            const dateA = a.application?.created_at ? new Date(a.application.created_at).getTime() : 0;
+            const dateB = b.application?.created_at ? new Date(b.application.created_at).getTime() : 0;
+            return dateB - dateA;
           });
           setAvailableTasks(available);
           setAppliedTasks(applied);
@@ -494,9 +509,19 @@ export default function InfluencerDashboardPage() {
               {/* Applied Tasks */}
               {appliedTasks.length > 0 && (
                 <div>
-                  <h2 className="text-base font-semibold text-gray-900 mb-3 pl-1">Active Applications</h2>
+                  <div className="flex items-center justify-between mb-3 pl-1">
+                    <h2 className="text-base font-semibold text-gray-900">Active Applications</h2>
+                    {appliedTasks.length > 3 && (
+                      <Link 
+                        href="/dashboard/influencer/tasks?tab=active"
+                        className="text-xs font-semibold text-pink-600 hover:text-pink-700 flex items-center gap-0.5 transition-colors"
+                      >
+                        View All ({appliedTasks.length}) <ChevronRight className="h-3.5 w-3.5" />
+                      </Link>
+                    )}
+                  </div>
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {appliedTasks.map((task) => (
+                    {appliedTasks.slice(0, 3).map((task) => (
                       <InfluencerTaskCard key={task.task_id} task={task} application={task.application} />
                     ))}
                   </div>

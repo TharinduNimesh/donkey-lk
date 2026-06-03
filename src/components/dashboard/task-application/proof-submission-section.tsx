@@ -116,14 +116,14 @@ export function ProofSubmissionSection({
                   transition={{ duration: 0.3, delay: index * 0.08 }}
                   className="p-3.5 border border-gray-100 dark:border-gray-800 bg-gray-50/20 dark:bg-gray-900/5 rounded-lg space-y-3 shadow-3xs"
                 >
-                  <div className="flex items-center justify-between pb-2 border-b border-gray-100/60 dark:border-gray-800/60">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 gap-2 border-b border-gray-100/60 dark:border-gray-800/60">
                     <div className="flex items-center space-x-2 min-w-0">
                       <PlatformIcon platform={promise.platform} size="sm" />
                       <h3 className="font-semibold text-gray-900 dark:text-gray-100 truncate text-xs">
                         {promise.platform} Proofs
                       </h3>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       {/* Per-platform readiness indicator */}
                       {platformReady ? (
                         <div className="flex items-center gap-1 text-[9px] font-bold text-emerald-600 dark:text-emerald-400">
@@ -157,19 +157,19 @@ export function ProofSubmissionSection({
               );
             })}
 
-            <div className="flex items-center justify-between pt-1">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between pt-2 gap-3">
               {/* Submit hint */}
               {!allPlatformsReady && (
                 <p className="text-[10px] text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1">
-                  <AlertCircle className="h-3 w-3 shrink-0" />
+                  <AlertCircle className="h-3.5 w-3.5 shrink-0" />
                   Upload both URL and screenshot for each platform to submit
                 </p>
               )}
-              <div className="ml-auto">
+              <div className="w-full sm:w-auto sm:ml-auto">
                 <Button
                   onClick={onProofSubmit}
                   disabled={!canSubmit}
-                  className="bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white font-bold transition-all duration-300 shadow-sm disabled:opacity-50 h-9 px-4 rounded-lg text-xs"
+                  className="w-full sm:w-auto bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white font-bold transition-all duration-300 shadow-sm disabled:opacity-50 h-9 px-4 rounded-lg text-xs justify-center"
                 >
                   {isLoading ? (
                     <>

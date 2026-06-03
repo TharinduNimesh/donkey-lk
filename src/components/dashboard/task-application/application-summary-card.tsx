@@ -42,7 +42,7 @@ export function ApplicationSummaryCard({
       </CardHeader>
       <CardContent className="p-4">
         <div className="space-y-4">
-          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-1">
+          <div className="flex flex-col sm:grid sm:grid-cols-2 lg:flex lg:flex-col gap-3">
             {targets?.map((target, index) => {
               const viewsSelected = calculateTotalViews(target.platform);
               const hasSelection = viewsSelected > 0;
