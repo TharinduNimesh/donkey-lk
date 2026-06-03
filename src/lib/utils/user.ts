@@ -23,7 +23,7 @@ export async function setupUserProfile({
       .from('profile')
       .select('id')
       .eq('id', userId)
-      .single();
+      .maybeSingle();
 
     if (checkError && checkError.code !== 'PGRST116') { // PGRST116 is "no rows returned"
       throw checkError;
@@ -64,7 +64,7 @@ export async function setupUserProfile({
         .eq('user_id', userId)
         .eq('type', 'MOBILE')
         .eq('detail', mobile)
-        .single();
+        .maybeSingle();
 
       if (contactCheckError && contactCheckError.code !== 'PGRST116') {
         throw contactCheckError;
@@ -91,14 +91,14 @@ export async function setupUserProfile({
       }
     }
 
-    // Reset all store state
-    const store = useSetupStore.getState();
-    store.reset();
+    // Reset all store state (moved to client-side dashboards on mount to prevent unmounting setup page components prematurely)
+    // const store = useSetupStore.getState();
+    // store.reset();
 
     // Clear the persisted store data from localStorage
-    if (typeof window !== 'undefined') {
-      window.localStorage.removeItem('setup-storage');
-    }
+    // if (typeof window !== 'undefined') {
+    //   window.localStorage.removeItem('setup-storage');
+    // }
 
     return { error: null };
   } catch (error) {

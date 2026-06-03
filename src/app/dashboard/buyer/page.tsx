@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react";
+import { useSetupStore } from "@/lib/store";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { toast } from 'sonner';
@@ -84,6 +85,14 @@ export default function BuyerDashboardPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const searchParams = useSearchParams();
+
+  // Clear setup store & storage on dashboard mount
+  useEffect(() => {
+    useSetupStore.getState().reset();
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem("setup-storage");
+    }
+  }, []);
 
   useEffect(() => {
     if (searchParams.get('payment') === 'success') {

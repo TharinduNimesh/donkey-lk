@@ -15,6 +15,7 @@ import {
 import { useSetupStore } from "@/lib/store";
 
 function SetupContent() {
+  const router = useRouter();
   const [mounted, setMounted] = useState(false);
   
   // --- Guard: if user already has a profile, redirect to dashboard ---
@@ -30,16 +31,16 @@ function SetupContent() {
         .from('profile')
         .select('id')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
 
       if (profile) {
         // User already has a profile — send them to the dashboard
-        window.location.replace('/dashboard');
+        router.replace('/dashboard');
       }
     };
 
     checkExistingProfile();
-  }, []);
+  }, [router]);
 
   // --- Referral code storage after sign-in ---
   useEffect(() => {
@@ -62,7 +63,6 @@ function SetupContent() {
     storeReferralForUser();
   }, []);
 
-  const router = useRouter();
   const searchParams = useSearchParams();
   const { userType, setUserType } = useSetupStore();
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { setupUserProfile } from "@/lib/utils/user";
 import { cn } from "@/lib/utils";
+import { MultiStepLoader } from "@/components/ui/multi-step-loader";
 
 interface SocialConnectFormProps {
   onBack: () => void;
@@ -20,7 +21,27 @@ export function SocialConnectForm({ onBack }: SocialConnectFormProps) {
   const { connectedPlatforms, personalInfo, userType } = useSetupStore();
   const [isSkipping, setIsSkipping] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [setupPhase, setSetupPhase] = useState(0);
+  const [showLoader, setShowLoader] = useState(false);
+
+  const [apiCompleted, setApiCompleted] = useState(false);
+  const [loaderCompleted, setLoaderCompleted] = useState(false);
+
+  const phases = [
+    { text: "Validating profile details" },
+    { text: "Configuring database settings" },
+    { text: "Finalizing dashboard setup" }
+  ];
+
+  useEffect(() => {
+    if (apiCompleted && loaderCompleted) {
+      const destination = userType === "influencer"
+        ? "/dashboard/influencer"
+        : "/dashboard/buyer";
+
+      router.refresh();
+      router.push(destination);
+    }
+  }, [apiCompleted, loaderCompleted, userType, router]);
 
   const handleConnect = (platform: "youtube" | "facebook" | "tiktok") => {
     if (platform === "youtube") {
@@ -43,15 +64,10 @@ export function SocialConnectForm({ onBack }: SocialConnectFormProps) {
       return;
     }
 
+    setShowLoader(true);
     setIsLoading(true);
-    setSetupPhase(0);
-
-    const phaseInterval = setInterval(() => {
-      setSetupPhase((prev) => {
-        if (prev < 2) return prev + 1;
-        return prev;
-      });
-    }, 900);
+    setApiCompleted(false);
+    setLoaderCompleted(false);
 
     const toastId = toast.loading("Setting up your account...");
 
@@ -59,17 +75,14 @@ export function SocialConnectForm({ onBack }: SocialConnectFormProps) {
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        clearInterval(phaseInterval);
         toast.error("Authentication error. Please try logging in again.", {
           id: toastId
         });
+        setShowLoader(false);
+        setIsLoading(false);
+        setIsSkipping(false);
         return;
       }
-
-      // Determine destination based on user type
-      const destination = userType === "influencer"
-        ? "/dashboard/influencer"
-        : "/dashboard/buyer";
 
       const { error } = await setupUserProfile({
         userId: user.id,
@@ -77,7 +90,6 @@ export function SocialConnectForm({ onBack }: SocialConnectFormProps) {
         role: userType === "influencer" ? ['INFLUENCER'] : ['BUYER'],
         mobile: personalInfo.mobile,
         onError: (error) => {
-          clearInterval(phaseInterval);
           toast.error("Failed to setup profile. Please try again.", {
             id: toastId,
             description: error.message,
@@ -87,27 +99,21 @@ export function SocialConnectForm({ onBack }: SocialConnectFormProps) {
       });
 
       if (!error) {
-        clearInterval(phaseInterval);
-        setSetupPhase(2);
         toast.success("Account setup completed successfully!", {
           id: toastId
         });
-
-        // Force navigation to the appropriate dashboard
-        setTimeout(() => {
-          window.location.href = destination;
-        }, 500);
+        setApiCompleted(true);
       } else {
-        clearInterval(phaseInterval);
+        setShowLoader(false);
         setIsLoading(false);
         setIsSkipping(false);
       }
     } catch (error) {
       console.error('Error saving profile:', error);
-      clearInterval(phaseInterval);
       toast.error("An unexpected error occurred. Please try again.", {
         id: toastId
       });
+      setShowLoader(false);
       setIsLoading(false);
       setIsSkipping(false);
     }
@@ -124,57 +130,6 @@ export function SocialConnectForm({ onBack }: SocialConnectFormProps) {
 
   const platformsConnected = Object.values(connectedPlatforms).some(Boolean);
 
-  if (isLoading || isSkipping) {
-    const phases = [
-      "Validating profile details",
-      "Configuring database settings",
-      "Finalizing dashboard setup"
-    ];
-    return (
-      <div className="flex flex-col items-center justify-center py-16 space-y-6">
-        <div className="relative flex items-center justify-center">
-          <div className="animate-spin h-10 w-10 border-4 border-purple-200 border-t-purple-600 rounded-full"></div>
-        </div>
-        <div className="w-full max-w-xs space-y-3 pt-2">
-          {phases.map((phase, idx) => {
-            const isDone = setupPhase > idx;
-            const isActive = setupPhase === idx;
-            return (
-              <motion.div 
-                key={idx}
-                initial={{ opacity: 0.5, x: -5 }}
-                animate={{ 
-                  opacity: isActive || isDone ? 1 : 0.4,
-                  x: 0,
-                  scale: isActive ? 1.02 : 1
-                }}
-                className="flex items-center space-x-3 text-xs"
-              >
-                {isDone ? (
-                  <div className="h-4.5 w-4.5 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[10px] font-bold shadow-sm shadow-emerald-200 dark:shadow-emerald-950">✓</div>
-                ) : isActive ? (
-                  <div className="h-4.5 w-4.5 rounded-full border-2 border-purple-500 border-t-transparent animate-spin"></div>
-                ) : (
-                  <div className="h-4.5 w-4.5 rounded-full border border-gray-200 dark:border-zinc-800"></div>
-                )}
-                <span className={cn(
-                  "font-bold transition-all duration-300",
-                  isDone 
-                    ? "text-emerald-600 dark:text-emerald-400 line-through opacity-70" 
-                    : isActive 
-                    ? "text-purple-600 dark:text-purple-400" 
-                    : "text-gray-450 dark:text-zinc-550 font-medium"
-                )}>
-                  {phase}
-                </span>
-              </motion.div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  }
-
   const cardVariants = {
     hover: { 
       scale: 1.015,
@@ -185,6 +140,14 @@ export function SocialConnectForm({ onBack }: SocialConnectFormProps) {
 
   return (
     <div className="space-y-6">
+      <MultiStepLoader 
+        loadingStates={phases} 
+        loading={showLoader} 
+        duration={900} 
+        loop={false} 
+        theme="purple" 
+        onComplete={() => setLoaderCompleted(true)}
+      />
       <motion.div 
         className="space-y-2"
         initial={{ opacity: 0, y: -10 }}

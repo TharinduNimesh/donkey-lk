@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSetupStore } from "@/lib/store";
 import { useRouter } from "next/navigation";
 import { signOut } from "@/lib/supabase";
 import { Database } from "@/types/database.types";
@@ -108,6 +109,15 @@ type BrandSyncLinkEntry = {
 export default function InfluencerDashboardPage() {
   const router = useRouter();
   const supabase = createClientComponentClient<Database>();
+
+
+  // Clear setup store & storage on dashboard mount
+  useEffect(() => {
+    useSetupStore.getState().reset();
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem("setup-storage");
+    }
+  }, []);
 
   // Redirect to task apply page if 'target' exists in localStorage
   useEffect(() => {

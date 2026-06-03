@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { supabase } from "@/lib/supabase";
 import { setupUserProfile } from "@/lib/utils/user";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { MultiStepLoader } from "@/components/ui/multi-step-loader";
 
 interface FinalStepProps {
   onBack: () => void;
@@ -21,18 +22,35 @@ export function FinalStep({ onBack }: FinalStepProps) {
   const { personalInfo, userType } = useSetupStore();
   const [isLoading, setIsLoading] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
-  const [setupPhase, setSetupPhase] = useState(0);
+  const [showLoader, setShowLoader] = useState(false);
+
+  const [apiCompleted, setApiCompleted] = useState(false);
+  const [loaderCompleted, setLoaderCompleted] = useState(false);
+
+  const phases = [
+    { text: "Validating profile details" },
+    { text: "Configuring database settings" },
+    { text: "Finalizing dashboard setup" }
+  ];
+
+  useEffect(() => {
+    if (apiCompleted && loaderCompleted) {
+      setIsNavigating(true);
+      
+      const destination = userType === "influencer"
+        ? "/dashboard/influencer"
+        : "/dashboard/buyer";
+
+      router.refresh();
+      router.push(destination);
+    }
+  }, [apiCompleted, loaderCompleted, userType, router]);
 
   const handleComplete = async () => {
+    setShowLoader(true);
     setIsLoading(true);
-    setSetupPhase(0);
-
-    const phaseInterval = setInterval(() => {
-      setSetupPhase((prev) => {
-        if (prev < 2) return prev + 1;
-        return prev;
-      });
-    }, 900);
+    setApiCompleted(false);
+    setLoaderCompleted(false);
 
     const toastId = toast.loading("Setting up your account...");
 
@@ -42,28 +60,23 @@ export function FinalStep({ onBack }: FinalStepProps) {
       
       // Check if we have all required data
       if (!user) {
-        clearInterval(phaseInterval);
         toast.error("Authentication error. Please sign in again.", {
           id: toastId
         });
+        setShowLoader(false);
         setIsLoading(false);
         router.push('/auth');
         return;
       }
 
       if (!personalInfo?.name || !personalInfo?.mobile || !userType) {
-        clearInterval(phaseInterval);
         toast.error("Required information is missing. Please complete all fields.", {
           id: toastId
         });
+        setShowLoader(false);
         setIsLoading(false);
         return;
       }
-
-      // Determine destination based on user type
-      const destination = userType === "influencer"
-        ? "/dashboard/influencer"
-        : "/dashboard/buyer";
 
       // Create profile
       const { error } = await setupUserProfile({
@@ -72,7 +85,6 @@ export function FinalStep({ onBack }: FinalStepProps) {
         role: userType === "influencer" ? ['INFLUENCER'] : ['BUYER'],
         mobile: personalInfo.mobile,
         onError: (error) => {
-          clearInterval(phaseInterval);
           toast.error("Failed to setup profile. Please try again.", {
             id: toastId,
             description: error?.message || "Unknown error occurred",
@@ -82,36 +94,24 @@ export function FinalStep({ onBack }: FinalStepProps) {
       });
 
       if (error) {
-        clearInterval(phaseInterval);
-        toast.error("Failed to setup profile. Please try again.", {
-          id: toastId,
-          description: (error as any).message || "Unknown error",
-          richColors: true,
-        });
+        setShowLoader(false);
         setIsLoading(false);
         return;
       }
       
-      // Complete all phases
-      setSetupPhase(2);
-      clearInterval(phaseInterval);
-
-      // Success - show toast and navigate to dashboard
+      // Success - show toast
       toast.success("Account setup completed successfully!", {
         id: toastId,
       });
 
-      // Force navigation to dashboard
-      setIsNavigating(true);
-      setTimeout(() => {
-        window.location.href = destination;
-      }, 500);
+      setApiCompleted(true);
       
     } catch (error) {
       console.error("Error saving profile:", error);
       toast.error("An unexpected error occurred. Please try again.", {
         id: toastId,
       });
+      setShowLoader(false);
       setIsLoading(false);
     }
   };
@@ -129,58 +129,6 @@ export function FinalStep({ onBack }: FinalStepProps) {
     );
   }
 
-  // If already navigating or loading, show loading state
-  if (isNavigating || isLoading) {
-    const phases = [
-      "Validating profile details",
-      "Configuring database settings",
-      "Finalizing dashboard setup"
-    ];
-    return (
-      <div className="flex flex-col items-center justify-center py-16 space-y-6">
-        <div className="relative flex items-center justify-center">
-          <div className="animate-spin h-10 w-10 border-4 border-pink-200 border-t-pink-600 rounded-full"></div>
-        </div>
-        <div className="w-full max-w-xs space-y-3 pt-2">
-          {phases.map((phase, idx) => {
-            const isDone = setupPhase > idx;
-            const isActive = setupPhase === idx;
-            return (
-              <motion.div 
-                key={idx}
-                initial={{ opacity: 0.5, x: -5 }}
-                animate={{ 
-                  opacity: isActive || isDone ? 1 : 0.4,
-                  x: 0,
-                  scale: isActive ? 1.02 : 1
-                }}
-                className="flex items-center space-x-3 text-xs"
-              >
-                {isDone ? (
-                  <div className="h-4.5 w-4.5 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[10px] font-bold shadow-sm shadow-emerald-200 dark:shadow-emerald-950">✓</div>
-                ) : isActive ? (
-                  <div className="h-4.5 w-4.5 rounded-full border-2 border-pink-500 border-t-transparent animate-spin"></div>
-                ) : (
-                  <div className="h-4.5 w-4.5 rounded-full border border-gray-200 dark:border-zinc-800"></div>
-                )}
-                <span className={cn(
-                  "font-bold transition-all duration-300",
-                  isDone 
-                    ? "text-emerald-600 dark:text-emerald-400 line-through opacity-70" 
-                    : isActive 
-                    ? "text-pink-600 dark:text-pink-400" 
-                    : "text-gray-400 dark:text-zinc-600 font-medium"
-                )}>
-                  {phase}
-                </span>
-              </motion.div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  }
-
   const cardVariants = {
     hover: {
       scale: 1.01,
@@ -191,6 +139,14 @@ export function FinalStep({ onBack }: FinalStepProps) {
 
   return (
     <div className="space-y-6">
+      <MultiStepLoader 
+        loadingStates={phases} 
+        loading={showLoader} 
+        duration={900} 
+        loop={false} 
+        theme="pink" 
+        onComplete={() => setLoaderCompleted(true)}
+      />
       <motion.div 
         className="space-y-2"
         initial={{ opacity: 0, y: -10 }}

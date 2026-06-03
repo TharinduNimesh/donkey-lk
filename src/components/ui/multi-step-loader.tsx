@@ -1,7 +1,7 @@
 "use client";
-import { cn } from "@/lib/utils/index";
+import { cn } from "@/lib/utils";
 import { AnimatePresence, motion } from "motion/react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 const CheckIcon = ({ className }: { className?: string }) => {
   return (
@@ -11,7 +11,7 @@ const CheckIcon = ({ className }: { className?: string }) => {
       viewBox="0 0 24 24"
       strokeWidth={1.5}
       stroke="currentColor"
-      className={cn("w-6 h-6 ", className)}
+      className={cn("w-6 h-6", className)}
     >
       <path d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
     </svg>
@@ -24,7 +24,7 @@ const CheckFilled = ({ className }: { className?: string }) => {
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 24 24"
       fill="currentColor"
-      className={cn("w-6 h-6 ", className)}
+      className={cn("w-6 h-6", className)}
     >
       <path
         fillRule="evenodd"
@@ -42,15 +42,17 @@ type LoadingState = {
 const LoaderCore = ({
   loadingStates,
   value = 0,
+  theme = "pink",
 }: {
   loadingStates: LoadingState[];
   value?: number;
+  theme?: "pink" | "purple";
 }) => {
   return (
     <div className="flex relative justify-start max-w-xl mx-auto flex-col mt-40">
       {loadingStates.map((loadingState, index) => {
         const distance = Math.abs(index - value);
-        const opacity = Math.max(1 - distance * 0.2, 0); // Minimum opacity is 0, keep it 0.2 if you're sane.
+        const opacity = Math.max(1 - distance * 0.2, 0); // Minimum opacity is 0
 
         return (
           <motion.div
@@ -76,7 +78,7 @@ const LoaderCore = ({
             </div>
             <span
               className={cn(
-                "text-black dark:text-white",
+                "text-black dark:text-white text-base font-semibold",
                 value === index && "text-black dark:text-lime-500 opacity-100"
               )}
             >
@@ -89,18 +91,34 @@ const LoaderCore = ({
   );
 };
 
+import { createPortal } from "react-dom";
+
 export const MultiStepLoader = ({
   loadingStates,
   loading,
   duration = 2000,
   loop = true,
+  theme = "pink",
+  onComplete,
 }: {
   loadingStates: LoadingState[];
   loading?: boolean;
   duration?: number;
   loop?: boolean;
+  theme?: "pink" | "purple";
+  onComplete?: () => void;
 }) => {
   const [currentState, setCurrentState] = useState(0);
+  const [mounted, setMounted] = useState(false);
+  const onCompleteRef = useRef(onComplete);
+
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!loading) {
@@ -108,18 +126,27 @@ export const MultiStepLoader = ({
       return;
     }
     const timeout = setTimeout(() => {
-      setCurrentState((prevState) =>
-        loop
-          ? prevState === loadingStates.length - 1
-            ? 0
-            : prevState + 1
-          : Math.min(prevState + 1, loadingStates.length - 1)
-      );
+      setCurrentState((prevState) => {
+        if (prevState === loadingStates.length - 1) {
+          if (loop) {
+            return 0;
+          } else {
+            if (onCompleteRef.current) {
+              setTimeout(() => onCompleteRef.current?.(), 0);
+            }
+            return prevState;
+          }
+        }
+        return prevState + 1;
+      });
     }, duration);
 
     return () => clearTimeout(timeout);
   }, [currentState, loading, loop, loadingStates.length, duration]);
-  return (
+
+  if (!mounted) return null;
+
+  return createPortal(
     <AnimatePresence mode="wait">
       {loading && (
         <motion.div
@@ -132,15 +159,18 @@ export const MultiStepLoader = ({
           exit={{
             opacity: 0,
           }}
-          className="w-full h-full fixed inset-0 z-[100] flex items-center justify-center backdrop-blur-2xl"
+          className="w-full h-full fixed inset-0 z-[100] flex items-center justify-center backdrop-blur-2xl bg-white/95 dark:bg-black/95"
         >
-          <div className="h-96  relative">
-            <LoaderCore value={currentState} loadingStates={loadingStates} />
+          <div className="h-96 relative">
+            <LoaderCore value={currentState} loadingStates={loadingStates} theme={theme} />
           </div>
 
           <div className="bg-gradient-to-t inset-x-0 z-20 bottom-0 bg-white dark:bg-black h-full absolute [mask-image:radial-gradient(900px_at_center,transparent_30%,white)]" />
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 };
+
+
