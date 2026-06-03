@@ -15,6 +15,15 @@ type TaskApplication = {
     promised_reach: string;
     est_profit: string;
   }>;
+  application_proofs?: Array<{
+    id: number;
+    platform: Database['public']['Enums']['Platforms'];
+    proof_type: Database['public']['Enums']['ProofType'];
+    content: string;
+    proof_status?: {
+      status: Database['public']['Enums']['ProofStatus'];
+    } | null;
+  }>;
 };
 
 interface InfluencerTaskCardProps {
@@ -77,6 +86,28 @@ export function InfluencerTaskCard({ task, application }: InfluencerTaskCardProp
     );
   };
 
+  // Determine application status
+  const applicationStatus = (() => {
+    if (!application) return null;
+    const proofs = application.application_proofs || [];
+    if (proofs.length === 0) return "APPLIED";
+
+    const hasRejections = proofs.some(p => p.proof_status?.status === 'REJECTED');
+    if (hasRejections) return "REJECTED";
+
+    const promises = application.application_promises || [];
+    const allCompleted = promises.every(promise => {
+      const platformProofs = proofs.filter(p => p.platform === promise.platform);
+      const urlAccepted = platformProofs.some(p => p.proof_type === 'URL' && p.proof_status?.status === 'ACCEPTED');
+      const imgAccepted = platformProofs.some(p => p.proof_type === 'IMAGE' && p.proof_status?.status === 'ACCEPTED');
+      return urlAccepted && imgAccepted;
+    });
+
+    if (allCompleted) return "COMPLETED";
+
+    return "UNDER_REVIEW";
+  })();
+
   return (
     <Card 
       onClick={handleCardClick}
@@ -111,12 +142,19 @@ export function InfluencerTaskCard({ task, application }: InfluencerTaskCardProp
             <p className="text-sm text-muted-foreground line-clamp-2">{task.description}</p>
           </div>
           <Badge className={`
-            shrink-0 pointer-events-none select-none
-            ${application ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : ''}
+            shrink-0 pointer-events-none select-none border
+            ${applicationStatus === 'APPLIED' ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-800' : ''}
+            ${applicationStatus === 'REJECTED' ? 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/20 dark:text-red-400 dark:border-red-800 animate-pulse' : ''}
+            ${applicationStatus === 'UNDER_REVIEW' ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-800' : ''}
+            ${applicationStatus === 'COMPLETED' ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-800' : ''}
             ${!application && progress === 100 ? 'bg-pink-100 text-pink-600 dark:bg-pink-900/30 dark:text-pink-400 border-pink-300 dark:border-pink-500' : ''}
             ${!application && task.status === 'ACTIVE' && progress !== 100 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : ''}
           `}>
-            {application ? 'Applied' : progress === 100 ? 'Full' : 'New'}
+            {applicationStatus === 'APPLIED' && 'Applied'}
+            {applicationStatus === 'REJECTED' && 'Action Needed'}
+            {applicationStatus === 'UNDER_REVIEW' && 'Under Review'}
+            {applicationStatus === 'COMPLETED' && 'Completed'}
+            {!application && (progress === 100 ? 'Full' : 'New')}
           </Badge>
         </div>
       </CardHeader>
@@ -164,15 +202,45 @@ export function InfluencerTaskCard({ task, application }: InfluencerTaskCardProp
           {application && (
             <div className="space-y-2">
               <div className="flex flex-wrap gap-2">
-                {application.application_promises.map((promise, index) => (
-                  <Badge 
-                    key={index}
-                    variant="outline"
-                    className="pointer-events-none select-none bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400 border-green-200 dark:border-green-800"
-                  >
-                    {promise.platform}: {formatViewCount(parseFloat(promise.promised_reach))} views
-                  </Badge>
-                ))}
+                {application.application_promises.map((promise, index) => {
+                  const proofStatus = (() => {
+                    const proofs = application.application_proofs || [];
+                    const platformProofs = proofs.filter(p => p.platform === promise.platform);
+                    if (platformProofs.length === 0) return "PENDING";
+
+                    const hasRejections = platformProofs.some(p => p.proof_status?.status === 'REJECTED');
+                    if (hasRejections) return "REJECTED";
+
+                    const urlAccepted = platformProofs.some(p => p.proof_type === 'URL' && p.proof_status?.status === 'ACCEPTED');
+                    const imgAccepted = platformProofs.some(p => p.proof_type === 'IMAGE' && p.proof_status?.status === 'ACCEPTED');
+                    
+                    if (urlAccepted && imgAccepted) return "ACCEPTED";
+                    return "UNDER_REVIEW";
+                  })();
+
+                  let badgeStyles = "bg-gray-50 text-gray-500 border-gray-200";
+                  let statusText = "Pending Proofs";
+                  if (proofStatus === "ACCEPTED") {
+                    badgeStyles = "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-800";
+                    statusText = "Completed ✓";
+                  } else if (proofStatus === "REJECTED") {
+                    badgeStyles = "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-800";
+                    statusText = "Action Needed ✗";
+                  } else if (proofStatus === "UNDER_REVIEW") {
+                    badgeStyles = "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-800";
+                    statusText = "Reviewing";
+                  }
+
+                  return (
+                    <Badge 
+                      key={index}
+                      variant="outline"
+                      className={`pointer-events-none select-none border ${badgeStyles}`}
+                    >
+                      {promise.platform}: {formatViewCount(parseFloat(promise.promised_reach))} views ({statusText})
+                    </Badge>
+                  );
+                })}
               </div>
             </div>
           )}

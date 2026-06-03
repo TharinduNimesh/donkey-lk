@@ -1,12 +1,18 @@
-import React from "react";
+"use client";
+
+import React, { useState } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { motion } from "framer-motion";
-import { Check, DollarSign, ExternalLink } from "lucide-react";
+import { Check, DollarSign, ExternalLink, Loader2, XCircle } from "lucide-react";
 import { formatDateToNow } from "@/lib/utils";
 import { formatViewCount, parseViewCount } from "@/lib/utils/views";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Database } from "@/types/database.types";
 import { PlatformIcon } from "./platform-icon";
+
 
 type TaskApplication = Database["public"]["Tables"]["task_applications"]["Row"] & {
   application_promises: Database["public"]["Tables"]["application_promises"]["Row"][];
@@ -32,6 +38,39 @@ export function ExistingApplicationCard({
   proofUrls = {},
   verifiedProfiles = []
 }: ExistingApplicationCardProps) {
+  const router = useRouter();
+  const [isCancelling, setIsCancelling] = useState(false);
+
+  const handleCancel = async () => {
+    const confirmed = window.confirm("Are you sure you want to cancel this application? This action cannot be undone.");
+    if (!confirmed) return;
+    
+    setIsCancelling(true);
+    try {
+      const res = await fetch("/api/task-applications/cancel", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ applicationId: application.id }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to cancel application");
+      }
+
+      toast.success("Application cancelled successfully");
+      router.push("/dashboard/influencer");
+      router.refresh();
+    } catch (error: any) {
+      console.error("Error cancelling application:", error);
+      toast.error(error.message || "An unexpected error occurred");
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
   // Currency: 1 USD = NEXT_PUBLIC_LKR_PER_USD LKR
   const LKR_PER_USD = Number(process.env.NEXT_PUBLIC_LKR_PER_USD ?? "295");
   const LKR_TO_USD = 1 / (LKR_PER_USD || 295);
@@ -47,6 +86,19 @@ export function ExistingApplicationCard({
       (total, promise) => total + parseFloat(promise.est_profit), 0
     );
   };
+
+  // A task application is completed if all platform promises have proofs submitted, and all of them are ACCEPTED
+  const isCompleted = application.application_promises.every(promise => {
+    const platformProofs = existingProofs[promise.platform] || [];
+    return platformProofs.length > 0 && platformProofs.every(p => p.status === 'ACCEPTED');
+  });
+
+  // Also prevent cancellation if they have any accepted proofs, meaning work is verified and paid/payable
+  const hasAccepted = Object.values(existingProofs).some(proofs =>
+    proofs.some(p => p.status === 'ACCEPTED')
+  );
+
+  const shouldHideCancel = isCompleted || hasAccepted;
 
   return (
     <motion.div
@@ -76,7 +128,7 @@ export function ExistingApplicationCard({
         </CardHeader>
         <CardContent className="p-4">
           <div className="space-y-4">
-            <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-1">
+            <div className="flex flex-col sm:grid sm:grid-cols-2 lg:flex lg:flex-col gap-3">
               {application.application_promises.map((promise, index) => {
                 const platformProofs = existingProofs[promise.platform] || [];
                 return (
@@ -208,6 +260,30 @@ export function ExistingApplicationCard({
                 {formatUSD(calculateTotalEarnings(application))}
               </span>
             </div>
+
+            {!shouldHideCancel && (
+              <div className="pt-3 border-t border-gray-100 dark:border-gray-800">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCancel}
+                  disabled={isCancelling}
+                  className="w-full text-red-650 hover:text-red-700 border-red-200 hover:border-red-300 dark:text-red-400 dark:hover:text-red-350 dark:border-red-900/30 dark:hover:border-red-900/60 bg-red-50/5 hover:bg-red-50/10 transition-colors font-bold text-xs uppercase tracking-wider py-2 h-auto flex items-center justify-center gap-1.5"
+                >
+                  {isCancelling ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin text-red-550" />
+                      Cancelling...
+                    </>
+                  ) : (
+                    <>
+                      <XCircle className="h-3.5 w-3.5" />
+                      Cancel Application
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

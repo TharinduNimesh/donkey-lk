@@ -256,7 +256,7 @@ export function ProofUpload({
                       href={proof.content} 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      className="text-xs font-medium text-pink-600 dark:text-pink-400 hover:underline truncate pr-1"
+                      className="text-xs font-medium text-pink-600 dark:text-pink-400 hover:underline truncate pr-1 min-w-0"
                     >
                       {proof.content}
                     </a>
@@ -266,7 +266,7 @@ export function ProofUpload({
                         href={proofUrls[proof.content]} 
                         target="_blank" 
                         rel="noopener noreferrer"
-                        className="text-xs font-medium text-pink-600 dark:text-pink-400 hover:underline truncate"
+                        className="text-xs font-medium text-pink-600 dark:text-pink-400 hover:underline truncate min-w-0"
                       >
                         View uploaded image
                       </a>

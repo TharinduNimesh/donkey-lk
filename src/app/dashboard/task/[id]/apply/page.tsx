@@ -490,8 +490,8 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
   const isTaskFull = progress === 100;
 
   return (
-    <div className="min-h-screen w-full bg-[#fafafa] dark:bg-gray-950 font-sans">
-      <div className="container max-w-5xl mx-auto py-8 px-4">
+    <div className="min-h-screen w-full bg-[#fafafa] dark:bg-gray-950 font-sans overflow-x-hidden">
+      <div className="w-full max-w-5xl mx-auto py-8 px-4">
         {(!existingApplication && hasIncompleteTask) && (
           <div className="mb-6">
             <Alert variant="destructive" className="bg-pink-50/80 dark:bg-pink-950/15 border-pink-200 dark:border-pink-900/40 flex items-center gap-3 rounded-xl shadow-3xs p-4">
@@ -538,9 +538,9 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
           </div>
         </motion.div>
 
-        <div className="grid gap-6 lg:grid-cols-3 items-start">
+        <div className="flex flex-col lg:grid lg:grid-cols-3 gap-6 items-stretch lg:items-start w-full">
           {/* Main Column */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="w-full lg:col-span-2 space-y-6">
             {/* Task details card */}
             <TaskDetailsCard task={task} />
 
@@ -556,7 +556,7 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
                 isLoading={isLoading}
               />
             ) : (
-              <div className="space-y-6">
+              <div className="space-y-6 w-full">
                 <PlatformRequirementsCard 
                   targets={targets} 
                   verifiedProfiles={verifiedProfiles} 
@@ -591,7 +591,7 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
           </div>
 
           {/* Sidebar Summary/Status Column */}
-          <div className="lg:col-span-1 space-y-6 lg:sticky lg:top-6">
+          <div className="w-full lg:col-span-1 space-y-6 lg:sticky lg:top-6">
             {existingApplication ? (
               <ExistingApplicationCard 
                 application={existingApplication} 
@@ -614,12 +614,12 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.3, delay: 0.35 }}
-          className="flex justify-between items-center mt-8 pt-4 border-t border-gray-200/50 dark:border-gray-800/50"
+          className="flex flex-col-reverse sm:flex-row sm:justify-between items-stretch sm:items-center mt-8 pt-4 gap-3 border-t border-gray-200/50 dark:border-gray-800/50"
         >
           <Button
             variant="outline"
             onClick={() => router.push("/dashboard/influencer")}
-            className="border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-900/60 font-semibold h-10 px-5 rounded-lg text-sm shadow-3xs"
+            className="border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-900/60 font-semibold h-10 px-5 rounded-lg text-sm shadow-3xs w-full sm:w-auto"
           >
             Back
           </Button>
@@ -628,7 +628,7 @@ export default function TaskApplicationPage({ params }: { params: Promise<{ id: 
             <Button
               onClick={handleSubmitApplication}
               disabled={isLoading || !Object.values(selectedViews).some(views => parseViewCount(views) > 0) || hasIncompleteTask}
-              className="bg-gradient-to-r from-pink-500 via-pink-600 to-purple-600 hover:opacity-95 text-white font-bold transition-all duration-300 shadow-[0_4px_12px_rgba(236,72,153,0.35)] disabled:opacity-50 h-10 px-6 rounded-lg text-sm"
+              className="bg-gradient-to-r from-pink-500 via-pink-600 to-purple-600 hover:opacity-95 text-white font-bold transition-all duration-300 shadow-[0_4px_12px_rgba(236,72,153,0.35)] disabled:opacity-50 h-10 px-6 rounded-lg text-sm w-full sm:w-auto text-center justify-center"
             >
               {isLoading ? (
                 <>
