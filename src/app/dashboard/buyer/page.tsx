@@ -416,7 +416,8 @@ export default function BuyerDashboardPage() {
                   )}
                 </div>
                 <button
-                  className="text-xs font-semibold"
+                  onClick={() => router.push('/dashboard/buyer/analytics')}
+                  className="text-xs font-semibold hover:underline"
                   style={{ color: PINK }}
                 >
                   Details
@@ -452,7 +453,7 @@ export default function BuyerDashboardPage() {
                 <p className="text-xs text-gray-400 mt-0.5">Manage and monitor your top active influencer links.</p>
               </div>
               <button
-                onClick={() => router.push('/dashboard/buyer/brandsync')}
+                onClick={() => router.push('/dashboard/buyer/links')}
                 className="flex items-center gap-1 text-xs font-semibold hover:underline"
                 style={{ color: PINK }}
               >
@@ -645,7 +646,7 @@ export default function BuyerDashboardPage() {
                 <p className="text-xs text-gray-400 mt-0.5">Stay updated on your most recent campaign progress.</p>
               </div>
               <button
-                onClick={() => router.push('/dashboard/buyer')}
+                onClick={() => router.push('/dashboard/buyer/all-tasks')}
                 className="flex items-center gap-1 text-xs font-semibold hover:underline"
                 style={{ color: PINK }}
               >
