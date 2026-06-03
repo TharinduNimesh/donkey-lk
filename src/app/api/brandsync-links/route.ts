@@ -93,12 +93,13 @@ export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
     const scope = url.searchParams.get("scope");
+    const user = await getCurrentUser();
 
     if (scope === "public") {
       const origin = getPublicOrigin(request);
       const { data, error } = await supabaseAdmin
         .from("brandsync_links")
-        .select("id, title, platform, token, thumbnail_path, created_at")
+        .select("id, title, platform, token, thumbnail_path, created_at, shares")
         .eq('is_paid', true)
         .order("created_at", { ascending: false })
         .limit(50);
@@ -119,21 +120,43 @@ export async function GET(request: Request) {
       const links = await Promise.all(
         (data ?? []).map(async (row) => {
           const thumbnailUrl = await getThumbnailUrl(row.thumbnail_path);
+          
+          // Fetch total click count
           const { count } = await (supabaseAdmin as any)
             .from("brandsync_clicks")
             .select("id", { count: "exact", head: true })
             .eq("brandsync_id", row.id);
+
+          // Fetch influencer's unique click count if logged in
+          let myClicks = 0;
+          if (user) {
+            const { data: subToken } = await (supabaseAdmin as any)
+              .from("brandsync_influencer_tokens")
+              .select("id")
+              .eq("brandsync_id", row.id)
+              .eq("influencer_user_id", user.id)
+              .maybeSingle();
+
+            if (subToken) {
+              const { count: myClicksCount } = await (supabaseAdmin as any)
+                .from("brandsync_clicks")
+                .select("id", { count: "exact", head: true })
+                .eq("brandsync_id", row.id)
+                .eq("influencer_token_id", subToken.id);
+              myClicks = myClicksCount || 0;
+            }
+          }
+
           return {
             ...mapLink(row as BrandSyncLinkRow, origin, thumbnailUrl),
             clicks: count || 0,
+            myClicks,
           };
         })
       );
 
       return NextResponse.json({ links });
     }
-
-    const user = await getCurrentUser();
 
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

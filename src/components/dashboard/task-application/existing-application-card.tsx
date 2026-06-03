@@ -169,9 +169,9 @@ export function ExistingApplicationCard({
                                         text-[8px] font-bold px-1.5 py-0.2 rounded-full select-none uppercase shrink-0
                                         ${proof.status === 'ACCEPTED' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400' : ''}
                                         ${proof.status === 'REJECTED' ? 'bg-red-50 text-red-700 dark:bg-red-950/20 dark:text-red-400' : ''}
-                                        ${!proof.status || proof.status === 'PENDING' ? 'bg-gray-100 text-gray-700 dark:bg-gray-850 dark:text-gray-300' : ''}
+                                        ${!proof.status || proof.status === 'UNDER_REVIEW' ? 'bg-gray-100 text-gray-700 dark:bg-gray-850 dark:text-gray-300' : ''}
                                       `}>
-                                        {proof.status || 'Pending'}
+                                        {proof.status === 'UNDER_REVIEW' ? 'Reviewing' : proof.status || 'Pending'}
                                       </span>
                                     </div>
                                   );
