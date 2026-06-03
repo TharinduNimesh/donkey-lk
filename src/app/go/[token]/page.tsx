@@ -1,138 +1,126 @@
-import { redirect } from "next/navigation";
-import { decodeBrandSyncToken } from "@/lib/utils/brandsync-link";
-import { supabaseAdmin } from "@/lib/supabase-admin";
-import { headers } from 'next/headers';
+"use client";
 
-export const dynamic = "force-dynamic";
+import { use, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Loader2, ArrowRight } from "lucide-react";
 
-export default async function BrandSyncRedirectPage({ params }: { params: Promise<{ token: string }> }) {
-  const { token } = await params;
+export default function BrandSyncRedirectPage({ params }: { params: Promise<{ token: string }> }) {
+  const router = useRouter();
+  const resolvedParams = use(params);
+  const token = resolvedParams.token;
 
-  const hdrs = await headers();
-  const forwarded = hdrs.get('x-forwarded-for') || hdrs.get('x-real-ip') || '';
-  const ip = String(forwarded).split(',')[0]?.trim() || 'unknown';
+  const [statusMessage, setStatusMessage] = useState("Connecting securely...");
+  const [errorOccurred, setErrorOccurred] = useState(false);
 
-  // --- Step 1: Check per-influencer sub-token table first ---
-  try {
-    const { data: subToken } = await (supabaseAdmin as any)
-      .from('brandsync_influencer_tokens')
-      .select('id, brandsync_id, influencer_user_id')
-      .eq('token', token)
-      .maybeSingle();
+  useEffect(() => {
+    if (!token) return;
 
-    if (subToken) {
-      // Fetch parent link's platform_url
-      const { data: parent } = await supabaseAdmin
-        .from('brandsync_links')
-        .select('platform_url, is_paid')
-        .eq('id', subToken.brandsync_id)
-        .maybeSingle();
+    let active = true;
 
-      if (!parent?.is_paid) {
-        redirect('/brandsync/error?code=not_available');
-        return;
-      }
+    const processClick = async () => {
+      try {
+        setStatusMessage("Verifying link connection...");
+        const response = await fetch("/api/go/click", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ token }),
+        });
 
-      if (parent?.platform_url) {
-        let finalUrl = parent.platform_url;
-        if (!/^https?:\/\//i.test(finalUrl)) finalUrl = "https://" + finalUrl;
-        
-        // Record the click in a safe block
-        try {
-          // 1. Check if this IP has already clicked this influencer's link
-          const { data: existingClick } = await (supabaseAdmin as any)
-            .from('brandsync_clicks')
-            .select('id')
-            .eq('influencer_token_id', subToken.id)
-            .eq('ip_address', ip)
-            .maybeSingle();
+        const data = await response.json();
 
-          if (existingClick) {
-            redirect('/brandsync/error?code=already_clicked');
-            return;
+        if (!active) return;
+
+        if (response.ok && data.finalUrl) {
+          setStatusMessage("Redirecting to campaign...");
+          // Use replace to avoid keeping the redirect page in browser history
+          window.location.replace(data.finalUrl);
+        } else {
+          setErrorOccurred(true);
+          const errCode = data.error;
+          if (errCode === "already_clicked") {
+            router.replace("/brandsync/error?code=already_clicked");
+          } else if (errCode === "not_available") {
+            router.replace("/brandsync/error?code=not_available");
+          } else {
+            router.replace("/dashboard/buyer");
           }
-
-          // 2. Record click in brandsync_clicks
-          await (supabaseAdmin as any)
-            .from('brandsync_clicks')
-            .insert({
-              brandsync_id: subToken.brandsync_id,
-              ip_address: ip,
-              influencer_token_id: subToken.id
-            });
-
-          // 3. For backwards compatibility, update clicked_at in brandsync_influencer_tokens
-          await (supabaseAdmin as any)
-            .from('brandsync_influencer_tokens')
-            .update({ clicked_at: new Date().toISOString(), ip_address: ip })
-            .eq('id', subToken.id);
-        } catch (clickErr) {
-          // If it was a redirect, we must re-throw it so Next.js handles the redirect correctly
-          if (clickErr && typeof clickErr === 'object' && 'digest' in clickErr) {
-            throw clickErr;
-          }
-          console.error('Failed to record influencer sub-token click:', clickErr);
         }
-
-        redirect(finalUrl);
-        return;
+      } catch (err) {
+        console.error("Redirection fetch failed:", err);
+        if (active) {
+          setErrorOccurred(true);
+          router.replace("/dashboard/buyer");
+        }
       }
-    }
-  } catch (err) {
-    if (err && typeof err === 'object' && 'digest' in err) {
-      throw err;
-    }
-    console.error('Error checking influencer sub-token:', err);
-  }
+    };
 
-  // --- Step 2: Check standard brandsync_links table (direct token) ---
-  const { data } = await supabaseAdmin
-    .from("brandsync_links")
-    .select("id, platform_url, is_paid")
-    .eq("token", token)
-    .maybeSingle();
+    // A small timeout to make the transitions smooth and give a premium feel
+    const timer = setTimeout(() => {
+      processClick();
+    }, 600);
 
-  if (data && data.platform_url) {
-    let finalUrl = data.platform_url;
-    if (!/^https?:\/\//i.test(finalUrl)) finalUrl = "https://" + finalUrl;
-    if (!data.is_paid) {
-      redirect('/brandsync/error?code=not_available');
-      return;
-    }
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [token, router]);
 
-    // Check if this IP already clicked this link
-    try {
-      const { data: existing } = await (supabaseAdmin as any)
-        .from('brandsync_clicks')
-        .select('id')
-        .eq('brandsync_id', data.id)
-        .eq('ip_address', ip)
-        .maybeSingle();
+  return (
+    <div className="min-h-screen w-full bg-[#0a0b10] flex flex-col items-center justify-center relative overflow-hidden font-sans">
+      {/* Decorative Glow Elements */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[350px] h-[350px] rounded-full bg-pink-500/10 blur-[100px] pointer-events-none" />
+      <div className="absolute bottom-1/4 left-1/3 w-[300px] h-[300px] rounded-full bg-violet-600/10 blur-[90px] pointer-events-none" />
 
-      if (existing) {
-        redirect('/brandsync/error?code=already_clicked');
-        return;
-      }
+      {/* Main Glassmorphic Container */}
+      <div className="w-[90%] max-w-md bg-white/[0.02] border border-white/10 backdrop-blur-xl p-8 rounded-2xl shadow-2xl flex flex-col items-center text-center z-10">
+        
+        {/* Animated Brand Logo Container */}
+        <div className="w-16 h-16 rounded-xl bg-gradient-to-tr from-pink-500 to-violet-600 flex items-center justify-center mb-6 shadow-lg shadow-pink-500/10 animate-pulse">
+          <span className="text-white font-extrabold text-2xl tracking-tighter">B</span>
+        </div>
 
-      // Record click
-      await (supabaseAdmin as any).from('brandsync_clicks').insert({ brandsync_id: data.id, ip_address: ip });
-    } catch (err) {
-      console.error('Error recording BrandSync click', err);
-    }
+        {/* BrandSync Brand Title */}
+        <h2 className="text-white text-lg font-bold tracking-wide mb-1">BrandSync Platform</h2>
+        <p className="text-gray-400 text-xs mb-8">Secure Campaign Redirect System</p>
 
-    redirect(finalUrl);
-  }
+        {/* Loading Spinner / Arrow Indicator */}
+        <div className="relative w-20 h-20 flex items-center justify-center mb-8">
+          <div className="absolute inset-0 border border-white/5 rounded-full" />
+          
+          {errorOccurred ? (
+            <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center text-red-500">
+              <ArrowRight className="h-6 w-6" />
+            </div>
+          ) : (
+            <>
+              {/* Spinning gradient ring */}
+              <div className="absolute inset-0 border-2 border-transparent border-t-pink-500 border-r-pink-500/50 rounded-full animate-spin" />
+              <Loader2 className="h-6 w-6 text-pink-500 animate-spin" />
+            </>
+          )}
+        </div>
 
-  // --- Step 3: Fallback to legacy encoded token ---
-  try {
-    const targetUrl = decodeBrandSyncToken(token);
+        {/* Dynamic Status Text */}
+        <p className="text-sm font-semibold text-white/90 tracking-wide mb-2 transition-all duration-300">
+          {statusMessage}
+        </p>
+        
+        {/* Progress Dots */}
+        {!errorOccurred && (
+          <div className="flex gap-1.5 items-center justify-center">
+            <span className="w-1.5 h-1.5 rounded-full bg-pink-500 animate-bounce [animation-delay:-0.3s]" />
+            <span className="w-1.5 h-1.5 rounded-full bg-pink-500/80 animate-bounce [animation-delay:-0.15s]" />
+            <span className="w-1.5 h-1.5 rounded-full bg-pink-500/50 animate-bounce" />
+          </div>
+        )}
+      </div>
 
-    if (!/^https?:\/\//i.test(targetUrl)) {
-      redirect("/dashboard/buyer");
-    }
-
-    redirect(targetUrl);
-  } catch {
-    redirect("/dashboard/buyer");
-  }
+      {/* Footer Info */}
+      <p className="absolute bottom-6 text-[10px] text-gray-500 font-medium tracking-widest uppercase">
+        Secured by BrandSync Link-Shield
+      </p>
+    </div>
+  );
 }

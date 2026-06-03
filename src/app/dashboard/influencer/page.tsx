@@ -23,7 +23,9 @@ import {
   Wallet,
   DollarSign,
   Users,
-  Plus
+  Plus,
+  Eye,
+  MousePointerClick
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
@@ -93,6 +95,9 @@ type BrandSyncLinkEntry = {
   brandSyncUrl: string;
   createdAt: string;
   uniqueUrl?: string | null;
+  clicks?: number;
+  myClicks?: number;
+  shares?: number;
 };
 
 export default function InfluencerDashboardPage() {
@@ -391,9 +396,26 @@ export default function InfluencerDashboardPage() {
                             </div>
                           )}
                           <div className="p-4">
-                             <div className="flex items-start justify-between mb-3">
-                               <h3 className="font-semibold text-sm text-gray-900 truncate">{link.title}</h3>
-                             </div>
+                            {/* Title */}
+                            <div className="mb-2">
+                              <h3 className="font-semibold text-sm text-gray-900 truncate">{link.title}</h3>
+                            </div>
+
+                            {/* Clicks stats block */}
+                            <div className="grid grid-cols-2 gap-2 mb-3 bg-gray-50 p-2 rounded-lg border border-gray-100/50">
+                              <div className="flex flex-col items-center justify-center py-1 border-r border-gray-200">
+                                <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider flex items-center gap-1 mb-0.5">
+                                  <Eye className="h-3 w-3" /> Total Clicks
+                                </span>
+                                <span className="text-xs font-bold text-gray-700">{(link.clicks ?? 0).toLocaleString()} / {(link.shares ?? 0).toLocaleString()}</span>
+                              </div>
+                              <div className="flex flex-col items-center justify-center py-1">
+                                <span className="text-[10px] text-pink-500 font-semibold uppercase tracking-wider flex items-center gap-1 mb-0.5">
+                                  <MousePointerClick className="h-3 w-3" /> My Clicks
+                                </span>
+                                <span className="text-xs font-bold text-pink-600 bg-pink-50/50 px-1.5 py-0.5 rounded-md">{(link.myClicks ?? 0).toLocaleString()}</span>
+                              </div>
+                            </div>
                             <div className="flex items-center gap-2">
                               <Button asChild className="flex-1 text-xs h-8 shadow-sm text-white" style={{ background: PINK }}>
                                 <a href={link.uniqueUrl || link.brandSyncUrl} target="_blank" rel="noopener noreferrer">

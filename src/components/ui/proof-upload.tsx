@@ -37,11 +37,15 @@ export function ProofUpload({
   const [url, setUrl] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
 
-  // Check if we already have a proof of a specific type (either existing or selected)
+  // A REJECTED proof does NOT block resubmission — the slot is considered free
   const hasProofType = (type: Database["public"]["Enums"]["ProofType"]) => {
-    return existingProofs.some(p => p.type === type) || 
-           selectedProofs.some(p => p.type === type);
+    const existingNonRejected = existingProofs.some(
+      (p) => p.type === type && p.status !== "REJECTED"
+    );
+    return existingNonRejected || selectedProofs.some((p) => p.type === type);
   };
+
+  const hasRejectedProof = existingProofs.some((p) => p.status === "REJECTED");
 
   const handleUrlSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -164,6 +168,16 @@ export function ProofUpload({
 
   return (
     <div className="space-y-3">
+      {/* Rejection notice — shown when any proof was rejected */}
+      {hasRejectedProof && (
+        <div className="text-[11px] font-semibold text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 p-2.5 rounded-lg flex items-start gap-2">
+          <span className="mt-0.5 w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
+          <span>
+            One or more of your proofs were <strong>rejected</strong> by the admin. Please upload new proofs to resubmit.
+          </span>
+        </div>
+      )}
+
       {error && (
         <div className="text-[11px] font-semibold text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-950/40 p-2.5 rounded-md flex items-center gap-2">
           <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
@@ -263,9 +277,10 @@ export function ProofUpload({
                   font-bold text-[9px] px-2 py-0.5 rounded-full select-none shadow-3xs shrink-0 uppercase tracking-wider
                   ${proof.status === 'ACCEPTED' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30' : ''}
                   ${proof.status === 'REJECTED' ? 'bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400 border border-red-100 dark:border-red-900/30' : ''}
-                  ${!proof.status || proof.status === 'PENDING' ? 'bg-gray-50 text-gray-700 dark:bg-gray-800/40 dark:text-gray-300 border border-gray-100 dark:border-gray-800/60' : ''}
+                  ${proof.status === 'UNDER_REVIEW' ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400 border border-amber-100 dark:border-amber-900/30' : ''}
+                  ${!proof.status ? 'bg-gray-50 text-gray-700 dark:bg-gray-800/40 dark:text-gray-300 border border-gray-100 dark:border-gray-800/60' : ''}
                 `}>
-                  {proof.status || 'Pending'}
+                  {proof.status === 'REJECTED' ? '✕ Rejected — resubmit' : proof.status === 'UNDER_REVIEW' ? 'Under Review' : proof.status === 'ACCEPTED' ? '✓ Accepted' : proof.status || 'Pending'}
                 </Badge>
               </div>
             ))}

@@ -34,6 +34,7 @@ type ApplicationProof = Database['public']['Tables']['application_proofs']['Row'
   };
   task_application: {
     id: number;
+    user_id: string;
     task: {
       title: string;
       description: string;
@@ -135,6 +136,7 @@ export default function AdminProofsPage() {
           ),
           task_application:task_applications (
             id,
+            user_id,
             task:task_details (
               title,
               description,
@@ -304,6 +306,80 @@ export default function AdminProofsPage() {
       const { data: { user } } = await supabase.auth.getUser();
       const reviewerId = user?.id;
 
+      const proof = verificationModal.proof;
+      if (!proof) return;
+
+      const promiseDetails = proof.task_application.application_promises
+        .find(p => p.platform === proof.platform);
+
+      if (!promiseDetails) return;
+
+      const influencerUserId = proof.task_application.user_id;
+      const proofEarning = parseFloat(promiseDetails.est_profit);
+      const previousStatus = proof.proof_status?.status;
+
+      // --- Balance adjustment ---
+      // Credit est_profit ONCE per platform — only when BOTH URL and IMAGE proofs
+      // for that platform are ACCEPTED. Deduct only when that condition is broken.
+      if (influencerUserId && proofEarning > 0) {
+        // Fetch all proofs for this application + platform (including this one after update)
+        const { data: allPlatformProofs } = await supabase
+          .from('application_proofs')
+          .select('id, proof_type, proof_status(status)')
+          .eq('application_id', proof.application_id)
+          .eq('platform', proof.platform);
+
+        // Build a map of proof_type → status, simulating the status after this update
+        const statusMap: Record<string, string> = {};
+        (allPlatformProofs || []).forEach((p: any) => {
+          const s = p.proof_status;
+          const st = Array.isArray(s) ? s[0]?.status : s?.status;
+          // Simulate the new status for the proof being updated
+          statusMap[p.proof_type] = p.id === proofId ? status : (st || 'UNDER_REVIEW');
+        });
+
+        const bothAcceptedAfter = statusMap['URL'] === 'ACCEPTED' && statusMap['IMAGE'] === 'ACCEPTED';
+
+        // Was it fully accepted BEFORE this change?
+        const statusMapBefore: Record<string, string> = {};
+        (allPlatformProofs || []).forEach((p: any) => {
+          const s = p.proof_status;
+          const st = Array.isArray(s) ? s[0]?.status : s?.status;
+          statusMapBefore[p.proof_type] = st || 'UNDER_REVIEW';
+        });
+        const bothAcceptedBefore = statusMapBefore['URL'] === 'ACCEPTED' && statusMapBefore['IMAGE'] === 'ACCEPTED';
+
+        const { data: currentBalance, error: balErr } = await supabase
+          .from('account_balance')
+          .select('balance, total_earning')
+          .eq('user_id', influencerUserId)
+          .single();
+
+        if (!balErr && currentBalance) {
+          if (bothAcceptedAfter && !bothAcceptedBefore) {
+            // Just reached fully-accepted — credit the earning
+            await supabase
+              .from('account_balance')
+              .update({
+                balance: currentBalance.balance + proofEarning,
+                total_earning: currentBalance.total_earning + proofEarning,
+              })
+              .eq('user_id', influencerUserId);
+          } else if (!bothAcceptedAfter && bothAcceptedBefore) {
+            // Was fully accepted, now it's not — deduct the earning
+            await supabase
+              .from('account_balance')
+              .update({
+                balance: Math.max(0, currentBalance.balance - proofEarning),
+                total_earning: Math.max(0, currentBalance.total_earning - proofEarning),
+              })
+              .eq('user_id', influencerUserId);
+          }
+        }
+      }
+
+
+      // --- Update proof status ---
       const { error } = await supabase
         .from('proof_status')
         .update({
@@ -314,14 +390,6 @@ export default function AdminProofsPage() {
         .eq('proof_id', proofId);
 
       if (error) throw error;
-
-      const proof = verificationModal.proof;
-      if (!proof) return;
-
-      const promiseDetails = proof.task_application.application_promises
-        .find(p => p.platform === proof.platform);
-
-      if (!promiseDetails) return;
 
       const emailContext: Record<string, string> = {
         name: proof.task_application.user.name,
@@ -654,16 +722,29 @@ export default function AdminProofsPage() {
                                     )
                                   )}
                                 </TableCell>
-                                <TableCell className="py-3 px-4">
-                                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border-0 ${
-                                    getStatusBadgeVariant(proof.proof_status.status)
-                                  }`}>
-                                    {proof.proof_status.status}
-                                  </span>
-                                </TableCell>
-                                <TableCell className="py-3 px-4 text-xs text-gray-500">
-                                  {format(new Date(proof.created_at), 'MMM d, yyyy')}
-                                </TableCell>
+                                 <TableCell className="py-3 px-4">
+                                   <div className="flex flex-col gap-1">
+                                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border-0 w-fit ${
+                                       getStatusBadgeVariant(proof.proof_status.status)
+                                     }`}>
+                                       {proof.proof_status.status}
+                                     </span>
+                                     {/* Show resubmission warning: UNDER_REVIEW but previously reviewed (rejected) */}
+                                     {proof.proof_status.status === 'UNDER_REVIEW' && proof.proof_status.reviewed_at && (
+                                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-200 w-fit">
+                                         ⚠ Previously Rejected
+                                       </span>
+                                     )}
+                                   </div>
+                                 </TableCell>
+                                 <TableCell className="py-3 px-4 text-xs text-gray-500">
+                                   <div>{format(new Date(proof.created_at), 'MMM d, yyyy')}</div>
+                                   {proof.proof_status.status === 'UNDER_REVIEW' && proof.proof_status.reviewed_at && (
+                                     <div className="text-[9px] text-amber-600 font-medium mt-0.5">
+                                       Rejected: {format(new Date(proof.proof_status.reviewed_at), 'MMM d, yyyy')}
+                                     </div>
+                                   )}
+                                 </TableCell>
                                 <TableCell className="py-3 px-4 text-xs text-gray-500">
                                   {proof.proof_status.reviewer?.name || '-'}
                                 </TableCell>
