@@ -604,6 +604,7 @@ export default function WithdrawPage() {
                                   onChange={(e) => setWithdrawAmount(e.target.value)}
                                   className="pl-[4.5rem] pr-20 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                   placeholder="0.00"
+                                  disabled={balance < 1000}
                                 />
                                 <div className="absolute right-1 top-1/2 -translate-y-1/2">
                                   <Button
@@ -611,14 +612,20 @@ export default function WithdrawPage() {
                                     variant="ghost"
                                     size="sm"
                                     onClick={handleSetMaxAmount}
-                                    className="px-3 h-8 text-xs font-semibold text-pink-600 dark:text-pink-400 hover:bg-pink-50/50 dark:hover:bg-pink-950/30 rounded-lg"
+                                    disabled={balance < 1000}
+                                    className="px-3 h-8 text-xs font-semibold text-pink-600 dark:text-pink-400 hover:bg-pink-50/50 dark:hover:bg-pink-950/30 rounded-lg disabled:opacity-50"
                                   >
                                     Max
                                   </Button>
                                 </div>
                                 <BottomGradient />
                               </div>
-                              {!bankInfoSaved && (
+                              {balance < 1000 ? (
+                                <p className="text-red-500 dark:text-red-400 text-xs flex items-center font-medium animate-fadeIn">
+                                  <span className="inline-block w-2 h-2 rounded-full bg-red-500 mr-2 border border-white/20 animate-pulse"></span>
+                                  Withdrawal unavailable (balance is below LKR 1,000)
+                                </p>
+                              ) : !bankInfoSaved && (
                                 <p className="text-amber-600 dark:text-amber-400 text-xs flex items-center font-medium">
                                   <span className="inline-block w-2.5 h-2.5 rounded-full bg-amber-500 mr-2 border border-white/20 animate-pulse"></span>
                                   Please complete and save your bank details first
@@ -634,6 +641,7 @@ export default function WithdrawPage() {
                                 onClick={() => setShowConfirmDialog(true)}
                                 className="w-full bg-gradient-to-r from-pink-600 to-pink-500 hover:from-pink-500 hover:to-pink-400 text-white font-medium shadow-md shadow-pink-500/10 hover:shadow-pink-500/20 transition-all duration-200 rounded-xl h-11"
                                 disabled={
+                                  balance < 1000 ||
                                   !withdrawAmount ||
                                   parseFloat(withdrawAmount) <= 0 ||
                                   parseFloat(withdrawAmount) > balance ||
