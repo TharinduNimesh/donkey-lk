@@ -341,7 +341,7 @@ export default function InfluencerDashboardPage() {
                   <p className="text-sm text-gray-500 font-medium">Available Balance</p>
                   <p className="text-4xl font-bold mt-1 text-gray-900">{formatUSD(accountBalance?.balance || 0)}</p>
                   <p className="text-xs text-gray-400 mt-1">
-                    {new Intl.NumberFormat("en-LK", { style: "currency", currency: "LKR", maximumFractionDigits: 0 }).format(accountBalance?.balance || 0)} LKR
+                    LKR {(accountBalance?.balance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </p>
                   <div className="mt-4">
                     {(accountBalance?.balance || 0) < MIN_WITHDRAWAL_LKR ? (
