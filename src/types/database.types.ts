@@ -781,6 +781,7 @@ export type Database = {
           branch_name: string
           created_at: string
           id: number
+          is_deleted: boolean
           user_id: string
         }
         Insert: {
@@ -790,6 +791,7 @@ export type Database = {
           branch_name: string
           created_at?: string
           id?: number
+          is_deleted?: boolean
           user_id?: string
         }
         Update: {
@@ -799,6 +801,7 @@ export type Database = {
           branch_name?: string
           created_at?: string
           id?: number
+          is_deleted?: boolean
           user_id?: string
         }
         Relationships: [

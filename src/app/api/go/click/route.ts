@@ -80,7 +80,7 @@ export async function POST(request: Request) {
             .select('id', { count: 'exact', head: true })
             .eq('influencer_token_id', subToken.id);
 
-          if (clicksCount && clicksCount > 0 && clicksCount % 10 === 0) {
+          if (clicksCount === 10) {
             const lkrPerUsd = Number(process.env.NEXT_PUBLIC_LKR_PER_USD || process.env.LKR_PER_USD || 295);
             const reward = 0.01 * lkrPerUsd;
 

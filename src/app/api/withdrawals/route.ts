@@ -173,3 +173,57 @@ export async function GET(request: Request) {
     );
   }
 }
+
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const optionId = searchParams.get("optionId");
+
+    if (!optionId) {
+      return NextResponse.json(
+        { error: "optionId query parameter is required" },
+        { status: 400 }
+      );
+    }
+
+    const cookieStore = await cookies();
+    const supabase = createRouteHandlerClient<Database>({ cookies: () => cookieStore as any });
+
+    // Verify the user is authenticated
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Verify ownership — the row must belong to this user
+    const { data: existing, error: fetchError } = await supabaseAdmin
+      .from("withdrawal_options")
+      .select("id, user_id")
+      .eq("id", Number(optionId))
+      .single();
+
+    if (fetchError || !existing) {
+      return NextResponse.json({ error: "Bank account not found" }, { status: 404 });
+    }
+
+    if (existing.user_id !== user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Soft-delete: set is_deleted = true instead of removing the row
+    const { error: updateError } = await supabaseAdmin
+      .from("withdrawal_options")
+      .update({ is_deleted: true })
+      .eq("id", Number(optionId));
+
+    if (updateError) {
+      console.error("Failed to soft-delete bank account:", updateError);
+      return NextResponse.json({ error: "Failed to hide bank account" }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Delete bank account error:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}

@@ -14,14 +14,15 @@ import {
   CheckCircle,
   Settings,
   Share2,
-  Link2
+  Link2,
+  Wallet
 } from "lucide-react";
 import { signOut } from "@/lib/supabase";
 
 const PINK = "#C8185A";
 
 type SidebarProps = {
-  activePage?: "dashboard" | "tasks" | "platforms" | "settings" | "links";
+  activePage?: "dashboard" | "tasks" | "platforms" | "settings" | "links" | "earnings";
   onNavigate?: () => void;
 };
 
@@ -37,6 +38,7 @@ const SidebarNav = ({ activePage, onNavigate }: SidebarProps) => {
     { icon: LayoutDashboard, label: "Dashboard", page: "dashboard" as const, path: "/dashboard/influencer" },
     { icon: Megaphone, label: "Available Tasks", page: "tasks" as const, path: "/dashboard/influencer/tasks" },
     { icon: Link2, label: "BrandSync Links", page: "links" as const, path: "/dashboard/influencer/links" },
+    { icon: Wallet, label: "My Earnings", page: "earnings" as const, path: "/dashboard/influencer/earnings" },
   ];
 
   const mgmtNav = [
