@@ -17,6 +17,7 @@ import {
   X,
   Bell,
   HelpCircle,
+  ListTodo,
 } from "lucide-react";
 
 const PINK = "#C8185A";
@@ -41,6 +42,11 @@ const adminRoutes = [
     name: "Application Proofs",
     path: "/dashboard/admin/proofs",
     icon: ClipboardCheck,
+  },
+  {
+    name: "Task Progress",
+    path: "/dashboard/admin/task-progress",
+    icon: ListTodo,
   },
   {
     name: "Ownership Verifications",
