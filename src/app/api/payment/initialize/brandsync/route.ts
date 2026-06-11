@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Minimum shares is 100' }, { status: 400 });
     }
 
-    const amount = shares * 6; // LKR
+    const amount = shares * 0.70; // LKR
 
     const cookieStore = await cookies();
 

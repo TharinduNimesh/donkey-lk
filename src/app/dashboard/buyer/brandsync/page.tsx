@@ -295,7 +295,7 @@ export default function BrandSyncCreatePage() {
                       placeholder="Enter number of shares"
                       disabled={!!pendingBrandSyncId}
                     />
-                    <p className="text-xs text-muted-foreground">Minimum 100 shares. Price LKR 6 per share.</p>
+                    <p className="text-xs text-muted-foreground">Minimum 100 shares. Price LKR 0.70 per share.</p>
                   </div>
 
                   <div className="space-y-2 sm:col-span-2">
@@ -379,7 +379,7 @@ export default function BrandSyncCreatePage() {
                 <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900 dark:border-emerald-900/60 dark:bg-emerald-950/20 dark:text-emerald-200">
                   <p className="font-semibold">Payment required</p>
                   <p className="text-2xl font-bold mt-1">LKR {requiresPaymentAmount.toLocaleString()}</p>
-                  <p className="text-xs mt-1 opacity-80">{shares} shares × LKR 6 = LKR {requiresPaymentAmount.toLocaleString()}</p>
+                  <p className="text-xs mt-1 opacity-80">{shares} shares × LKR 0.70 = LKR {requiresPaymentAmount.toLocaleString()}</p>
                 </div>
               ) : (
                 <div className="rounded-xl border border-dashed border-gray-300 bg-white p-4 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-950/50 dark:text-gray-400">

@@ -194,11 +194,14 @@ export default function EarningsPage() {
   }, [supabase, router]);
 
   const totalClicks = brandSyncLinks.reduce((sum, link) => sum + (link.myClicks || 0), 0);
-  const nextMilestoneClicks = Math.ceil((totalClicks + 1) / 10) * 10;
-  const progressToNextMilestone = totalClicks % 10;
+  const totalMilestones = brandSyncLinks.reduce((sum, link) => sum + ((link.myClicks || 0) >= 10 ? 1 : 0), 0);
+  const nextMilestoneClicks = (totalMilestones + 1) * 10;
+  const progressToNextMilestone = brandSyncLinks.length > 0
+    ? Math.max(...brandSyncLinks.map(link => (link.myClicks || 0) % 10))
+    : 0;
 
-  // Only display BrandSync links that have earned at least once (clicks >= 10)
-  const earnedLinks = brandSyncLinks.filter(link => (link.myClicks || 0) >= 10);
+  // Only display BrandSync links that have at least one click (clicks > 0)
+  const earnedLinks = brandSyncLinks.filter(link => (link.myClicks || 0) > 0);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -215,8 +218,8 @@ export default function EarningsPage() {
 
   const renderSkeleton = () => (
     <div className="animate-pulse space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {[...Array(3)].map((_, i) => (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {[...Array(2)].map((_, i) => (
           <Card key={i} className="h-32 border border-gray-100 bg-white" />
         ))}
       </div>
@@ -254,7 +257,7 @@ export default function EarningsPage() {
           ) : (
             <>
               {/* Stat Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Available Balance */}
                 <Card className="overflow-hidden border border-gray-100 bg-white shadow-xs relative">
                   <CardHeader className="pb-2 flex flex-row items-center justify-between">
@@ -281,7 +284,7 @@ export default function EarningsPage() {
                     </div>
                   </CardContent>
                 </Card>
-
+ 
                 {/* Lifetime Earnings */}
                 <Card className="overflow-hidden border border-gray-100 bg-white shadow-xs relative">
                   <CardHeader className="pb-2 flex flex-row items-center justify-between">
@@ -296,41 +299,6 @@ export default function EarningsPage() {
                   <CardContent className="flex flex-col justify-end h-[100px]">
                     <div className="text-3xl font-extrabold text-gray-900">{formatUSD(accountBalance?.total_earning || 0)}</div>
                     <div className="text-sm font-semibold text-blue-600 mt-1">{formatLKR(accountBalance?.total_earning || 0)}</div>
-                  </CardContent>
-                </Card>
-
-                {/* Milestone Clicks */}
-                <Card className="overflow-hidden border border-gray-100 bg-white shadow-xs relative">
-                  <CardHeader className="pb-2 flex flex-row items-center justify-between">
-                    <div>
-                      <CardTitle className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Milestone Progress</CardTitle>
-                      <CardDescription className="text-xs">Track unique clicks rewards</CardDescription>
-                    </div>
-                    <div className="bg-purple-50 p-2.5 rounded-xl">
-                      <MousePointerClick className="h-5 w-5 text-purple-650" />
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="flex justify-between items-baseline">
-                      <span className="text-3xl font-extrabold text-gray-900">{totalClicks} Clicks</span>
-                      <span className="text-xs text-gray-500 font-semibold">Next reward: {nextMilestoneClicks}</span>
-                    </div>
-                    
-                    {/* Progress Bar */}
-                    <div className="space-y-1">
-                      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full rounded-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-350"
-                          style={{ width: `${progressToNextMilestone * 10}%` }}
-                        />
-                      </div>
-                      <div className="flex justify-between text-[9px] font-bold text-gray-400 uppercase tracking-wider">
-                        <span>{progressToNextMilestone} / 10 clicks to next reward</span>
-                        <span className="flex items-center gap-0.5 text-pink-600">
-                          <Sparkles className="h-2.5 w-2.5" /> +$0.01
-                        </span>
-                      </div>
-                    </div>
                   </CardContent>
                 </Card>
               </div>
@@ -365,7 +333,7 @@ export default function EarningsPage() {
                             </thead>
                             <tbody className="divide-y divide-gray-50 text-xs">
                               {earnedLinks.map((link) => {
-                                const milestoneCount = Math.floor((link.myClicks || 0) / 10);
+                                const milestoneCount = (link.myClicks || 0) >= 10 ? 1 : 0;
                                 const rewardLKR = milestoneCount * 0.01 * LKR_PER_USD;
                                 return (
                                   <tr key={link.id} className="hover:bg-gray-50/40 transition-colors">

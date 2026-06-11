@@ -98,6 +98,14 @@ export async function POST(request: Request) {
                   total_earning: currentBalance.total_earning + reward,
                 })
                 .eq('user_id', subToken.influencer_user_id);
+            } else {
+              await supabaseAdmin
+                .from('account_balance')
+                .insert({
+                  user_id: subToken.influencer_user_id,
+                  balance: reward,
+                  total_earning: reward,
+                });
             }
           }
         } catch (clickErr) {
