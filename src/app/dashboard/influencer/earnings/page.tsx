@@ -194,7 +194,7 @@ export default function EarningsPage() {
   }, [supabase, router]);
 
   const totalClicks = brandSyncLinks.reduce((sum, link) => sum + (link.myClicks || 0), 0);
-  const totalMilestones = brandSyncLinks.reduce((sum, link) => sum + Math.floor((link.myClicks || 0) / 10), 0);
+  const totalMilestones = brandSyncLinks.reduce((sum, link) => sum + ((link.myClicks || 0) >= 10 ? 1 : 0), 0);
   const nextMilestoneClicks = (totalMilestones + 1) * 10;
   const progressToNextMilestone = brandSyncLinks.length > 0
     ? Math.max(...brandSyncLinks.map(link => (link.myClicks || 0) % 10))
@@ -333,7 +333,7 @@ export default function EarningsPage() {
                             </thead>
                             <tbody className="divide-y divide-gray-50 text-xs">
                               {earnedLinks.map((link) => {
-                                const milestoneCount = Math.floor((link.myClicks || 0) / 10);
+                                const milestoneCount = (link.myClicks || 0) >= 10 ? 1 : 0;
                                 const rewardLKR = milestoneCount * 0.01 * LKR_PER_USD;
                                 return (
                                   <tr key={link.id} className="hover:bg-gray-50/40 transition-colors">
