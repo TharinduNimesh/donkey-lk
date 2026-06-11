@@ -442,7 +442,7 @@ export function BrandSyncLinkModal({ open, onOpenChange }: BrandSyncLinkModalPro
                     <div className="space-y-2">
                       <Label htmlFor="brandsync-shares">Shares Count</Label>
                       <Input id="brandsync-shares" type="number" value={shares} min={100} onChange={handleSharesInputChange} placeholder="Enter number of shares" />
-                      <p className="text-xs text-muted-foreground">Minimum 100 shares. Price LKR 6 per share.</p>
+                      <p className="text-xs text-muted-foreground">Minimum 100 shares. Price LKR 0.70 per share.</p>
                     </div>
                   </div>
 

@@ -269,10 +269,10 @@ export async function POST(request: Request) {
       thumbnailPath = await uploadThumbnail(thumbnailFile, user.id);
     }
 
-    // Enforce shares business rule: minimum 100 shares, Rs.6 per share
+    // Enforce shares business rule: minimum 100 shares, Rs.0.70 per share
     const shares = parsed.shares ?? 0;
     const MIN_SHARES = 100;
-    const PRICE_PER_SHARE = 6; // LKR
+    const PRICE_PER_SHARE = 0.70; // LKR
 
     if (shares < MIN_SHARES) {
       return NextResponse.json({ error: `Minimum shares is ${MIN_SHARES}` }, { status: 400 });

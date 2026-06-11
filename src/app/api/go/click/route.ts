@@ -80,7 +80,7 @@ export async function POST(request: Request) {
             .select('id', { count: 'exact', head: true })
             .eq('influencer_token_id', subToken.id);
 
-          if (clicksCount === 10) {
+          if (clicksCount && clicksCount % 10 === 0) {
             const lkrPerUsd = Number(process.env.NEXT_PUBLIC_LKR_PER_USD || process.env.LKR_PER_USD || 295);
             const reward = 0.01 * lkrPerUsd;
 
@@ -98,6 +98,14 @@ export async function POST(request: Request) {
                   total_earning: currentBalance.total_earning + reward,
                 })
                 .eq('user_id', subToken.influencer_user_id);
+            } else {
+              await supabaseAdmin
+                .from('account_balance')
+                .insert({
+                  user_id: subToken.influencer_user_id,
+                  balance: reward,
+                  total_earning: reward,
+                });
             }
           }
         } catch (clickErr) {
