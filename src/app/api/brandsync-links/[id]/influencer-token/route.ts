@@ -67,7 +67,22 @@ export async function GET(
       return NextResponse.json({ uniqueUrl, token: existing.token, unlocked: true });
     }
 
-    return NextResponse.json({ unlocked: false });
+    // Get unlock limits metadata
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const { data: recentTokens } = await (supabaseAdmin as any)
+      .from("brandsync_influencer_tokens")
+      .select("created_at")
+      .eq("influencer_user_id", user.id)
+      .gte("created_at", twentyFourHoursAgo)
+      .order("created_at", { ascending: true });
+
+    const reachedLimit = recentTokens && recentTokens.length >= 3;
+    let nextUnlockAt = null;
+    if (reachedLimit && recentTokens && recentTokens[0]) {
+      nextUnlockAt = new Date(new Date(recentTokens[0].created_at).getTime() + 24 * 60 * 60 * 1000).toISOString();
+    }
+
+    return NextResponse.json({ unlocked: false, nextUnlockAt });
   } catch (error) {
     console.error("Influencer token check error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
@@ -129,8 +144,22 @@ export async function POST(
       }
 
       if (createdTodayCount && createdTodayCount >= 3) {
+        // Find the oldest of the last 3 unlocks
+        const { data: oldestToken } = await (supabaseAdmin as any)
+          .from("brandsync_influencer_tokens")
+          .select("created_at")
+          .eq("influencer_user_id", user.id)
+          .gte("created_at", twentyFourHoursAgo)
+          .order("created_at", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+
+        const nextUnlockAt = oldestToken 
+          ? new Date(new Date(oldestToken.created_at).getTime() + 24 * 60 * 60 * 1000).toISOString()
+          : new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
         return NextResponse.json(
-          { error: "daily_limit_reached", message: "You have reached your daily limit of 3 unlocked links." },
+          { error: "daily_limit_reached", message: "You have reached your daily limit of 3 unlocked links.", nextUnlockAt },
           { status: 403 }
         );
       }

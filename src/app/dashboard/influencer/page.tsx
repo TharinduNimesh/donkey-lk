@@ -106,6 +106,78 @@ type BrandSyncLinkEntry = {
   myClicks?: number;
   shares?: number;
   unlocked?: boolean;
+  nextUnlockAt?: string | null;
+};
+
+const UnlockButtonWithCountdown = ({ 
+  linkId, 
+  nextUnlockAt, 
+  isUnlocking, 
+  onUnlock 
+}: { 
+  linkId: number; 
+  nextUnlockAt?: string | null; 
+  isUnlocking: boolean; 
+  onUnlock: () => void;
+}) => {
+  const [timeLeft, setTimeLeft] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!nextUnlockAt) {
+      setTimeLeft(null);
+      return;
+    }
+
+    const updateTimer = () => {
+      const diff = new Date(nextUnlockAt).getTime() - Date.now();
+      if (diff <= 0) {
+        setTimeLeft(null);
+        return;
+      }
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      
+      const formatted = [
+        h > 0 ? `${h}h` : null,
+        m > 0 || h > 0 ? `${m}m` : null,
+        `${s}s`
+      ].filter(Boolean).join(" ");
+      
+      setTimeLeft(formatted);
+    };
+
+    updateTimer();
+    const timer = setInterval(updateTimer, 1000);
+    return () => clearInterval(timer);
+  }, [nextUnlockAt]);
+
+  const isDisabled = isUnlocking || !!timeLeft;
+  const PINK = "#C8185A";
+
+  return (
+    <Button
+      className="w-full text-xs h-8 font-semibold text-white shadow-sm flex items-center justify-center gap-1.5 transition-all"
+      style={{ background: PINK }}
+      disabled={isDisabled}
+      onClick={onUnlock}
+    >
+      {isUnlocking ? (
+        <>
+          <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+          Unlocking...
+        </>
+      ) : timeLeft ? (
+        <>
+          <Lock className="h-3.5 w-3.5" /> Unlock in {timeLeft}
+        </>
+      ) : (
+        <>
+          <Lock className="h-3.5 w-3.5" /> Unlock Task Link
+        </>
+      )}
+    </Button>
+  );
 };
 
 export default function InfluencerDashboardPage() {
@@ -169,6 +241,13 @@ export default function InfluencerDashboardPage() {
       if (!res.ok) {
         if (data.error === "daily_limit_reached") {
           toast.error("Daily limit reached! You can only unlock 3 links per day.");
+          if (data.nextUnlockAt) {
+            setBrandSyncLinks(prev => prev.map(link => 
+              !link.unlocked 
+                ? { ...link, nextUnlockAt: data.nextUnlockAt } 
+                : link
+            ));
+          }
         } else {
           toast.error(data.error || "Failed to unlock link.");
         }
@@ -234,6 +313,8 @@ export default function InfluencerDashboardPage() {
                       const data = await tokenResp.json();
                       if (data.unlocked) {
                         return { ...link, uniqueUrl: data.uniqueUrl as string, unlocked: true };
+                      } else {
+                        return { ...link, uniqueUrl: null, unlocked: false, nextUnlockAt: data.nextUnlockAt };
                       }
                     }
                   } catch {}
@@ -489,23 +570,12 @@ export default function InfluencerDashboardPage() {
                             ) : null}
                             <div className="flex items-center gap-2 w-full">
                               {!link.unlocked ? (
-                                <Button
-                                  className="w-full text-xs h-8 font-semibold text-white shadow-sm flex items-center justify-center gap-1.5 transition-all"
-                                  style={{ background: PINK }}
-                                  disabled={isUnlocking === link.id}
-                                  onClick={() => handleUnlockLink(link.id)}
-                                >
-                                  {isUnlocking === link.id ? (
-                                    <>
-                                      <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                                      Unlocking...
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Lock className="h-3.5 w-3.5" /> Unlock Task Link
-                                    </>
-                                  )}
-                                </Button>
+                                <UnlockButtonWithCountdown
+                                  linkId={link.id}
+                                  nextUnlockAt={link.nextUnlockAt}
+                                  isUnlocking={isUnlocking === link.id}
+                                  onUnlock={() => handleUnlockLink(link.id)}
+                                />
                               ) : (
                                 <>
                                   <Button
