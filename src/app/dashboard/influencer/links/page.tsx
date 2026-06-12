@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Database } from "@/types/database.types";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { InfluencerSidebar, InfluencerTopbar } from "@/components/dashboard/influencer-sidebar";
-import { ExternalLink, Copy, Eye, MousePointerClick } from "lucide-react";
+import { ExternalLink, Copy, Eye, MousePointerClick, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
@@ -29,6 +29,7 @@ type BrandSyncLinkEntry = {
   clicks?: number;
   myClicks?: number;
   shares?: number;
+  unlocked?: boolean;
 };
 
 export default function InfluencerLinksPage() {
@@ -37,6 +38,38 @@ export default function InfluencerLinksPage() {
 
   const [brandSyncLinks, setBrandSyncLinks] = useState<BrandSyncLinkEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isUnlocking, setIsUnlocking] = useState<number | null>(null);
+
+  const handleUnlockLink = async (linkId: number) => {
+    try {
+      setIsUnlocking(linkId);
+      const res = await fetch(`/api/brandsync-links/${linkId}/influencer-token`, {
+        method: "POST",
+        credentials: "include"
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        if (data.error === "daily_limit_reached") {
+          toast.error("Daily limit reached! You can only unlock 3 links per day.");
+        } else {
+          toast.error(data.error || "Failed to unlock link.");
+        }
+        return;
+      }
+      
+      setBrandSyncLinks(prev => prev.map(link => 
+        link.id === linkId 
+          ? { ...link, uniqueUrl: data.uniqueUrl, unlocked: true } 
+          : link
+      ));
+      toast.success("Link unlocked successfully!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to unlock link.");
+    } finally {
+      setIsUnlocking(null);
+    }
+  };
 
   useEffect(() => {
     const fetchLinks = async () => {
@@ -54,9 +87,14 @@ export default function InfluencerLinksPage() {
           links.map(async (link) => {
             try {
               const tokenResp = await fetch(`/api/brandsync-links/${link.id}/influencer-token`, { credentials: 'include' });
-              if (tokenResp.ok) return { ...link, uniqueUrl: (await tokenResp.json()).uniqueUrl as string };
+              if (tokenResp.ok) {
+                const data = await tokenResp.json();
+                if (data.unlocked) {
+                  return { ...link, uniqueUrl: data.uniqueUrl as string, unlocked: true };
+                }
+              }
             } catch {}
-            return { ...link, uniqueUrl: link.brandSyncUrl };
+            return { ...link, uniqueUrl: null, unlocked: false };
           })
         );
         setBrandSyncLinks(linksWithTokens);
@@ -132,28 +170,58 @@ export default function InfluencerLinksPage() {
                           </div>
                         </div>
 
+                        {link.myClicks && link.shares && link.myClicks > link.shares ? (
+                          <div className="mb-3 p-1.5 bg-amber-50 rounded-lg border border-amber-200 text-center text-[10px] text-amber-700 font-medium">
+                            Extra clicks: {link.myClicks - link.shares} ({"We can't pay for extra views"})
+                          </div>
+                        ) : null}
+
                         {/* Actions */}
-                        <div className="flex items-center gap-2">
-                          <Button
-                            className="flex-1 text-xs h-8 font-medium text-white shadow-none"
-                            style={{ background: PINK }}
-                            onClick={async () => {
-                              await navigator.clipboard.writeText(link.uniqueUrl || link.brandSyncUrl);
-                              toast.success("Link copied!");
-                            }}
-                          >
-                            <Copy className="mr-1.5 h-3.5 w-3.5" /> Copy Link
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-8 w-8 shrink-0 text-gray-450 border-gray-200 hover:text-gray-900"
-                            asChild
-                          >
-                            <a href={link.uniqueUrl || link.brandSyncUrl} target="_blank" rel="noopener noreferrer" title="Open Link">
-                              <ExternalLink className="h-3.5 w-3.5" />
-                            </a>
-                          </Button>
+                        <div className="flex items-center gap-2 w-full">
+                          {!link.unlocked ? (
+                            <Button
+                              className="w-full text-xs h-8 font-semibold text-white shadow-sm flex items-center justify-center gap-1.5 transition-all"
+                              style={{ background: PINK }}
+                              disabled={isUnlocking === link.id}
+                              onClick={() => handleUnlockLink(link.id)}
+                            >
+                              {isUnlocking === link.id ? (
+                                <>
+                                  <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                                  Unlocking...
+                                </>
+                              ) : (
+                                <>
+                                  <Lock className="h-3.5 w-3.5" /> Unlock Task Link
+                                </>
+                              )}
+                            </Button>
+                          ) : (
+                            <>
+                              <Button
+                                className="flex-1 text-xs h-8 font-medium text-white shadow-none"
+                                style={{ background: PINK }}
+                                onClick={async () => {
+                                  if (link.uniqueUrl) {
+                                    await navigator.clipboard.writeText(link.uniqueUrl);
+                                    toast.success("Link copied!");
+                                  }
+                                }}
+                              >
+                                <Copy className="mr-1.5 h-3.5 w-3.5" /> Copy Link
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-8 w-8 shrink-0 text-gray-450 border-gray-200 hover:text-gray-900"
+                                asChild
+                              >
+                                <a href={link.uniqueUrl || undefined} target="_blank" rel="noopener noreferrer" title="Open Link">
+                                  <ExternalLink className="h-3.5 w-3.5" />
+                                </a>
+                              </Button>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>

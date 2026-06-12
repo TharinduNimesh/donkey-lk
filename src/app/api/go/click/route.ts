@@ -30,7 +30,7 @@ export async function POST(request: Request) {
     if (subToken) {
       const { data: parent } = await supabaseAdmin
         .from('brandsync_links')
-        .select('platform_url, is_paid')
+        .select('platform_url, is_paid, shares')
         .eq('id', subToken.brandsync_id)
         .maybeSingle();
 
@@ -80,32 +80,35 @@ export async function POST(request: Request) {
             .select('id', { count: 'exact', head: true })
             .eq('influencer_token_id', subToken.id);
 
-          if (clicksCount === 10) {
-            const lkrPerUsd = Number(process.env.NEXT_PUBLIC_LKR_PER_USD || process.env.LKR_PER_USD || 295);
-            const reward = 0.01 * lkrPerUsd;
+          if (clicksCount && clicksCount > 0 && clicksCount % 10 === 0) {
+            const limit = parent.shares || 0;
+            if (clicksCount <= limit) {
+              const lkrPerUsd = Number(process.env.NEXT_PUBLIC_LKR_PER_USD || process.env.LKR_PER_USD || 295);
+              const reward = 0.01 * lkrPerUsd;
 
-            const { data: currentBalance } = await supabaseAdmin
-              .from('account_balance')
-              .select('balance, total_earning')
-              .eq('user_id', subToken.influencer_user_id)
-              .maybeSingle();
+              const { data: currentBalance } = await supabaseAdmin
+                .from('account_balance')
+                .select('balance, total_earning')
+                .eq('user_id', subToken.influencer_user_id)
+                .maybeSingle();
 
-            if (currentBalance) {
-              await supabaseAdmin
-                .from('account_balance')
-                .update({
-                  balance: currentBalance.balance + reward,
-                  total_earning: currentBalance.total_earning + reward,
-                })
-                .eq('user_id', subToken.influencer_user_id);
-            } else {
-              await supabaseAdmin
-                .from('account_balance')
-                .insert({
-                  user_id: subToken.influencer_user_id,
-                  balance: reward,
-                  total_earning: reward,
-                });
+              if (currentBalance) {
+                await supabaseAdmin
+                  .from('account_balance')
+                  .update({
+                    balance: currentBalance.balance + reward,
+                    total_earning: currentBalance.total_earning + reward,
+                  })
+                  .eq('user_id', subToken.influencer_user_id);
+              } else {
+                await supabaseAdmin
+                  .from('account_balance')
+                  .insert({
+                    user_id: subToken.influencer_user_id,
+                    balance: reward,
+                    total_earning: reward,
+                  });
+              }
             }
           }
         } catch (clickErr) {
