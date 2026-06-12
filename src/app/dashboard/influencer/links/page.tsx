@@ -134,21 +134,25 @@ export default function InfluencerLinksPage() {
 
                         {/* Actions */}
                         <div className="flex items-center gap-2">
-                          <Button asChild className="flex-1 text-xs h-8 font-medium text-white shadow-none" style={{ background: PINK }}>
-                            <a href={link.uniqueUrl || link.brandSyncUrl} target="_blank" rel="noopener noreferrer">
-                              <ExternalLink className="mr-1.5 h-3.5 w-3.5" /> Open Link
-                            </a>
-                          </Button>
                           <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-8 w-8 shrink-0 text-gray-400 border-gray-200 hover:text-gray-600"
+                            className="flex-1 text-xs h-8 font-medium text-white shadow-none"
+                            style={{ background: PINK }}
                             onClick={async () => {
                               await navigator.clipboard.writeText(link.uniqueUrl || link.brandSyncUrl);
                               toast.success("Link copied!");
                             }}
                           >
-                            <Copy className="h-3.5 w-3.5" />
+                            <Copy className="mr-1.5 h-3.5 w-3.5" /> Copy Link
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-8 shrink-0 text-gray-450 border-gray-200 hover:text-gray-900"
+                            asChild
+                          >
+                            <a href={link.uniqueUrl || link.brandSyncUrl} target="_blank" rel="noopener noreferrer" title="Open Link">
+                              <ExternalLink className="h-3.5 w-3.5" />
+                            </a>
                           </Button>
                         </div>
                       </div>
