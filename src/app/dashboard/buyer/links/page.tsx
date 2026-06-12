@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import Link from "next/link";
 import { Database } from "@/types/database.types";
 import {
   Link2,
@@ -447,8 +448,8 @@ export default function AllLinksPage() {
           <footer className="flex items-center justify-between text-xs text-gray-400 pt-2 pb-4">
             <span>© {new Date().getFullYear()} BrandSync Platform. All rights reserved.</span>
             <div className="flex items-center gap-4">
-              <button className="hover:text-gray-600">Terms</button>
-              <button className="hover:text-gray-600">Privacy</button>
+              <Link href="/policies/terms-of-service" className="hover:text-gray-600">Terms</Link>
+              <Link href="/policies/privacy-policy" className="hover:text-gray-600">Privacy</Link>
               <button className="hover:text-gray-600">Support</button>
             </div>
           </footer>

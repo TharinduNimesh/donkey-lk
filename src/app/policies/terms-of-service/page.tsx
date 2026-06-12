@@ -1,6 +1,5 @@
 "use client";
 
-import { Header } from "@/components/ui/header";
 import { Footer } from "@/components/ui/footer";
 import { motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
@@ -35,402 +34,168 @@ export default function TermsOfServicePage() {
           {/* Page Title */}
           <motion.div variants={childVariants} className="text-center mb-12">
             <h1 className="text-4xl md:text-5xl font-bold mb-4">
-              <span className="bg-gradient-to-r from-pink-500 to-pink-600 bg-clip-text text-transparent">
-                Terms of
-              </span>{" "}
-              Service
+              <span className="bg-gradient-to-r from-pink-500 to-pink-600 bg-clip-text text-transparent font-display">
+                Terms and Conditions
+              </span>
             </h1>
-            <p className="text-lg text-gray-600 dark:text-gray-400">
-              Last Updated: April 23, 2025
+            <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">
+              Effective Date: June 12, 2026
             </p>
           </motion.div>
 
-          {/* Introduction Section */}
-          <motion.section variants={childVariants}>
-            <Card className="p-6 md:p-8 border border-pink-100/50 dark:border-pink-900/50 shadow-sm mb-12">
-              <h2 className="text-2xl md:text-3xl font-bold mb-6 bg-gradient-to-r from-pink-500 to-pink-600 bg-clip-text text-transparent">
-                Introduction
-              </h2>
-              
-              <div className="prose prose-pink dark:prose-invert max-w-none">
-                <p className="mb-6">
-                  Welcome to BrandSync! These Terms of Service ("Terms") govern your use of BrandSync.lk, its related 
-                  applications, features, and services (collectively referred to as the "Platform"). By accessing or using 
-                  our Platform, you agree to be bound by these Terms. If you do not agree with any part of these Terms, 
-                  you may not use our Platform.
-                </p>
-                <p className="mb-6">
-                  BrandSync operates as an intermediary platform connecting Influencers and Brands (collectively referred to 
-                  as "Users"). These Terms constitute a legally binding agreement between you and BrandSync.lk, whether you 
-                  are a registered user or just browsing our Platform.
-                </p>
-                <p className="mb-6">
-                  Please read these Terms carefully as they contain important information regarding your legal rights, 
-                  remedies, and obligations.
-                </p>
-              </div>
-            </Card>
-          </motion.section>
-
-          {/* Definitions Section */}
-          <motion.section variants={childVariants}>
-            <Card className="p-6 md:p-8 border border-pink-100/50 dark:border-pink-900/50 shadow-sm mb-12">
-              <h2 className="text-2xl md:text-3xl font-bold mb-6 bg-gradient-to-r from-pink-500 to-pink-600 bg-clip-text text-transparent">
-                Definitions
-              </h2>
-              
-              <div className="prose prose-pink dark:prose-invert max-w-none">
-                <ul className="list-disc pl-6 space-y-4 mb-6">
-                  <li><strong>"Platform"</strong> refers to BrandSync.lk, its websites, applications, and all related services.</li>
-                  <li><strong>"Influencer"</strong> refers to users who promote Brands' content and services through their social media accounts.</li>
-                  <li><strong>"Brand"</strong> or <strong>"Buyer"</strong> refers to users who seek promotion and engagement for their content through Influencers on our Platform.</li>
-                  <li><strong>"Campaign"</strong> refers to any promotional activity created by a Brand for Influencers to participate in.</li>
-                  <li><strong>"Content"</strong> refers to any text, images, videos, graphics, or other materials uploaded, shared, or created on the Platform.</li>
-                  <li><strong>"Payment"</strong> refers to the financial compensation provided to Influencers for their services.</li>
-                </ul>
-              </div>
-            </Card>
-          </motion.section>
-
-          {/* Account Registration Section */}
-          <motion.section variants={childVariants}>
-            <Card className="p-6 md:p-8 border border-pink-100/50 dark:border-pink-900/50 shadow-sm mb-12">
-              <h2 className="text-2xl md:text-3xl font-bold mb-6 bg-gradient-to-r from-pink-500 to-pink-600 bg-clip-text text-transparent">
-                Account Registration & Eligibility
-              </h2>
-              
-              <div className="prose prose-pink dark:prose-invert max-w-none">
-                <h3 className="text-xl font-semibold mt-6 mb-4">1. Registration Requirements</h3>
-                <p className="mb-4">
-                  To use BrandSync services, you must create an account with accurate and complete information. You are responsible 
-                  for maintaining the confidentiality of your account credentials and for all activities that occur under your account.
-                </p>
-                
-                <h3 className="text-xl font-semibold mt-8 mb-4">2. Eligibility</h3>
-                <p className="mb-4">By using BrandSync, you represent and warrant that:</p>
-                <ul className="list-disc pl-6 space-y-2 mb-6">
-                  <li>You are at least 18 years of age or have legal parental/guardian consent.</li>
-                  <li>You have the right, authority, and capacity to enter into these Terms.</li>
-                  <li>You will use the Platform in accordance with all applicable laws and regulations.</li>
-                  <li>You are not prohibited from receiving services under the laws of Sri Lanka or other applicable jurisdictions.</li>
-                </ul>
-                
-                <h3 className="text-xl font-semibold mt-8 mb-4">3. Account Verification</h3>
-                <p className="mb-6">
-                  BrandSync may require verification of your identity and/or your social media accounts. You agree to provide any 
-                  requested information for verification purposes. We reserve the right to deny or revoke access to any user who 
-                  fails to meet our verification standards.
-                </p>
-              </div>
-            </Card>
-          </motion.section>
-
-          {/* Platform Rules Section */}
-          <motion.section variants={childVariants}>
-            <Card className="p-6 md:p-8 border border-pink-100/50 dark:border-pink-900/50 shadow-sm mb-12">
-              <h2 className="text-2xl md:text-3xl font-bold mb-6 bg-gradient-to-r from-pink-500 to-pink-600 bg-clip-text text-transparent">
-                Platform Rules & User Conduct
-              </h2>
-              
-              <div className="prose prose-pink dark:prose-invert max-w-none">
-                <p className="mb-4">As a BrandSync user, you agree to:</p>
-                <ul className="list-disc pl-6 space-y-2 mb-6">
-                  <li>Provide accurate information about yourself and your social media accounts.</li>
-                  <li>Comply with all applicable laws and regulations when using our Platform.</li>
-                  <li>Respect other users' rights, including intellectual property rights.</li>
-                  <li>Not engage in any activities that could harm, disable, or overburden the Platform.</li>
-                  <li>Not attempt to access areas of the Platform that you are not authorized to access.</li>
-                  <li>Not use the Platform for fraudulent or deceptive practices.</li>
-                  <li>Not post content that is illegal, harmful, threatening, abusive, defamatory, obscene, or otherwise objectionable.</li>
-                </ul>
-                
-                <h3 className="text-xl font-semibold mt-8 mb-4">Prohibited Content</h3>
-                <p className="mb-4">You may not use our Platform to promote:</p>
-                <ul className="list-disc pl-6 space-y-2 mb-6">
-                  <li>Content that violates any applicable laws or regulations.</li>
-                  <li>Adult content, pornography, or sexually explicit material.</li>
-                  <li>Illegal drugs, substances, or paraphernalia.</li>
-                  <li>Weapons, ammunition, or explosives.</li>
-                  <li>Content that promotes hatred, violence, or discrimination.</li>
-                  <li>Gambling services without proper licensing.</li>
-                  <li>Content that infringes on others' intellectual property rights.</li>
-                </ul>
-              </div>
-            </Card>
-          </motion.section>
-
-          {/* Influencer Terms Section */}
-          <motion.section variants={childVariants}>
-            <Card className="p-6 md:p-8 border border-pink-100/50 dark:border-pink-900/50 shadow-sm mb-12">
-              <h2 className="text-2xl md:text-3xl font-bold mb-6 bg-gradient-to-r from-pink-500 to-pink-600 bg-clip-text text-transparent">
-                Influencer Terms
-              </h2>
-              
-              <div className="prose prose-pink dark:prose-invert max-w-none">
-                <h3 className="text-xl font-semibold mt-6 mb-4">1. Service Provision</h3>
-                <p className="mb-6">
-                  As an Influencer, you agree to provide the promotional services specified in the campaigns you accept, 
-                  following all guidelines and requirements set forth by the Brand and BrandSync.
-                </p>
-
-                <h3 className="text-xl font-semibold mt-8 mb-4">2. Performance Standards</h3>
-                <p className="mb-6">
-                  Influencers must complete campaigns according to the agreed-upon specifications, including content type, 
-                  posting schedule, and engagement requirements. Failure to meet these standards may result in non-payment, 
-                  account penalties, or termination.
-                </p>
-
-                <h3 className="text-xl font-semibold mt-8 mb-4">3. Social Media Account Requirements</h3>
-                <p className="mb-6">
-                  You warrant that any social media accounts linked to BrandSync are owned and operated by you, comply with 
-                  the respective platforms' terms of service, and accurately represent your follower count and engagement metrics.
-                </p>
-
-                <h3 className="text-xl font-semibold mt-8 mb-4">4. Payment Terms</h3>
-                <p className="mb-6">
-                  You will receive payment for successfully completed campaigns as specified in the campaign details. BrandSync 
-                  reserves the right to withhold payment for incomplete, fraudulent, or non-compliant campaign activities.
-                </p>
-              </div>
-            </Card>
-          </motion.section>
-
-          {/* Brand Terms Section */}
-          <motion.section variants={childVariants}>
-            <Card className="p-6 md:p-8 border border-pink-100/50 dark:border-pink-900/50 shadow-sm mb-12">
-              <h2 className="text-2xl md:text-3xl font-bold mb-6 bg-gradient-to-r from-pink-500 to-pink-600 bg-clip-text text-transparent">
-                Brand/Buyer Terms
-              </h2>
-              
-              <div className="prose prose-pink dark:prose-invert max-w-none">
-                <h3 className="text-xl font-semibold mt-6 mb-4">1. Campaign Creation & Management</h3>
-                <p className="mb-6">
-                  As a Brand, you are responsible for creating clear campaign briefs with specific requirements and expectations. 
-                  You must provide appropriate content and guidelines for Influencers to successfully promote your brand.
-                </p>
-
-                <h3 className="text-xl font-semibold mt-8 mb-4">2. Payment Obligations</h3>
-                <p className="mb-6">
-                  Brands must provide sufficient funds before launching campaigns. You authorize BrandSync to disburse funds 
-                  to Influencers upon satisfactory completion of campaign requirements.
-                </p>
-
-                <h3 className="text-xl font-semibold mt-8 mb-4">3. Content Ownership</h3>
-                <p className="mb-6">
-                  You warrant that you have all necessary rights to the content provided for campaigns. You grant Influencers 
-                  limited rights to use your content for the specific purpose of completing the campaign.
-                </p>
-
-                <h3 className="text-xl font-semibold mt-8 mb-4">4. Campaign Review</h3>
-                <p className="mb-6">
-                  Brands must review and approve or reject Influencer submissions within the timeframe specified in the 
-                  campaign brief. Failure to review within the specified timeframe may result in automatic approval and payment.
-                </p>
-              </div>
-            </Card>
-          </motion.section>
-
-          {/* Fees and Payments Section */}
-          <motion.section variants={childVariants}>
-            <Card className="p-6 md:p-8 border border-pink-100/50 dark:border-pink-900/50 shadow-sm mb-12">
-              <h2 className="text-2xl md:text-3xl font-bold mb-6 bg-gradient-to-r from-pink-500 to-pink-600 bg-clip-text text-transparent">
-                Fees & Payments
-              </h2>
-              
-              <div className="prose prose-pink dark:prose-invert max-w-none">
-                <h3 className="text-xl font-semibold mt-6 mb-4">1. Platform Fees</h3>
-                <p className="mb-6">
-                  BrandSync charges service fees for facilitating connections between Brands and Influencers. These fees are 
-                  clearly displayed before transaction completion. We reserve the right to modify our fee structure with 
-                  reasonable notice.
-                </p>
-
-                <h3 className="text-xl font-semibold mt-8 mb-4">2. Payment Processing</h3>
-                <p className="mb-6">
-                  All payments are processed through our secure payment partners. By using our Platform, you agree to 
-                  comply with the terms and conditions of our payment processors.
-                </p>
-
-                <h3 className="text-xl font-semibold mt-8 mb-4">3. Taxes</h3>
-                <p className="mb-6">
-                  Users are solely responsible for all taxes and reporting requirements related to income earned through 
-                  BrandSync. We may provide tax documentation where required by law, but users remain responsible for proper 
-                  tax filing and compliance.
-                </p>
-
-                <h3 className="text-xl font-semibold mt-8 mb-4">4. Currency</h3>
-                <p className="mb-6">
-                  All transactions on BrandSync are processed in Sri Lankan Rupees (LKR) unless otherwise specified. 
-                  International users may be subject to currency conversion fees by their payment providers.
-                </p>
-              </div>
-            </Card>
-          </motion.section>
-
-          {/* Intellectual Property Section */}
-          <motion.section variants={childVariants}>
-            <Card className="p-6 md:p-8 border border-pink-100/50 dark:border-pink-900/50 shadow-sm mb-12">
-              <h2 className="text-2xl md:text-3xl font-bold mb-6 bg-gradient-to-r from-pink-500 to-pink-600 bg-clip-text text-transparent">
-                Intellectual Property Rights
-              </h2>
-              
-              <div className="prose prose-pink dark:prose-invert max-w-none">
-                <h3 className="text-xl font-semibold mt-6 mb-4">1. BrandSync Intellectual Property</h3>
-                <p className="mb-6">
-                  The Platform, including its logo, name, design, software, and content created by BrandSync, is protected by 
-                  intellectual property laws. You may not use, reproduce, or distribute our intellectual property without 
-                  explicit written permission.
-                </p>
-
-                <h3 className="text-xl font-semibold mt-8 mb-4">2. User-Generated Content</h3>
-                <p className="mb-6">
-                  You retain ownership of content you create and upload to BrandSync. However, you grant BrandSync a non-exclusive, 
-                  worldwide, royalty-free license to use, reproduce, modify, and display your content for the purpose of operating 
-                  and promoting the Platform.
-                </p>
-
-                <h3 className="text-xl font-semibold mt-8 mb-4">3. Campaign Content</h3>
-                <p className="mb-6">
-                  Unless explicitly agreed otherwise in writing, Influencers retain copyright ownership of content they create 
-                  for campaigns, while granting Brands a license to use such content as specified in the campaign agreement.
-                </p>
-
-                <h3 className="text-xl font-semibold mt-8 mb-4">4. Infringement Claims</h3>
-                <p className="mb-6">
-                  If you believe your intellectual property rights have been infringed upon, please contact us at 
-                  legal@brandsync.lk with detailed information about the alleged infringement.
-                </p>
-              </div>
-            </Card>
-          </motion.section>
-
-          {/* Liability and Disclaimers Section */}
-          <motion.section variants={childVariants}>
-            <Card className="p-6 md:p-8 border border-pink-100/50 dark:border-pink-900/50 shadow-sm mb-12">
-              <h2 className="text-2xl md:text-3xl font-bold mb-6 bg-gradient-to-r from-pink-500 to-pink-600 bg-clip-text text-transparent">
-                Liability & Disclaimers
-              </h2>
-              
-              <div className="prose prose-pink dark:prose-invert max-w-none">
-                <h3 className="text-xl font-semibold mt-6 mb-4">1. Limitation of Liability</h3>
-                <p className="mb-6">
-                  To the maximum extent permitted by law, BrandSync shall not be liable for any indirect, incidental, special, 
-                  consequential, or punitive damages arising out of or relating to your use of our Platform.
-                </p>
-
-                <h3 className="text-xl font-semibold mt-8 mb-4">2. No Warranty</h3>
-                <p className="mb-6">
-                  The Platform is provided on an "as is" and "as available" basis without warranties of any kind, either 
-                  express or implied, including but not limited to warranties of merchantability, fitness for a particular purpose, 
-                  or non-infringement.
-                </p>
-
-                <h3 className="text-xl font-semibold mt-8 mb-4">3. Intermediary Status</h3>
-                <p className="mb-6">
-                  BrandSync acts solely as an intermediary platform connecting Brands and Influencers. We do not guarantee 
-                  campaign results, including views, engagement, or conversion rates.
-                </p>
-
-                <h3 className="text-xl font-semibold mt-8 mb-4">4. Indemnification</h3>
-                <p className="mb-6">
-                  You agree to indemnify and hold BrandSync harmless from any claims, damages, liabilities, costs, or expenses 
-                  arising out of your use of the Platform, your violation of these Terms, or your infringement of any rights 
-                  of another person or entity.
-                </p>
-              </div>
-            </Card>
-          </motion.section>
-
-          {/* Term and Termination Section */}
-          <motion.section variants={childVariants}>
-            <Card className="p-6 md:p-8 border border-pink-100/50 dark:border-pink-900/50 shadow-sm mb-12">
-              <h2 className="text-2xl md:text-3xl font-bold mb-6 bg-gradient-to-r from-pink-500 to-pink-600 bg-clip-text text-transparent">
-                Term & Termination
-              </h2>
-              
-              <div className="prose prose-pink dark:prose-invert max-w-none">
-                <h3 className="text-xl font-semibold mt-6 mb-4">1. Term</h3>
-                <p className="mb-6">
-                  These Terms will remain in full force and effect while you use the Platform or maintain an account with us.
-                </p>
-
-                <h3 className="text-xl font-semibold mt-8 mb-4">2. Termination by You</h3>
-                <p className="mb-6">
-                  You may terminate your account at any time by following the instructions on the Platform or by contacting 
-                  our support team. Termination may be subject to the completion of ongoing campaigns or payment obligations.
-                </p>
-
-                <h3 className="text-xl font-semibold mt-8 mb-4">3. Termination by BrandSync</h3>
-                <p className="mb-6">
-                  BrandSync reserves the right to suspend or terminate your account at any time for violations of these Terms, 
-                  fraud, illegal activity, or any other reason we deem appropriate. We will make reasonable efforts to notify 
-                  you of termination.
-                </p>
-
-                <h3 className="text-xl font-semibold mt-8 mb-4">4. Effect of Termination</h3>
-                <p className="mb-6">
-                  Upon termination, your right to use the Platform will immediately cease. All provisions that by their nature 
-                  should survive termination shall survive, including intellectual property rights, warranties, indemnities, 
-                  and limitations of liability.
-                </p>
-              </div>
-            </Card>
-          </motion.section>
-
-          {/* Modifications to Terms Section */}
-          <motion.section variants={childVariants}>
-            <Card className="p-6 md:p-8 border border-pink-100/50 dark:border-pink-900/50 shadow-sm mb-12">
-              <h2 className="text-2xl md:text-3xl font-bold mb-6 bg-gradient-to-r from-pink-500 to-pink-600 bg-clip-text text-transparent">
-                Modifications to Terms
-              </h2>
-              
-              <div className="prose prose-pink dark:prose-invert max-w-none">
-                <p className="mb-6">
-                  BrandSync reserves the right to modify or replace these Terms at any time. We will provide notice of material 
-                  changes by posting the updated Terms on our Platform and updating the "Last Updated" date at the top of this page.
-                </p>
-                <p className="mb-6">
-                  Your continued use of the Platform after any such changes constitutes your acceptance of the new Terms. If you 
-                  do not agree to the new Terms, you must stop using the Platform.
-                </p>
-              </div>
-            </Card>
-          </motion.section>
-
-          {/* Contact Information Section */}
+          {/* General Terms Card */}
           <motion.section variants={childVariants}>
             <Card className="p-6 md:p-8 border border-pink-100/50 dark:border-pink-900/50 shadow-sm">
-              <h2 className="text-2xl md:text-3xl font-bold mb-6 bg-gradient-to-r from-pink-500 to-pink-600 bg-clip-text text-transparent">
-                Contact Information
-              </h2>
-              
-              <div className="prose prose-pink dark:prose-invert max-w-none">
-                <p className="mb-6">
-                  If you have any questions about these Terms, please contact us at:
-                </p>
-                <ul className="list-none space-y-2 mb-6">
-                  <li><strong>Email:</strong> <a href="mailto:legal@brandsync.lk" className="text-pink-500 hover:text-pink-600 transition-colors">legal@brandsync.lk</a></li>
-                  <li><strong>Address:</strong> BrandSync Head Office, Colombo, Sri Lanka</li>
-                </ul>
+              <div className="prose prose-pink dark:prose-invert max-w-none space-y-6 text-sm text-gray-650 dark:text-gray-300 leading-relaxed">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-800 dark:text-zinc-100 mb-4 bg-gradient-to-r from-pink-500 to-pink-600 bg-clip-text text-transparent">
+                    1. GENERAL TERMS
+                  </h2>
+                  <ol className="list-decimal pl-5 space-y-3">
+                    <li>By registering and using Brandsync.lk, you agree to comply with these Terms and Conditions.</li>
+                    <li>Brandsync.lk acts as a digital marketing platform connecting Advertisers (Clients) and Influencers/Content Creators.</li>
+                    <li>Brandsync.lk reserves the right to modify these Terms and Conditions at any time without prior notice.</li>
+                    <li>Users must provide accurate and truthful information during registration.</li>
+                    <li>Any fraudulent activity, manipulation of views, clicks, engagements, or payments may result in immediate account suspension.</li>
+                  </ol>
+                </div>
+
+                <hr className="border-gray-100 dark:border-zinc-800" />
+
+                <div>
+                  <h2 className="text-xl font-bold text-gray-850 dark:text-zinc-100 mb-4 bg-gradient-to-r from-pink-500 to-pink-600 bg-clip-text text-transparent">
+                    SECTION A – CLIENT (ADVERTISER) TERMS
+                  </h2>
+                  
+                  <h3 className="text-base font-bold text-gray-800 dark:text-zinc-100 mt-4 mb-2">2. Campaign Creation</h3>
+                  <ol className="list-decimal pl-5 mb-4 space-y-2">
+                    <li>Clients are responsible for ensuring all submitted content complies with Sri Lankan laws and platform policies.</li>
+                    <li>
+                      Clients shall not promote:
+                      <ul className="list-disc pl-5 mt-1 space-y-1">
+                        <li>Illegal products or services.</li>
+                        <li>Misleading or deceptive advertisements.</li>
+                        <li>Hate speech, violence, or harmful content.</li>
+                        <li>Copyright-infringing content.</li>
+                      </ul>
+                    </li>
+                    <li>Brandsync.lk reserves the right to reject any campaign without providing a reason.</li>
+                  </ol>
+
+                  <h3 className="text-base font-bold text-gray-800 dark:text-zinc-100 mt-4 mb-2">3. Payments</h3>
+                  <ol className="list-decimal pl-5 mb-4 space-y-2">
+                    <li>All campaign payments must be made in advance before campaign activation.</li>
+                    <li>Campaign fees are non-refundable once the campaign has started.</li>
+                    <li>Any payment gateway charges, taxes, or bank charges shall be borne by the Client unless otherwise stated.</li>
+                  </ol>
+
+                  <h3 className="text-base font-bold text-gray-800 dark:text-zinc-100 mt-4 mb-2">4. Performance and Results</h3>
+                  <ol className="list-decimal pl-5 mb-4 space-y-2">
+                    <li>Brandsync.lk will make reasonable efforts to deliver the requested campaign performance.</li>
+                    <li>Actual results may vary depending on audience behavior, content quality, platform algorithms, and market conditions.</li>
+                    <li>Brandsync.lk does not guarantee sales, conversions, revenue, or business outcomes.</li>
+                    <li>Campaign statistics displayed on the dashboard are considered the official performance records.</li>
+                  </ol>
+
+                  <h3 className="text-base font-bold text-gray-800 dark:text-zinc-100 mt-4 mb-2">5. Content Ownership</h3>
+                  <ol className="list-decimal pl-5 space-y-2">
+                    <li>Clients retain ownership of their submitted content.</li>
+                    <li>Clients grant Brandsync.lk and participating influencers permission to share and promote campaign content during the campaign period.</li>
+                  </ol>
+                </div>
+
+                <hr className="border-gray-100 dark:border-zinc-800" />
+
+                <div>
+                  <h2 className="text-xl font-bold text-gray-850 dark:text-zinc-100 mb-4 bg-gradient-to-r from-pink-500 to-pink-600 bg-clip-text text-transparent">
+                    SECTION B – INFLUENCER / CONTENT CREATOR TERMS
+                  </h2>
+
+                  <h3 className="text-base font-bold text-gray-800 dark:text-zinc-100 mt-4 mb-2">6. Eligibility</h3>
+                  <ol className="list-decimal pl-5 mb-4 space-y-2">
+                    <li>Influencers must own or have legal authority to manage the social media accounts used on the platform.</li>
+                    <li>Fake, purchased, automated, or artificially generated followers, views, clicks, or engagements are strictly prohibited.</li>
+                    <li>Brandsync.lk may request verification documents at any time.</li>
+                  </ol>
+
+                  <h3 className="text-base font-bold text-gray-800 dark:text-zinc-100 mt-4 mb-2">7. Campaign Participation</h3>
+                  <ol className="list-decimal pl-5 mb-4 space-y-2">
+                    <li>Influencers must complete campaign requirements exactly as specified.</li>
+                    <li>Required posts, shares, comments, views, or clicks must remain active for the minimum campaign duration specified.</li>
+                    <li>Deleting campaign content before the required period may result in payment cancellation.</li>
+                  </ol>
+
+                  <h3 className="text-base font-bold text-gray-800 dark:text-zinc-100 mt-4 mb-2">8. Payments to Influencers</h3>
+                  <ol className="list-decimal pl-5 mb-4 space-y-2">
+                    <li>Payments are calculated based on successfully completed and verified campaign actions.</li>
+                    <li>Brandsync.lk reserves the right to review campaign activity before approving payments.</li>
+                    <li>Payments may be withheld for suspected fraud, fake traffic, bot activity, or policy violations.</li>
+                    <li>Payment schedules and minimum withdrawal limits will be displayed within the platform.</li>
+                  </ol>
+
+                  <h3 className="text-base font-bold text-gray-800 dark:text-zinc-100 mt-4 mb-2">9. Prohibited Activities</h3>
+                  <p className="mb-2">Influencers shall not:</p>
+                  <ul className="list-disc pl-5 space-y-1 mb-2">
+                    <li>Use bots or automated software.</li>
+                    <li>Purchase fake views, clicks, followers, or engagements.</li>
+                    <li>Create multiple accounts to manipulate earnings.</li>
+                    <li>Submit false performance reports.</li>
+                    <li>Engage in fraudulent activity of any kind.</li>
+                  </ul>
+                  <p className="text-xs text-red-500 font-semibold">Violation may result in permanent account termination and forfeiture of earnings.</p>
+                </div>
+
+                <hr className="border-gray-100 dark:border-zinc-800" />
+
+                <div>
+                  <h2 className="text-xl font-bold text-gray-850 dark:text-zinc-100 mb-4 bg-gradient-to-r from-pink-500 to-pink-600 bg-clip-text text-transparent">
+                    SECTION C – LIABILITY and DISCLAIMERS
+                  </h2>
+
+                  <h3 className="text-base font-bold text-gray-800 dark:text-zinc-100 mt-4 mb-2">10. Limitation of Liability</h3>
+                  <ol className="list-decimal pl-5 mb-4 space-y-2">
+                    <li>Brandsync.lk shall not be liable for indirect, incidental, or consequential damages arising from platform use.</li>
+                    <li>Users use the platform at their own risk.</li>
+                    <li>Brandsync.lk is not responsible for outages, interruptions, or algorithm changes made by third-party platforms such as Facebook, Instagram, TikTok, YouTube, or X.</li>
+                  </ol>
+
+                  <h3 className="text-base font-bold text-gray-800 dark:text-zinc-100 mt-4 mb-2">11. Account Suspension</h3>
+                  <ol className="list-decimal pl-5 mb-4 space-y-2">
+                    <li>Brandsync.lk reserves the right to suspend or terminate any account violating these Terms and Conditions.</li>
+                    <li>Suspended users may lose access to pending earnings or campaign balances resulting from policy violations.</li>
+                  </ol>
+
+                  <h3 className="text-base font-bold text-gray-800 dark:text-zinc-100 mt-4 mb-2">12. Privacy</h3>
+                  <ol className="list-decimal pl-5 mb-4 space-y-2">
+                    <li>User information will be handled in accordance with the Brandsync.lk Privacy Policy.</li>
+                    <li>Personal information will not be sold to third parties without consent except where required by law.</li>
+                  </ol>
+
+                  <h3 className="text-base font-bold text-gray-800 dark:text-zinc-100 mt-4 mb-2">13. Governing Law</h3>
+                  <ol className="list-decimal pl-5 space-y-2">
+                    <li>These Terms and Conditions shall be governed by the laws of Sri Lanka.</li>
+                    <li>Any disputes arising from platform use shall be subject to the jurisdiction of the courts of Sri Lanka.</li>
+                  </ol>
+                </div>
               </div>
             </Card>
           </motion.section>
 
-          {/* Call to Action */}
-          <motion.div variants={childVariants} className="text-center pt-8">
-            <p className="text-gray-600 dark:text-gray-400 mb-6">
-              Have questions about our Terms of Service?
+          {/* Legal Support Button */}
+          <motion.div variants={childVariants} className="text-center pt-4">
+            <p className="text-gray-650 dark:text-gray-400 mb-4 text-sm font-medium">
+              Have questions about our Terms and Conditions?
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-4">
               <a
-                href="mailto:legal@brandsync.lk"
-                className="inline-flex items-center justify-center px-8 py-3 font-medium transition-all duration-300 transform hover:-translate-y-0.5 rounded-full bg-pink-600 hover:bg-pink-500 text-white"
+                href="mailto:support@brandsync.lk"
+                className="inline-flex items-center justify-center px-8 py-2.5 font-bold text-xs uppercase tracking-wider transition-all duration-300 transform hover:-translate-y-0.5 rounded-full bg-pink-600 hover:bg-pink-500 text-white shadow-md hover:shadow-lg"
               >
-                Contact Legal Team
+                Contact Support
               </a>
               <Link
                 href="/policies/privacy-policy"
-                className="inline-flex items-center justify-center px-8 py-3 font-medium transition-all duration-300 transform hover:-translate-y-0.5 rounded-full bg-background border border-pink-200 dark:border-pink-800 hover:border-pink-300 dark:hover:border-pink-700 text-foreground"
+                className="inline-flex items-center justify-center px-8 py-2.5 font-bold text-xs uppercase tracking-wider transition-all duration-300 transform hover:-translate-y-0.5 rounded-full bg-background border border-pink-205 dark:border-pink-800 hover:border-pink-300 dark:hover:border-pink-700 text-foreground"
               >
                 View Privacy Policy
               </Link>
