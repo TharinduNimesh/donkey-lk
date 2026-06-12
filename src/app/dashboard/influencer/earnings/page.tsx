@@ -57,7 +57,7 @@ export default function EarningsPage() {
   const [earnedTasks, setEarnedTasks] = useState<EarnedTask[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const LKR_PER_USD = Number(process.env.NEXT_PUBLIC_LKR_PER_USD ?? "340");
+  const LKR_PER_USD = Number(process.env.NEXT_PUBLIC_LKR_PER_USD ?? "295");
 
   const formatUSD = (lkrAmount: number) => {
     const usd = lkrAmount / LKR_PER_USD;
@@ -194,7 +194,10 @@ export default function EarningsPage() {
   }, [supabase, router]);
 
   const totalClicks = brandSyncLinks.reduce((sum, link) => sum + (link.myClicks || 0), 0);
-  const totalMilestones = brandSyncLinks.reduce((sum, link) => sum + ((link.myClicks || 0) >= 10 ? 1 : 0), 0);
+  const totalMilestones = brandSyncLinks.reduce((sum, link) => {
+    const maxEligibleClicks = Math.min(link.myClicks || 0, link.shares || 0);
+    return sum + Math.floor(maxEligibleClicks / 10);
+  }, 0);
   const nextMilestoneClicks = (totalMilestones + 1) * 10;
   const progressToNextMilestone = brandSyncLinks.length > 0
     ? Math.max(...brandSyncLinks.map(link => (link.myClicks || 0) % 10))
@@ -333,15 +336,23 @@ export default function EarningsPage() {
                             </thead>
                             <tbody className="divide-y divide-gray-50 text-xs">
                               {earnedLinks.map((link) => {
-                                const milestoneCount = (link.myClicks || 0) >= 10 ? 1 : 0;
+                                const maxEligibleClicks = Math.min(link.myClicks || 0, link.shares || 0);
+                                const milestoneCount = Math.floor(maxEligibleClicks / 10);
                                 const rewardLKR = milestoneCount * 0.01 * LKR_PER_USD;
                                 return (
                                   <tr key={link.id} className="hover:bg-gray-50/40 transition-colors">
                                     <td className="py-3.5 px-5 max-w-[200px]">
                                       <p className="font-bold text-gray-800 truncate">{link.title}</p>
-                                      <Badge className="mt-1 text-[8px] font-bold uppercase tracking-wider text-white" style={{ background: link.platform === "YOUTUBE" ? "#ef4444" : link.platform === "FACEBOOK" ? "#3b82f6" : "#000" }}>
-                                        {link.platform}
-                                      </Badge>
+                                      <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                                        <Badge className="text-[8px] font-bold uppercase tracking-wider text-white" style={{ background: link.platform === "YOUTUBE" ? "#ef4444" : link.platform === "FACEBOOK" ? "#3b82f6" : "#000" }}>
+                                          {link.platform}
+                                        </Badge>
+                                        {link.myClicks && link.shares && link.myClicks > link.shares ? (
+                                          <span className="text-[9px] text-amber-600 font-medium bg-amber-50 px-1 py-0.5 rounded border border-amber-200/50">
+                                            Extra clicks: {link.myClicks - link.shares} ({"unpaid"})
+                                          </span>
+                                        ) : null}
+                                      </div>
                                     </td>
                                     <td className="py-3.5 px-4 text-center font-semibold text-gray-700">
                                       {link.myClicks || 0}

@@ -26,7 +26,8 @@ import {
   Users,
   Plus,
   Eye,
-  MousePointerClick
+  MousePointerClick,
+  Lock
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
@@ -104,6 +105,7 @@ type BrandSyncLinkEntry = {
   clicks?: number;
   myClicks?: number;
   shares?: number;
+  unlocked?: boolean;
 };
 
 export default function InfluencerDashboardPage() {
@@ -147,11 +149,44 @@ export default function InfluencerDashboardPage() {
 
   const LKR_PER_USD = Number(process.env.NEXT_PUBLIC_LKR_PER_USD ?? "295");
   const LKR_TO_USD = 1 / (LKR_PER_USD || 295);
-  const MIN_WITHDRAWAL_LKR = 1000;
+  const MIN_WITHDRAWAL_LKR = 10 * LKR_PER_USD;
 
   const formatUSD = (lkrAmount: number) => {
     const usd = lkrAmount * LKR_TO_USD;
     return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(usd);
+  };
+
+  const [isUnlocking, setIsUnlocking] = useState<number | null>(null);
+
+  const handleUnlockLink = async (linkId: number) => {
+    try {
+      setIsUnlocking(linkId);
+      const res = await fetch(`/api/brandsync-links/${linkId}/influencer-token`, {
+        method: "POST",
+        credentials: "include"
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        if (data.error === "daily_limit_reached") {
+          toast.error("Daily limit reached! You can only unlock 3 links per day.");
+        } else {
+          toast.error(data.error || "Failed to unlock link.");
+        }
+        return;
+      }
+      
+      setBrandSyncLinks(prev => prev.map(link => 
+        link.id === linkId 
+          ? { ...link, uniqueUrl: data.uniqueUrl, unlocked: true } 
+          : link
+      ));
+      toast.success("Link unlocked successfully!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to unlock link.");
+    } finally {
+      setIsUnlocking(null);
+    }
   };
 
   useEffect(() => {
@@ -195,9 +230,14 @@ export default function InfluencerDashboardPage() {
                 links.map(async (link) => {
                   try {
                     const tokenResp = await fetch(`/api/brandsync-links/${link.id}/influencer-token`, { credentials: 'include' });
-                    if (tokenResp.ok) return { ...link, uniqueUrl: (await tokenResp.json()).uniqueUrl as string };
+                    if (tokenResp.ok) {
+                      const data = await tokenResp.json();
+                      if (data.unlocked) {
+                        return { ...link, uniqueUrl: data.uniqueUrl as string, unlocked: true };
+                      }
+                    }
                   } catch {}
-                  return { ...link, uniqueUrl: link.brandSyncUrl };
+                  return { ...link, uniqueUrl: null, unlocked: false };
                 })
               );
               return linksWithTokens;
@@ -441,22 +481,56 @@ export default function InfluencerDashboardPage() {
                                 <span className="text-xs font-bold text-pink-600 bg-pink-50/50 px-1.5 py-0.5 rounded-md">{(link.myClicks ?? 0).toLocaleString()}</span>
                               </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <Button asChild className="flex-1 text-xs h-8 shadow-sm text-white" style={{ background: PINK }}>
-                                <a href={link.uniqueUrl || link.brandSyncUrl} target="_blank" rel="noopener noreferrer">
-                                  <ExternalLink className="mr-1.5 h-3.5 w-3.5" /> Open
-                                </a>
-                              </Button>
-                              <Button
-                                variant="outline"
-                                className="h-8 w-8 p-0 shrink-0 text-gray-500"
-                                onClick={async () => {
-                                  await navigator.clipboard.writeText(link.uniqueUrl || link.brandSyncUrl);
-                                  toast.success("Link copied!");
-                                }}
-                              >
-                                <Copy className="h-3.5 w-3.5" />
-                              </Button>
+
+                            {link.myClicks && link.shares && link.myClicks > link.shares ? (
+                              <div className="mb-3 p-1.5 bg-amber-50 rounded-lg border border-amber-200 text-center text-[10px] text-amber-700 font-medium">
+                                Extra clicks: {link.myClicks - link.shares} ({"We can't pay for extra views"})
+                              </div>
+                            ) : null}
+                            <div className="flex items-center gap-2 w-full">
+                              {!link.unlocked ? (
+                                <Button
+                                  className="w-full text-xs h-8 font-semibold text-white shadow-sm flex items-center justify-center gap-1.5 transition-all"
+                                  style={{ background: PINK }}
+                                  disabled={isUnlocking === link.id}
+                                  onClick={() => handleUnlockLink(link.id)}
+                                >
+                                  {isUnlocking === link.id ? (
+                                    <>
+                                      <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                                      Unlocking...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Lock className="h-3.5 w-3.5" /> Unlock Task Link
+                                    </>
+                                  )}
+                                </Button>
+                              ) : (
+                                <>
+                                  <Button
+                                    className="flex-1 text-xs h-8 font-medium text-white shadow-sm"
+                                    style={{ background: PINK }}
+                                    onClick={async () => {
+                                      if (link.uniqueUrl) {
+                                        await navigator.clipboard.writeText(link.uniqueUrl);
+                                        toast.success("Link copied!");
+                                      }
+                                    }}
+                                  >
+                                    <Copy className="mr-1.5 h-3.5 w-3.5" /> Copy Link
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    className="h-8 w-8 p-0 shrink-0 text-gray-500 hover:text-gray-900"
+                                    asChild
+                                  >
+                                    <a href={link.uniqueUrl || undefined} target="_blank" rel="noopener noreferrer" title="Open Link">
+                                      <ExternalLink className="h-3.5 w-3.5" />
+                                    </a>
+                                  </Button>
+                                </>
+                              )}
                             </div>
                           </div>
                         </div>

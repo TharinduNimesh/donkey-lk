@@ -106,6 +106,7 @@ export default function WithdrawPage() {
   // Static FX rate from env: 1 USD = NEXT_PUBLIC_LKR_PER_USD LKR
   const LKR_PER_USD = Number(process.env.NEXT_PUBLIC_LKR_PER_USD ?? "295");
   const LKR_TO_USD = 1 / (LKR_PER_USD || 295);
+  const MIN_WITHDRAWAL_LKR = 10 * LKR_PER_USD;
   const formatUSD = (lkrAmount: number) =>
     new Intl.NumberFormat("en-US", {
       style: "currency",
@@ -130,8 +131,8 @@ export default function WithdrawPage() {
       return;
     }
 
-    if (amount < 1000) {
-      toast.error("Minimum withdrawal amount is LKR 1,000");
+    if (amount < MIN_WITHDRAWAL_LKR) {
+      toast.error(`Minimum withdrawal amount is USD $10.00 (LKR ${MIN_WITHDRAWAL_LKR.toLocaleString(undefined, { maximumFractionDigits: 2 })})`);
       return;
     }
 
@@ -433,7 +434,7 @@ export default function WithdrawPage() {
 
       <div className="container mx-auto py-12 px-4 max-w-6xl relative z-10 flex-1">
         {/* Minimum Balance Alert */}
-        {balance < 1000 && (
+        {balance < MIN_WITHDRAWAL_LKR && (
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -447,7 +448,7 @@ export default function WithdrawPage() {
               <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-500" />
               <AlertDescription className="text-amber-800 dark:text-amber-300 font-medium text-sm ml-2">
                 Your balance is below the minimum withdrawal amount. You need at
-                least LKR 1,000.00 to make a withdrawal.
+                least USD $10.00 (LKR {MIN_WITHDRAWAL_LKR.toLocaleString(undefined, { maximumFractionDigits: 2 })}) to make a withdrawal.
               </AlertDescription>
             </Alert>
           </motion.div>
@@ -604,7 +605,7 @@ export default function WithdrawPage() {
                                   onChange={(e) => setWithdrawAmount(e.target.value)}
                                   className="pl-[4.5rem] pr-20 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                   placeholder="0.00"
-                                  disabled={balance < 1000}
+                                  disabled={balance < MIN_WITHDRAWAL_LKR}
                                 />
                                 <div className="absolute right-1 top-1/2 -translate-y-1/2">
                                   <Button
@@ -612,7 +613,7 @@ export default function WithdrawPage() {
                                     variant="ghost"
                                     size="sm"
                                     onClick={handleSetMaxAmount}
-                                    disabled={balance < 1000}
+                                    disabled={balance < MIN_WITHDRAWAL_LKR}
                                     className="px-3 h-8 text-xs font-semibold text-pink-600 dark:text-pink-400 hover:bg-pink-50/50 dark:hover:bg-pink-950/30 rounded-lg disabled:opacity-50"
                                   >
                                     Max
@@ -620,10 +621,10 @@ export default function WithdrawPage() {
                                 </div>
                                 <BottomGradient />
                               </div>
-                              {balance < 1000 ? (
+                              {balance < MIN_WITHDRAWAL_LKR ? (
                                 <p className="text-red-500 dark:text-red-400 text-xs flex items-center font-medium animate-fadeIn">
                                   <span className="inline-block w-2 h-2 rounded-full bg-red-500 mr-2 border border-white/20 animate-pulse"></span>
-                                  Withdrawal unavailable (balance is below LKR 1,000)
+                                  Withdrawal unavailable (balance is below USD $10.00)
                                 </p>
                               ) : !bankInfoSaved && (
                                 <p className="text-amber-600 dark:text-amber-400 text-xs flex items-center font-medium">
@@ -641,7 +642,7 @@ export default function WithdrawPage() {
                                 onClick={() => setShowConfirmDialog(true)}
                                 className="w-full bg-gradient-to-r from-pink-600 to-pink-500 hover:from-pink-500 hover:to-pink-400 text-white font-medium shadow-md shadow-pink-500/10 hover:shadow-pink-500/20 transition-all duration-200 rounded-xl h-11"
                                 disabled={
-                                  balance < 1000 ||
+                                  balance < MIN_WITHDRAWAL_LKR ||
                                   !withdrawAmount ||
                                   parseFloat(withdrawAmount) <= 0 ||
                                   parseFloat(withdrawAmount) > balance ||

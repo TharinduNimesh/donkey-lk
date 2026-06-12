@@ -61,11 +61,80 @@ export async function GET(
       .eq("influencer_user_id", user.id)
       .maybeSingle();
 
+    if (existing?.token) {
+      const origin = getPublicOrigin(request);
+      const uniqueUrl = `${origin}/go/${existing.token}`;
+      return NextResponse.json({ uniqueUrl, token: existing.token, unlocked: true });
+    }
+
+    return NextResponse.json({ unlocked: false });
+  } catch (error) {
+    console.error("Influencer token check error:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
+
+export async function POST(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { id } = await params;
+    const brandsyncId = Number(id);
+    if (!brandsyncId || isNaN(brandsyncId)) {
+      return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
+    }
+
+    // Verify the parent brandsync link exists and is paid
+    const { data: parent, error: parentError } = await supabaseAdmin
+      .from("brandsync_links")
+      .select("id, title, platform, thumbnail_path, is_paid")
+      .eq("id", brandsyncId)
+      .eq("is_paid", true)
+      .maybeSingle();
+
+    if (parentError || !parent) {
+      return NextResponse.json({ error: "BrandSync link not found or not active" }, { status: 404 });
+    }
+
+    // Check for an existing sub-token for this influencer
+    const { data: existing } = await (supabaseAdmin as any)
+      .from("brandsync_influencer_tokens")
+      .select("token")
+      .eq("brandsync_id", brandsyncId)
+      .eq("influencer_user_id", user.id)
+      .maybeSingle();
+
     let token: string;
 
     if (existing?.token) {
       token = existing.token;
     } else {
+      // Check the daily unlock limit (created in the last 24 hours)
+      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const { count: createdTodayCount, error: countError } = await (supabaseAdmin as any)
+        .from("brandsync_influencer_tokens")
+        .select("id", { count: "exact", head: true })
+        .eq("influencer_user_id", user.id)
+        .gte("created_at", twentyFourHoursAgo);
+
+      if (countError) {
+        console.error("Failed to check daily limit:", countError);
+        return NextResponse.json({ error: "Failed to check daily limit" }, { status: 550 });
+      }
+
+      if (createdTodayCount && createdTodayCount >= 3) {
+        return NextResponse.json(
+          { error: "daily_limit_reached", message: "You have reached your daily limit of 3 unlocked links." },
+          { status: 403 }
+        );
+      }
+
       // Generate a new unique sub-token
       token = crypto.randomUUID().replace(/-/g, "");
 
@@ -86,9 +155,9 @@ export async function GET(
     const origin = getPublicOrigin(request);
     const uniqueUrl = `${origin}/go/${token}`;
 
-    return NextResponse.json({ uniqueUrl, token });
+    return NextResponse.json({ uniqueUrl, token, unlocked: true });
   } catch (error) {
-    console.error("Influencer token error:", error);
+    console.error("Influencer token unlock error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
