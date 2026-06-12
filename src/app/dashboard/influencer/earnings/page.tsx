@@ -274,7 +274,6 @@ export default function EarningsPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-3xl font-extrabold text-gray-900">{formatUSD(accountBalance?.balance || 0)}</div>
-                    <div className="text-sm font-semibold text-pink-600 mt-1">{formatLKR(accountBalance?.balance || 0)}</div>
                     <div className="mt-4">
                       <Button 
                         onClick={() => router.push("/withdraw")}
@@ -301,7 +300,6 @@ export default function EarningsPage() {
                   </CardHeader>
                   <CardContent className="flex flex-col justify-end h-[100px]">
                     <div className="text-3xl font-extrabold text-gray-900">{formatUSD(accountBalance?.total_earning || 0)}</div>
-                    <div className="text-sm font-semibold text-blue-600 mt-1">{formatLKR(accountBalance?.total_earning || 0)}</div>
                   </CardContent>
                 </Card>
               </div>
@@ -358,7 +356,7 @@ export default function EarningsPage() {
                                       {link.myClicks || 0}
                                     </td>
                                     <td className="py-3.5 px-4 text-right">
-                                      <p className="font-bold text-emerald-600">{formatLKR(rewardLKR)}</p>
+                                      <p className="font-bold text-emerald-600">{formatUSD(rewardLKR)}</p>
                                       <p className="text-[10px] text-gray-400 font-semibold">{milestoneCount} x $0.01 milestone(s)</p>
                                     </td>
                                     <td className="py-3.5 px-5 text-right">
