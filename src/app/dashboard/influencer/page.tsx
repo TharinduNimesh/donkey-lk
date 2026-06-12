@@ -690,9 +690,9 @@ export default function InfluencerDashboardPage() {
           <footer className="flex items-center justify-between text-xs text-gray-400 pt-2 pb-4">
             <span>© {new Date().getFullYear()} BrandSync Platform. All rights reserved.</span>
             <div className="flex items-center gap-4">
-              <button className="hover:text-gray-600 transition-colors">Terms</button>
-              <button className="hover:text-gray-600 transition-colors">Privacy</button>
-              <button className="hover:text-gray-600 transition-colors">Support</button>
+              <Link href="/policies/terms-of-service" className="hover:text-gray-650 transition-colors">Terms</Link>
+              <Link href="/policies/privacy-policy" className="hover:text-gray-650 transition-colors">Privacy</Link>
+              <button className="hover:text-gray-650 transition-colors">Support</button>
             </div>
           </footer>
         </main>

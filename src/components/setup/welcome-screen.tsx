@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSetupStore } from "@/lib/store";
 import { Check, Compass, Users } from "lucide-react";
+import Link from "next/link";
 
 interface WelcomeScreenProps {
   onNext: () => void;
@@ -203,7 +204,7 @@ export function WelcomeScreen({ onNext, onRoleSelect }: WelcomeScreenProps) {
       </div>
 
       <div className="text-center text-[10px] text-gray-400 dark:text-zinc-550 font-medium">
-        <p>By continuing, you agree to our <a href="#" className="hover:text-pink-500 hover:underline">Terms of Service</a> and <a href="#" className="hover:text-pink-500 hover:underline">Privacy Policy</a></p>
+        <p>By continuing, you agree to our <Link href="/policies/terms-of-service" className="hover:text-pink-500 hover:underline">Terms of Service</Link> and <Link href="/policies/privacy-policy" className="hover:text-pink-500 hover:underline">Privacy Policy</Link></p>
       </div>
     </div>
   );
