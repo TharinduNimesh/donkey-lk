@@ -147,7 +147,7 @@ export default function InfluencerDashboardPage() {
 
   const LKR_PER_USD = Number(process.env.NEXT_PUBLIC_LKR_PER_USD ?? "295");
   const LKR_TO_USD = 1 / (LKR_PER_USD || 295);
-  const MIN_WITHDRAWAL_LKR = 1000;
+  const MIN_WITHDRAWAL_LKR = 10 * LKR_PER_USD;
 
   const formatUSD = (lkrAmount: number) => {
     const usd = lkrAmount * LKR_TO_USD;
