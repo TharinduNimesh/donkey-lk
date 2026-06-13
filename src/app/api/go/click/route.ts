@@ -74,6 +74,12 @@ export async function POST(request: Request) {
             .update({ clicked_at: new Date().toISOString(), ip_address: ip })
             .eq('id', subToken.id);
 
+          // Fetch total campaign clicks count
+          const { count: totalClicksCount } = await (supabaseAdmin as any)
+            .from('brandsync_clicks')
+            .select('id', { count: 'exact', head: true })
+            .eq('brandsync_id', subToken.brandsync_id);
+
           // Milestone balance credit
           const { count: clicksCount } = await (supabaseAdmin as any)
             .from('brandsync_clicks')
@@ -82,7 +88,8 @@ export async function POST(request: Request) {
 
           if (clicksCount && clicksCount > 0 && clicksCount % 10 === 0) {
             const limit = parent.shares || 0;
-            if (clicksCount <= limit) {
+            const totalClicksVal = totalClicksCount || 0;
+            if (clicksCount <= limit && totalClicksVal <= limit) {
               const lkrPerUsd = Number(process.env.NEXT_PUBLIC_LKR_PER_USD || process.env.LKR_PER_USD || 295);
               const reward = 0.01 * lkrPerUsd;
 

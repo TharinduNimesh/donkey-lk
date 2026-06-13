@@ -108,7 +108,7 @@ export async function POST(
     // Verify the parent brandsync link exists and is paid
     const { data: parent, error: parentError } = await supabaseAdmin
       .from("brandsync_links")
-      .select("id, title, platform, thumbnail_path, is_paid")
+      .select("id, title, platform, thumbnail_path, is_paid, shares")
       .eq("id", brandsyncId)
       .eq("is_paid", true)
       .maybeSingle();
@@ -117,6 +117,14 @@ export async function POST(
       return NextResponse.json({ error: "BrandSync link not found or not active" }, { status: 404 });
     }
 
+    // Fetch total campaign clicks count
+    const { count: totalClicksCount } = await (supabaseAdmin as any)
+      .from("brandsync_clicks")
+      .select("id", { count: "exact", head: true })
+      .eq("brandsync_id", brandsyncId);
+
+    const isFull = typeof totalClicksCount === "number" && typeof parent.shares === "number" && totalClicksCount >= parent.shares;
+
     // Check for an existing sub-token for this influencer
     const { data: existing } = await (supabaseAdmin as any)
       .from("brandsync_influencer_tokens")
@@ -124,6 +132,10 @@ export async function POST(
       .eq("brandsync_id", brandsyncId)
       .eq("influencer_user_id", user.id)
       .maybeSingle();
+
+    if (isFull && !existing?.token) {
+      return NextResponse.json({ error: "campaign_full", message: "This campaign is already full." }, { status: 400 });
+    }
 
     let token: string;
 

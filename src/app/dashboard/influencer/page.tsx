@@ -9,6 +9,7 @@ import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { InfluencerTaskCard } from "@/components/dashboard/influencer-task-card";
+import { GiftBonusModal } from "@/components/dashboard/gift-bonus-modal";
 import {
   ChevronsLeft,
   ChevronsRight,
@@ -206,6 +207,7 @@ export default function InfluencerDashboardPage() {
   }, [router]);
 
   const [isLoading, setIsLoading] = useState(true);
+  const [userId, setUserId] = useState<string | null>(null);
   const [connectedPlatforms, setConnectedPlatforms] = useState<ConnectedPlatform[]>([]);
   const [accountBalance, setAccountBalance] = useState<AccountBalance | null>(null);
   const [appliedTasks, setAppliedTasks] = useState<(TaskDetail & { application?: TaskApplication })[]>([]);
@@ -274,6 +276,7 @@ export default function InfluencerDashboardPage() {
         setIsLoading(true);
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) { router.push("/auth"); return; }
+        setUserId(user.id);
 
         const { data: incomplete, error: incompleteError } = await supabase.rpc('has_incomplete_applications');
         setHasIncompleteTask(!incompleteError && incomplete === true);
@@ -569,7 +572,14 @@ export default function InfluencerDashboardPage() {
                               </div>
                             ) : null}
                             <div className="flex items-center gap-2 w-full">
-                              {!link.unlocked ? (
+                              {typeof link.clicks === "number" && typeof link.shares === "number" && link.clicks >= link.shares ? (
+                                <Button
+                                  className="w-full text-xs h-8 font-semibold text-gray-400 bg-gray-100 border border-gray-200 cursor-not-allowed flex items-center justify-center gap-1.5 transition-all shadow-none"
+                                  disabled
+                                >
+                                  Campaign Full
+                                </Button>
+                              ) : !link.unlocked ? (
                                 <UnlockButtonWithCountdown
                                   linkId={link.id}
                                   nextUnlockAt={link.nextUnlockAt}
@@ -697,6 +707,13 @@ export default function InfluencerDashboardPage() {
           </footer>
         </main>
       </div>
+      {userId && (
+        <GiftBonusModal
+          userId={userId}
+          totalEarning={accountBalance?.total_earning ?? 0}
+          onClaimSuccess={(newBalance) => setAccountBalance(newBalance)}
+        />
+      )}
     </div>
   );
 }
