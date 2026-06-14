@@ -259,7 +259,14 @@ export default function InfluencerLinksPage() {
 
                         {/* Actions */}
                         <div className="flex items-center gap-2 w-full">
-                          {!link.unlocked ? (
+                          {typeof link.clicks === "number" && typeof link.shares === "number" && link.clicks >= link.shares ? (
+                            <Button
+                              className="w-full text-xs h-8 font-semibold text-gray-400 bg-gray-100 border border-gray-200 cursor-not-allowed flex items-center justify-center gap-1.5 transition-all shadow-none"
+                              disabled
+                            >
+                              Campaign Full
+                            </Button>
+                          ) : !link.unlocked ? (
                             <UnlockButtonWithCountdown
                               linkId={link.id}
                               nextUnlockAt={link.nextUnlockAt}
