@@ -251,9 +251,9 @@ export default function InfluencerLinksPage() {
                           </div>
                         </div>
 
-                        {link.myClicks && link.shares && link.myClicks > link.shares ? (
+                        {link.clicks && link.shares && link.clicks > link.shares ? (
                           <div className="mb-3 p-1.5 bg-amber-50 rounded-lg border border-amber-200 text-center text-[10px] text-amber-700 font-medium">
-                            Extra clicks: {link.myClicks - link.shares} ({"We can't pay for extra views"})
+                            Extra clicks: {link.clicks - link.shares} ({"We can't pay for extra views"})
                           </div>
                         ) : null}
 
