@@ -209,7 +209,7 @@ export function GiftBonusModal({ userId, isClaimedInDb, onClaimSuccess }: GiftBo
                       </div>
                       <div className="text-left">
                         <p className="text-xs text-pink-600 font-semibold uppercase tracking-wide">Signup Bonus</p>
-                        <p className="text-xl font-bold text-gray-900">$1.00 USD <span className="text-xs text-gray-400 font-normal">(LKR 295.00)</span></p>
+                        <p className="text-xl font-bold text-gray-900">$1.00 USD <span className="text-xs text-gray-400 font-normal"></span></p>
                       </div>
                     </div>
 
@@ -246,7 +246,7 @@ export function GiftBonusModal({ userId, isClaimedInDb, onClaimSuccess }: GiftBo
                     </motion.div>
 
                     <h3 className="text-xl font-bold text-gray-900 mb-1">Congratulations!</h3>
-                    <p className="text-sm text-emerald-600 font-semibold mb-2">+$1.00 USD (LKR 295.00) Credited</p>
+                    <p className="text-sm text-emerald-600 font-semibold mb-2">+$1.00 USD Credited</p>
                     <p className="text-xs text-gray-400 max-w-[200px] leading-relaxed">
                       Your welcome gift has been added to your available balance. Have fun monetizing!
                     </p>
