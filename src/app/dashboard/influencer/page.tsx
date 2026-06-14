@@ -208,6 +208,7 @@ export default function InfluencerDashboardPage() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
+  const [bonusClaimed, setBonusClaimed] = useState<boolean>(true);
   const [connectedPlatforms, setConnectedPlatforms] = useState<ConnectedPlatform[]>([]);
   const [accountBalance, setAccountBalance] = useState<AccountBalance | null>(null);
   const [appliedTasks, setAppliedTasks] = useState<(TaskDetail & { application?: TaskApplication })[]>([]);
@@ -286,7 +287,8 @@ export default function InfluencerDashboardPage() {
           verifiedProfilesResponse,
           pendingVerificationsResponse,
           tasksResponse,
-          brandsyncLinksData
+          brandsyncLinksData,
+          bonusClaimStatus
         ] = await Promise.all([
           supabase.from("account_balance").select("*").eq("user_id", user.id).maybeSingle(),
           supabase.from("influencer_profile").select("*").eq("user_id", user.id),
@@ -329,10 +331,12 @@ export default function InfluencerDashboardPage() {
               console.error("Error fetching BrandSync links:", err);
               return [];
             }
-          })()
+          })(),
+          fetch("/api/influencer/claim-bonus").then(res => res.ok ? res.json() : { claimed: true })
         ]);
 
         setBrandSyncLinks(brandsyncLinksData);
+        setBonusClaimed(!!bonusClaimStatus.claimed);
 
         setAccountBalance(balanceResponse.data);
 
@@ -566,9 +570,9 @@ export default function InfluencerDashboardPage() {
                               </div>
                             </div>
 
-                            {link.myClicks && link.shares && link.myClicks > link.shares ? (
+                            {link.clicks && link.shares && link.clicks > link.shares ? (
                               <div className="mb-3 p-1.5 bg-amber-50 rounded-lg border border-amber-200 text-center text-[10px] text-amber-700 font-medium">
-                                Extra clicks: {link.myClicks - link.shares} ({"We can't pay for extra views"})
+                                Extra clicks: {link.clicks - link.shares} ({"We can't pay for extra views"})
                               </div>
                             ) : null}
                             <div className="flex items-center gap-2 w-full">
@@ -710,8 +714,11 @@ export default function InfluencerDashboardPage() {
       {userId && (
         <GiftBonusModal
           userId={userId}
-          totalEarning={accountBalance?.total_earning ?? 0}
-          onClaimSuccess={(newBalance) => setAccountBalance(newBalance)}
+          isClaimedInDb={bonusClaimed}
+          onClaimSuccess={(newBalance) => {
+            setAccountBalance(newBalance);
+            setBonusClaimed(true);
+          }}
         />
       )}
     </div>
