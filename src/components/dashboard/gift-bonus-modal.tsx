@@ -8,11 +8,11 @@ import { toast } from "sonner";
 
 interface GiftBonusModalProps {
   userId: string;
-  totalEarning: number;
+  isClaimedInDb: boolean;
   onClaimSuccess: (updatedBalance: any) => void;
 }
 
-export function GiftBonusModal({ userId, totalEarning, onClaimSuccess }: GiftBonusModalProps) {
+export function GiftBonusModal({ userId, isClaimedInDb, onClaimSuccess }: GiftBonusModalProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isClaiming, setIsClaiming] = useState(false);
   const [isClaimed, setIsClaimed] = useState(false);
@@ -24,16 +24,16 @@ export function GiftBonusModal({ userId, totalEarning, onClaimSuccess }: GiftBon
   useEffect(() => {
     if (!userId) return;
 
-    // Check if they already have earnings or have claimed in this session/local storage
+    // Check if they already claimed in this session or local storage, or if DB shows it is claimed
     const localClaimed = localStorage.getItem(`claimed_bonus_${userId}`);
-    if (totalEarning === 0 && !localClaimed) {
+    if (!isClaimedInDb && !localClaimed) {
       // Show the modal after a small delay on initial dashboard load
       const timer = setTimeout(() => {
         setIsOpen(true);
       }, 1500);
       return () => clearTimeout(timer);
     }
-  }, [userId, totalEarning]);
+  }, [userId, isClaimedInDb]);
 
   // Generate particles for confetti effect
   const generateParticles = () => {
