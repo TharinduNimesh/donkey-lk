@@ -106,7 +106,7 @@ export async function POST(request: Request) {
       .from('influencer_signup_bonuses')
       .insert({
         user_id: user.id,
-        amount: 1.00
+        amount: 3.00
       });
 
     if (insertBonusErr) {
@@ -127,7 +127,7 @@ export async function POST(request: Request) {
     }
 
     const lkrPerUsd = Number(process.env.NEXT_PUBLIC_LKR_PER_USD || process.env.LKR_PER_USD || 295);
-    const bonusLKR = 1 * lkrPerUsd;
+    const bonusLKR = 3 * lkrPerUsd;
 
     let updatedBalance;
     if (currentBalance) {
