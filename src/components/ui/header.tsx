@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import { Menu, X } from "lucide-react";
 
 export function Header() {
+  const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
@@ -45,10 +47,24 @@ export function Header() {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
-            <Link href="/for-creators" className="text-sm font-medium text-pink-500 border-b-2 border-pink-500 pb-1">
+            <Link 
+              href="/" 
+              className={`text-sm font-medium pb-1 transition-colors ${
+                pathname === "/" || pathname === "/for-creators" 
+                  ? "text-pink-500 border-b-2 border-pink-500" 
+                  : "text-gray-600 hover:text-gray-900 border-b-2 border-transparent"
+              }`}
+            >
               For Creators
             </Link>
-            <Link href="/for-businesses" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
+            <Link 
+              href="/for-businesses" 
+              className={`text-sm font-medium pb-1 transition-colors ${
+                pathname === "/for-businesses" 
+                  ? "text-pink-500 border-b-2 border-pink-500" 
+                  : "text-gray-600 hover:text-gray-900 border-b-2 border-transparent"
+              }`}
+            >
               For Businesses
             </Link>
             <Link href="#how-it-works" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
@@ -82,12 +98,28 @@ export function Header() {
       {isOpen && (
         <div className="md:hidden bg-white absolute top-16 left-0 w-full shadow-lg border-t border-gray-100">
           <div className="px-4 pt-2 pb-6 space-y-4 flex flex-col">
-            <Link href="/for-creators" className="text-pink-500 font-medium py-2" onClick={() => setIsOpen(false)}>
-              For Creators
-            </Link>
-            <Link href="/for-businesses" className="text-gray-600 hover:text-gray-900 font-medium py-2" onClick={() => setIsOpen(false)}>
-              For Businesses
-            </Link>
+              <Link 
+                href="/" 
+                className={`block px-3 py-2 rounded-md text-base font-medium ${
+                  pathname === "/" || pathname === "/for-creators"
+                    ? "bg-pink-50 text-pink-500"
+                    : "text-gray-900 hover:bg-gray-50 hover:text-gray-900"
+                }`}
+                onClick={() => setIsOpen(false)}
+              >
+                For Creators
+              </Link>
+              <Link 
+                href="/for-businesses" 
+                className={`block px-3 py-2 rounded-md text-base font-medium ${
+                  pathname === "/for-businesses"
+                    ? "bg-pink-50 text-pink-500"
+                    : "text-gray-900 hover:bg-gray-50 hover:text-gray-900"
+                }`}
+                onClick={() => setIsOpen(false)}
+              >
+                For Businesses
+              </Link>
             <Link href="#how-it-works" className="text-gray-600 hover:text-gray-900 font-medium py-2" onClick={() => setIsOpen(false)}>
               How it Works
             </Link>

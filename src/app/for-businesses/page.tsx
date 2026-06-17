@@ -2,15 +2,16 @@
 
 import { Header } from "@/components/ui/header";
 import { Footer } from "@/components/ui/footer";
-import { HeroSection } from "@/components/ui/hero-section";
-import { FeaturesSection } from "@/components/ui/features-section";
-import { ProcessSection } from "@/components/ui/process-section";
-import { TestimonialSection } from "@/components/ui/testimonial-section";
+import { BusinessHeroSection } from "@/components/ui/business-hero-section";
+import { BusinessFeaturesSection } from "@/components/ui/business-features-section";
+import { BusinessProcessSection } from "@/components/ui/business-process-section";
+import { BusinessPricingSection } from "@/components/ui/business-pricing-section";
+import { BusinessTestimonialSection } from "@/components/ui/business-testimonial-section";
 import { WelcomeModal } from "@/components/welcome-modal";
 import { ModalProvider } from "@/components/ui/animated-modal";
 import { Analytics } from "@vercel/analytics/next"
 
-export default function Home() {
+export default function BusinessHome() {
   return (
     <ModalProvider>
       <main className="min-h-screen bg-[#fafafa] text-gray-900 font-sans selection:bg-pink-100 selection:text-pink-900 overflow-x-hidden">
@@ -23,19 +24,23 @@ export default function Home() {
         <Header />
         
         <div className="relative z-10">
-          <HeroSection />
+          <BusinessHeroSection />
         </div>
         
         <div className="relative z-10">
-          <FeaturesSection />
+          <BusinessPricingSection />
+        </div>
+
+        <div className="relative z-10">
+          <BusinessFeaturesSection />
         </div>
         
         <div className="relative z-10 bg-white/60 backdrop-blur-xl">
-          <ProcessSection />
+          <BusinessProcessSection />
         </div>
         
         <div className="relative z-10 pt-8 pb-16">
-          <TestimonialSection />
+          <BusinessTestimonialSection />
         </div>
         
         <Footer />
