@@ -1,148 +1,220 @@
 "use client";
 
-import * as React from "react";
-import {
-  UserIcon,
-  Sparkles,
-  DollarSign,
-  BarChart,
-  Handshake,
-  LucideIcon,
-} from "lucide-react";
-import { GlowingEffect } from "@/components/ui/glowing-effect";
-import { FancyText } from "./fancy-text";
+import { useState, useRef, useEffect } from "react";
+import { 
+  IconPlayerPlayFilled, 
+  IconPlayerPauseFilled, 
+  IconVolume, 
+  IconVolumeOff 
+} from "@tabler/icons-react";
 
-type Step = {
+interface Step {
+  id: number;
+  number: string;
   title: string;
   description: string;
-  icon: LucideIcon;
-  area: string;
-};
+  videoUrl: string;
+}
 
 const steps: Step[] = [
   {
-    title: "Create Your Profile",
-    description:
-      "Set up your profile as a creator or brand. Showcase your niche, audience metrics, and past achievements.",
-    icon: UserIcon,
-    area: "md:[grid-area:1/1/2/7] xl:[grid-area:1/1/2/5]",
+    id: 1,
+    number: "01",
+    title: "Sign up & Link Socials",
+    description: "Create your profile in seconds and securely connect your Instagram, TikTok, YouTube or Facebook accounts to start verifying your reach.",
+    videoUrl: "/guide-videos/example.mp4",
   },
   {
-    title: "Smart AI Matching",
-    description:
-      "Our AI matches creators with the perfect brands based on audience alignment and campaign goals.",
-    icon: Sparkles,
-    area: "md:[grid-area:1/7/2/13] xl:[grid-area:2/1/3/5]",
+    id: 2,
+    number: "02",
+    title: "Browse & Apply",
+    description: "Explore our campaign catalog. Filter by video views, link sharing, or content sharing. Find tasks matching your niche and apply instantly.",
+    videoUrl: "/guide-videos/example.mp4",
   },
   {
-    title: "Seamless Collaboration",
-    description:
-      "Connect and collaborate effortlessly. Manage content approvals and campaign progress in real-time.",
-    icon: Handshake,
-    area: "md:[grid-area:2/1/3/7] xl:[grid-area:1/5/3/8]",
+    id: 3,
+    number: "03",
+    title: "Post Content",
+    description: "Create your video, share a tracking link, or post brand creatives on your feed. Follow the clear guidelines to ensure successful submission.",
+    videoUrl: "/guide-videos/example.mp4",
   },
   {
-    title: "Track Performance",
-    description:
-      "Access detailed analytics and insights to measure campaign success and engagement metrics.",
-    icon: BarChart,
-    area: "md:[grid-area:2/7/3/13] xl:[grid-area:1/8/2/13]",
-  },
-  {
-    title: "Secure Payments",
-    description:
-      "Automated payment system ensures creators get paid on time while brands maintain transparent records.",
-    icon: DollarSign,
-    area: "md:[grid-area:3/1/4/13] xl:[grid-area:2/8/3/13]",
-  },
+    id: 4,
+    number: "04",
+    title: "Get Paid",
+    description: "Track your views, clicks, and submissions on your live dashboard. Receive direct, guaranteed payouts based on your verified performance.",
+    videoUrl: "/guide-videos/example.mp4",
+  }
 ];
 
 export function ProcessSection() {
+  const [activeStep, setActiveStep] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(true);
+  const [isMuted, setIsMuted] = useState(true);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.load();
+      if (isPlaying) {
+        const playPromise = videoRef.current.play();
+        if (playPromise !== undefined) {
+          playPromise.catch(() => {
+            // Browser autoplay prevention
+            setIsPlaying(false);
+          });
+        }
+      } else {
+        videoRef.current.pause();
+      }
+    }
+  }, [activeStep]);
+
+  const handlePlayPause = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (videoRef.current) {
+      if (isPlaying) {
+        videoRef.current.pause();
+        setIsPlaying(false);
+      } else {
+        videoRef.current.play().catch(() => {});
+        setIsPlaying(true);
+      }
+    }
+  };
+
+  const handleMute = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (videoRef.current) {
+      videoRef.current.muted = !isMuted;
+      setIsMuted(!isMuted);
+    }
+  };
+
   return (
-    <div className="relative">
-      <div className="max-w-7xl mx-auto px-4">
-        {/* Section Header */}
-        <div className="text-center mb-16">
-          <div className="inline-block mb-6">
-            <div className="relative overflow-hidden rounded-full px-4 py-1.5 bg-gradient-to-r from-pink-500/10 to-pink-600/10 backdrop-blur-sm border border-pink-500/20">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(255,0,255,0.05),transparent_70%)]"></div>
-              <div className="flex items-center gap-1.5">
-                <Sparkles
-                  className="h-3.5 w-3.5 text-pink-500/80"
-                  aria-hidden="true"
-                />
-                <span className="text-xs font-medium tracking-wide text-pink-600/80 dark:text-pink-400/90">
-                  SIMPLIFY COLLABORATION
-                </span>
+    <section className="w-full py-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto" id="how-it-works">
+      <div className="text-center mb-20">
+        <h2 className="text-3xl md:text-4xl lg:text-[2.5rem] font-bold font-display text-gray-900 mb-4 tracking-tight">
+          How It Works
+        </h2>
+        <p className="text-gray-500 max-w-2xl mx-auto font-light text-lg">
+          Start monetizing your audience in four simple steps.
+        </p>
+      </div>
+
+      <div className="flex flex-col-reverse lg:grid lg:grid-cols-12 gap-12 lg:gap-16 items-center">
+        
+        {/* Left: Steps Timeline List */}
+        <div className="w-full lg:col-span-7 flex flex-col gap-4">
+          {steps.map((step, index) => {
+            const isActive = index === activeStep;
+            return (
+              <div 
+                key={step.id} 
+                onClick={() => {
+                  setActiveStep(index);
+                  setIsPlaying(true);
+                }}
+                className={`w-full text-left p-6 rounded-2xl border transition-all duration-300 cursor-pointer flex gap-5 items-start ${
+                  isActive 
+                    ? "bg-white border-pink-100 shadow-[0_8px_30px_rgba(236,72,153,0.04)]" 
+                    : "bg-transparent border-transparent hover:bg-gray-50/50"
+                }`}
+              >
+                {/* Step badge */}
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold font-sans text-sm transition-colors shrink-0 ${
+                  isActive 
+                    ? "bg-pink-500 text-white shadow-[0_4px_12px_rgba(236,72,153,0.3)]" 
+                    : "bg-gray-100 text-gray-500"
+                }`}>
+                  {step.number}
+                </div>
+
+                <div className="flex-grow">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <h3 className={`text-lg font-bold transition-colors ${isActive ? "text-gray-900" : "text-gray-700"}`}>
+                      {step.title}
+                    </h3>
+                    
+                    {/* Play/Pause Button on Step */}
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveStep(index);
+                        if (isActive) {
+                          if (videoRef.current) {
+                            if (isPlaying) {
+                              videoRef.current.pause();
+                              setIsPlaying(false);
+                            } else {
+                              videoRef.current.play().catch(() => {});
+                              setIsPlaying(true);
+                            }
+                          }
+                        } else {
+                          setIsPlaying(true);
+                        }
+                      }}
+                      className={`w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer ${
+                        isActive 
+                          ? "bg-pink-50 text-pink-500 hover:bg-pink-100/70" 
+                          : "bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-gray-600"
+                      }`}
+                    >
+                      {isActive && isPlaying ? <IconPlayerPauseFilled size={14} /> : <IconPlayerPlayFilled size={14} />}
+                    </button>
+                  </div>
+                  
+                  <p className={`text-sm leading-relaxed font-light transition-all ${
+                    isActive ? "text-gray-500 font-normal" : "text-gray-400"
+                  }`}>
+                    {step.description}
+                  </p>
+                </div>
               </div>
-            </div>
-          </div>
-          <h2 className="text-3xl md:text-4xl font-display font-bold mb-4">
-            How Brand<span className="text-pink-500">Sync</span>{" "}
-            <FancyText>Works</FancyText>
-          </h2>
-          <p className="text-muted-foreground max-w-2xl mx-auto">
-            Join our community of creators and brands in four simple steps. Our
-            platform makes collaboration seamless and rewarding.
-          </p>
+            );
+          })}
         </div>
 
-        {/* Process Grid */}
-        <ul className="grid grid-cols-1 grid-rows-none gap-4 md:grid-cols-12 md:grid-rows-3 lg:gap-6 xl:max-h-[40rem] xl:grid-rows-2">
-          {steps.map((step, index) => (
-            <GridItem
-              key={index}
-              area={step.area}
-              icon={<step.icon />}
-              title={step.title}
-              description={step.description}
-            />
-          ))}
-        </ul>
-      </div>
-    </div>
-  );
-}
+        {/* Right: 1:1 Video Player Container */}
+        <div className="w-full lg:col-span-5 flex justify-center">
+          <div className="relative aspect-square w-full max-w-[400px] rounded-[2.5rem] overflow-hidden border border-gray-100 shadow-[0_20px_50px_rgba(0,0,0,0.04)] bg-gray-50/50 flex items-center justify-center group">
+            <video 
+              ref={videoRef}
+              key={steps[activeStep].videoUrl}
+              className="w-full h-full object-cover aspect-square"
+              loop
+              muted={isMuted}
+              playsInline
+              autoPlay
+            >
+              <source src={steps[activeStep].videoUrl} type="video/mp4" />
+              Your browser does not support the video tag.
+            </video>
+            
+            {/* Hover Video Overlay */}
+            <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
 
-interface GridItemProps {
-  area: string;
-  icon: React.ReactElement;
-  title: string;
-  description: string;
-}
-
-const GridItem = ({ area, icon, title, description }: GridItemProps) => {
-  return (
-    <li className={`min-h-[14rem] list-none ${area}`}>
-      <div className="relative h-full rounded-2xl border border-border/40 dark:border-border/20 p-2 md:rounded-3xl md:p-3 backdrop-blur-sm">
-        <GlowingEffect
-          spread={40}
-          glow={true}
-          disabled={false}
-          proximity={64}
-          inactiveZone={0.01}
-          variant="default"
-        />
-        <div className="relative flex h-full flex-col justify-between gap-6 overflow-hidden rounded-xl p-6 md:p-6 [box-shadow:0_0_0_1px_rgba(0,0,0,0.03)] dark:[box-shadow:0_0_0_1px_rgba(255,255,255,0.03)]">
-          <div className="relative flex flex-1 flex-col justify-between gap-3">
-            <div className="w-fit rounded-lg border border-pink-200/20 dark:border-pink-500/20 bg-pink-50/50 dark:bg-pink-950/50 p-2.5">
-              {React.isValidElement(icon) &&
-                React.cloneElement(icon, {
-                  className: "w-5 h-5 text-pink-500",
-                  "aria-hidden": "true",
-                } as React.SVGProps<SVGSVGElement>)}
-            </div>
-            <div className="space-y-3">
-              <h3 className="font-display text-xl/[1.375rem] font-semibold text-balance md:text-2xl/[1.875rem]">
-                {title}
-              </h3>
-              <p className="text-sm/[1.125rem] text-muted-foreground md:text-base/[1.375rem]">
-                {description}
-              </p>
-            </div>
+            {/* Mute Control */}
+            <button 
+              onClick={handleMute} 
+              className="absolute bottom-5 right-5 z-20 w-10 h-10 rounded-full bg-black/60 hover:bg-pink-500/90 hover:scale-105 flex items-center justify-center text-white backdrop-blur-sm cursor-pointer transition-all duration-200"
+              title={isMuted ? "Unmute" : "Mute"}
+            >
+              {isMuted ? <IconVolumeOff size={18} /> : <IconVolume size={18} />}
+            </button>
+            
+            {/* Center Play/Pause Control overlay */}
+            <button 
+              onClick={handlePlayPause}
+              className="absolute inset-0 m-auto z-20 w-14 h-14 rounded-full bg-white/95 text-gray-900 shadow-lg flex items-center justify-center cursor-pointer transition-all duration-200 opacity-0 group-hover:opacity-100 scale-95 group-hover:scale-100 hover:bg-[#ff1b6b] hover:text-white"
+            >
+              {isPlaying ? <IconPlayerPauseFilled size={20} /> : <IconPlayerPlayFilled size={20} className="ml-0.5" />}
+            </button>
           </div>
         </div>
+
       </div>
-    </li>
+    </section>
   );
-};
+}

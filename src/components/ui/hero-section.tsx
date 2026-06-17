@@ -1,142 +1,162 @@
 "use client";
 
-import { Cover } from "@/components/ui/cover";
-import { SparklesCore } from "@/components/ui/sparkles";
-import { AnimatedTooltip } from "@/components/ui/animated-tooltip";
-import { motion } from "framer-motion";
-import { ChevronDown } from "lucide-react";
-import { FancyText } from "./fancy-text";
 import Link from "next/link";
-
-const featuredPeople = [
-  {
-    id: 1,
-    name: "Sarah Johnson",
-    designation: "Beauty & Lifestyle | 2M+ Followers",
-    image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=3387&q=80",
-  },
-  {
-    id: 2,
-    name: "Nike",
-    designation: "Global Sports Brand",
-    image: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=3540&q=80",
-  },
-  {
-    id: 3,
-    name: "Alex Rivera",
-    designation: "Tech Reviews | 1.5M+ Followers",
-    image: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=3387&q=80",
-  },
-  {
-    id: 4,
-    name: "Green Earth",
-    designation: "Sustainable Living Brand",
-    image: "https://images.unsplash.com/photo-1505489435671-80a165c60816?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=3540&q=80",
-  },
-  {
-    id: 5,
-    name: "Emma Chen",
-    designation: "Food & Travel | 3M+ Followers",
-    image: "https://images.unsplash.com/photo-1517841905240-472988babdf9?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=3387&q=80",
-  },
-];
+import { useState, useEffect } from "react";
+import { IconBrandYoutubeFilled, IconBrandInstagram, IconBrandTiktok, IconThumbUpFilled, IconHelpCircle } from "@tabler/icons-react";
 
 export function HeroSection() {
+  // Slider represents increments of 100k views.
+  // 10 = 1M views, 50 = 5M views, 100 = 10M views.
+  const [viewsSlider, setViewsSlider] = useState(50); 
+
+  // List of local stock images for random loading
+  const heroImages = [
+    "/hero-stock/hero-random-andres-mfWsMDdN-Ro-unsplash.webp",
+    "/hero-stock/hero-random-kudung-setiawan-JPlSLj5azFE-unsplash.webp",
+    "/hero-stock/hero-random-steve-lord-g47EKQ0PxPw-unsplash.webp",
+    "/hero-stock/hero-random-videodeck-co-4s_0zZKmMgA-unsplash.webp",
+    "/hero-stock/hero-random-wesley-tingey-RAH1ipSQh24-unsplash.webp"
+  ];
+
+  const [mounted, setMounted] = useState(false);
+  const [heroImage, setHeroImage] = useState("");
+
+  useEffect(() => {
+    const randomIndex = Math.floor(Math.random() * heroImages.length);
+    setHeroImage(heroImages[randomIndex]);
+    setMounted(true);
+  }, []); 
+  
+  // $10 per 100k views per video, assuming an average of 10 videos per month.
+  // Payout per video = viewsSlider * $10
+  // Monthly payout = viewsSlider * $10 * 10 videos = viewsSlider * 100
+  const earnings = viewsSlider * 100;
+  
+  // Format the views text nicely (e.g. 500k, 1M, 5.5M)
+  const formatViews = (val: number) => {
+    if (val === 0) return "0";
+    if (val < 10) return `${val * 100}k`;
+    return `${(val / 10).toFixed(1).replace('.0', '')}M`;
+  };
+
   return (
-    <section className="relative h-[90vh] flex items-center justify-center overflow-hidden">
-      <div className="absolute inset-0 w-full h-full dark:opacity-20 opacity-10">
-        <SparklesCore
-          id="tsparticlesfullpage"
-          background="transparent"
-          minSize={0.6}
-          maxSize={1.4}
-          particleDensity={100}
-          className="h-full w-full"
-          particleColor="#ec4899"
-        />
-      </div>
-
-      <div className="relative z-10 max-w-5xl mx-auto px-4 text-center space-y-10">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          className="space-y-6"
-        >
-          <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight font-display">
-            Where <Cover className="text-pink-500">Creators</Cover> and{" "}
-            <Cover className="text-pink-500">Brands</Cover> <FancyText>Unite</FancyText>
-          </h1>
-          <span className="block text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
-            Connect with top brands, monetize your influence, and grow your audience through{" "}
-            <Cover className="text-pink-500">BrandSync</Cover>
-          </span>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.2 }}
-          className="flex flex-col sm:flex-row gap-4 justify-center items-center"
-        >
-          <Link href="/auth/signup">
-            <button className="group relative inline-flex items-center justify-center px-8 py-3 font-medium transition-all duration-300 transform hover:-translate-y-0.5 rounded-full">
-              <span className="relative z-10 text-white">Get Started</span>
-              <div className="absolute inset-0 bg-pink-600 rounded-full">
-                <div className="absolute inset-0 flex justify-center [container-type:inline-size]">
-                  <div className="w-[100cqw] aspect-square absolute blur-2xl -z-10 animate-spin-slower rounded-full bg-pink-500/20"></div>
+    <section className="w-full relative overflow-visible">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-32 md:pt-44 pb-20">
+        <div className="flex flex-col lg:grid lg:grid-cols-2 gap-12 lg:gap-8 items-center relative">
+          
+          {/* Left Content */}
+          <div className="max-w-xl relative z-10 w-full">
+            <div className="inline-block rounded-full bg-pink-200/50 px-4 py-1.5 mb-6">
+              <span className="text-[11px] font-bold tracking-widest text-pink-500 uppercase">
+                Creator First Platform
+              </span>
+            </div>
+            
+            <h1 className="text-5xl md:text-6xl lg:text-[5rem] font-bold font-display leading-[1.05] tracking-tight mb-6 text-gray-900">
+              Turn Your <br />
+              Content into <br />
+              <span className="text-pink-500">Cash</span>
+            </h1>
+            
+            <p className="text-lg text-gray-600 mb-10 max-w-lg leading-relaxed font-light">
+              Join thousands of creators monetizing their influence. Connect with top brands, participate in high-paying campaigns, and get paid for your views and clicks.
+            </p>
+            
+            <div className="flex flex-wrap items-center gap-4 mb-14">
+              <Link href="/auth/signup" className="rounded-full bg-pink-500 px-8 py-3.5 text-sm font-bold tracking-wide text-white hover:bg-pink-600 transition-colors shadow-[0_4px_14px_0_rgba(236,72,153,0.39)]">
+                Start Earning
+              </Link>
+              <Link href="#how-it-works" className="rounded-full bg-white border border-gray-200 px-8 py-3.5 text-sm font-bold tracking-wide text-gray-700 hover:bg-gray-50 transition-colors shadow-sm">
+                See How It Works
+              </Link>
+            </div>
+            
+            <div>
+              <p className="text-[10px] font-bold text-gray-500 uppercase tracking-[0.2em] mb-4">
+                Monetize Across Platforms
+              </p>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center justify-center w-10 h-10 rounded-full border border-gray-200 bg-white text-gray-700 shadow-sm transition-transform hover:scale-110 cursor-pointer">
+                  <IconBrandYoutubeFilled size={20} />
+                </div>
+                <div className="flex items-center justify-center w-10 h-10 rounded-full border border-gray-200 bg-white text-gray-700 shadow-sm transition-transform hover:scale-110 cursor-pointer">
+                  <IconBrandInstagram size={20} />
+                </div>
+                <div className="flex items-center justify-center w-10 h-10 rounded-full border border-gray-200 bg-white text-gray-700 shadow-sm transition-transform hover:scale-110 cursor-pointer">
+                  <IconBrandTiktok size={20} />
+                </div>
+                <div className="flex items-center justify-center w-10 h-10 rounded-full border border-gray-200 bg-white text-gray-700 shadow-sm transition-transform hover:scale-110 cursor-pointer">
+                  <IconThumbUpFilled size={20} />
                 </div>
               </div>
-              <span className="absolute -inset-0.5 -z-10 rounded-full bg-gradient-to-br from-[#ff80b5] to-[#9089fc] opacity-30 group-hover:opacity-50 transition duration-300"></span>
-            </button>
-          </Link>
-          <button className="group relative inline-flex items-center justify-center px-8 py-3 font-medium transition-all duration-300 transform hover:-translate-y-0.5 rounded-full">
-            <span className="relative z-10 bg-clip-text text-transparent bg-gradient-to-r from-pink-600 to-pink-400">Learn More</span>
-            <div className="absolute inset-0 border border-pink-200 dark:border-pink-800 rounded-full">
-              <div className="absolute inset-0 flex justify-center [container-type:inline-size]">
-                <div className="w-[100cqw] aspect-square absolute blur-md -z-10 animate-spin-slow rounded-full bg-pink-500/5"></div>
+            </div>
+          </div>
+          
+          {/* Right Image & Floating Card */}
+          <div className="relative w-full mt-8 lg:mt-0">
+            <div className="relative w-full lg:w-[125%] h-[400px] md:h-[500px] lg:h-[640px] rounded-[2.5rem] lg:rounded-l-[3.5rem] lg:rounded-r-none overflow-hidden shadow-2xl z-0 bg-gray-50 lg:translate-x-8">
+              <img 
+                src={heroImage || "/hero-stock/hero-random-andres-mfWsMDdN-Ro-unsplash.webp"} 
+                alt="Group of creators"
+                className={`w-full h-full object-cover transition-opacity duration-700 ease-in-out ${
+                  mounted ? "opacity-100" : "opacity-0"
+                }`}
+              />
+              {/* Soft Overlay */}
+              <div className="absolute inset-0 bg-gradient-to-t from-white/40 via-transparent to-white/20"></div>
+            </div>
+
+            {/* Overlapping Card */}
+            {/* On mobile: static position under the image. On desktop: absolute position over the image. */}
+            <div className="relative mt-[-3rem] md:absolute md:bottom-12 md:left-0 md:mt-0 md:-translate-x-[15%] lg:-translate-x-[20%] w-[95%] mx-auto md:mx-0 md:w-[360px] bg-white/95 backdrop-blur-xl p-6 md:p-8 rounded-[2rem] shadow-[0_20px_50px_-10px_rgba(0,0,0,0.15)] border border-white/80 z-30">
+              <div className="flex items-center gap-5 mb-6">
+                <div className="w-16 h-16 rounded-[1.25rem] bg-[#fff0f5] flex items-center justify-center text-[#ff1b6b] shadow-sm border border-pink-50">
+                  <span className="text-3xl font-bold font-display leading-none">$</span>
+                </div>
+                <div>
+                  <div className="flex items-center gap-1 mb-1 group relative">
+                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Potential Earnings</p>
+                    <div className="cursor-pointer text-gray-400 hover:text-[#ff1b6b] transition-colors p-0.5">
+                      <IconHelpCircle size={14} />
+                    </div>
+                    {/* Tooltip */}
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 p-3 bg-gray-900/95 backdrop-blur-sm border border-gray-800 text-[11px] text-white rounded-xl opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 shadow-2xl z-50 text-left font-normal normal-case tracking-normal leading-relaxed font-sans">
+                      Calculated at <span className="font-display font-bold text-pink-400">$10</span> per <span className="font-display font-bold text-pink-400">100k</span> views per video, assuming an average of <span className="font-display font-bold text-pink-400">10</span> videos posted per month.
+                      {/* Triangle pointer */}
+                      <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+                    </div>
+                  </div>
+                  <div className="flex items-baseline">
+                    <span className="text-4xl font-black text-gray-900 font-display tracking-tight leading-none">${earnings.toLocaleString()}</span>
+                    <span className="text-sm font-medium text-gray-400 font-display ml-1">/mo</span>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Interactive Slider */}
+              <div className="w-full mt-8 mb-4 relative px-1">
+                <input 
+                  type="range" 
+                  min="0" 
+                  max="100" 
+                  value={viewsSlider} 
+                  onChange={(e) => setViewsSlider(parseInt(e.target.value))}
+                  className="w-full h-2.5 bg-gray-100 rounded-full appearance-none cursor-pointer hover:opacity-90 transition-opacity [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:h-6 [&::-webkit-slider-thumb]:bg-[#ff1b6b] [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-[0_0_12px_rgba(255,27,107,0.5)] [&::-moz-range-thumb]:w-6 [&::-moz-range-thumb]:h-6 [&::-moz-range-thumb]:bg-[#ff1b6b] [&::-moz-range-thumb]:border-none [&::-moz-range-thumb]:rounded-full"
+                  style={{
+                    background: `linear-gradient(to right, #ff1b6b ${viewsSlider}%, #f3f4f6 ${viewsSlider}%)`
+                  }}
+                />
+              </div>
+              
+              <div className="flex justify-between items-center mt-4 px-1">
+                <p className="text-sm font-bold text-gray-600">Average Views per Video</p>
+                <p className="text-sm font-black text-[#ff1b6b]">{formatViews(viewsSlider)}</p>
               </div>
             </div>
-          </button>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.4 }}
-          className="flex flex-col items-center gap-4"
-        >
-          <p className="text-muted-foreground">Join our growing community of creators and brands</p>
-          <div className="flex flex-row items-center justify-center w-full">
-            <AnimatedTooltip items={featuredPeople} />
           </div>
-        </motion.div>
-      </div>
-
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{
-          opacity: 1,
-          y: [0, 8, 0]
-        }}
-        transition={{
-          duration: 2,
-          repeat: Infinity,
-          repeatType: "reverse",
-          ease: "easeInOut"
-        }}
-        className="absolute bottom-8 left-1/2 -translate-x-1/2 cursor-pointer group"
-      >
-        <div className="relative">
-          <div className="absolute -inset-2 rounded-full bg-gradient-to-r from-pink-500/20 to-purple-500/20 blur-lg group-hover:from-pink-500/30 group-hover:to-purple-500/30 transition-all duration-300" />
-          <div className="relative rounded-full bg-white/10 backdrop-blur-sm border border-white/20 p-2 transition-all duration-300 group-hover:border-pink-500/50">
-            <ChevronDown
-              size={24}
-              className="text-white/70 group-hover:text-pink-400 transition-colors duration-300"
-            />
-          </div>
+          
         </div>
-      </motion.div>
+      </div>
     </section>
   );
 }
